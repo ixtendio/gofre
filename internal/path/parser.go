@@ -54,8 +54,8 @@ func Parse(pathPattern string, caseInsensitive bool) (*Element, error) {
 					return nil, err
 				}
 				if nextElement != nil {
-					head.next = nextElement
-					head = head.next
+					head.Next = nextElement
+					head = head.Next
 				}
 			}
 			head = addSeparatorElement(head)
@@ -69,8 +69,8 @@ func Parse(pathPattern string, caseInsensitive bool) (*Element, error) {
 					return nil, err
 				}
 				if nextElement != nil {
-					head.next = nextElement
-					head = head.next
+					head.Next = nextElement
+					head = head.Next
 				}
 				head = addSeparatorElement(head)
 				pos = pos + 2
@@ -85,18 +85,18 @@ func Parse(pathPattern string, caseInsensitive bool) (*Element, error) {
 			return nil, err
 		}
 		if nextElement != nil {
-			head.next = nextElement
+			head.Next = nextElement
 		}
 	}
 	return root, nil
 }
 
 func addSeparatorElement(head *Element) *Element {
-	if head.MatchingType == MatchSeparatorType {
+	if head.MatchType == MatchSeparatorType {
 		return head
 	}
-	head.next = separatorElement()
-	return head.next
+	head.Next = separatorElement()
+	return head.Next
 }
 
 func parseElement(element string, caseInsensitive bool) (*Element, error) {

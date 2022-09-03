@@ -6,5 +6,5 @@ import (
 
 type HttpRequest struct {
 	RawRequest *http.Request
-	PathVars   map[string]string
+	UriVars    map[string]string
 }

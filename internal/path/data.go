@@ -24,17 +24,18 @@ type MatchingContext struct {
 }
 
 type Element struct {
-	// The next path element in the chain
-	MatchingType int
-	next         *Element
+	MatchType int
+	// The Next path element in the chain
+	Next         *Element
+	RawVal       string
+	MatchPattern string
 	matcherFunc  func(pathIndex int, mc MatchingContext) bool
-	value        string
 }
 
 func (e *Element) Matches(pathIndex int, mc MatchingContext) bool {
 	if e.matcherFunc(pathIndex, mc) {
-		if e.next != nil {
-			return e.next.Matches(pathIndex+1, mc)
+		if e.Next != nil {
+			return e.Next.Matches(pathIndex+1, mc)
 		}
 		return true
 	}
@@ -46,20 +47,20 @@ func (p *Element) String() string {
 	c := p
 	for c != nil {
 		toString.WriteRune('[')
-		toString.WriteString(string(c.value))
+		toString.WriteString(string(c.RawVal))
 		toString.WriteRune(']')
-		c = c.next
+		c = c.Next
 	}
 	return toString.String()
 }
 
 func separatorElement() *Element {
 	return &Element{
-		MatchingType: MatchSeparatorType,
+		MatchType: MatchSeparatorType,
 		matcherFunc: func(pathIndex int, mc MatchingContext) bool {
 			return pathIndex < len(mc.elements) && mc.elements[pathIndex] == pathSeparator
 		},
-		value: pathSeparator,
+		RawVal: pathSeparator,
 	}
 }
 
@@ -94,7 +95,7 @@ func nonCaptureVarElement(val string, caseInsensitive bool) (*Element, error) {
 		}
 	}
 	return &Element{
-		MatchingType: kind,
+		MatchType: kind,
 		matcherFunc: func(pathIndex int, mc MatchingContext) bool {
 			if pathIndex >= len(mc.elements) {
 				return false
@@ -118,7 +119,8 @@ func nonCaptureVarElement(val string, caseInsensitive bool) (*Element, error) {
 				return false
 			}
 		},
-		value: val,
+		RawVal:       val,
+		MatchPattern: val,
 	}, nil
 }
 
@@ -132,12 +134,13 @@ func captureVarElement(val string, caseInsensitive bool) (*Element, error) {
 
 	kind := MatchVarCaptureType
 	var varName string
+	var regexPattern string
 	var constraintPattern *regexp.Regexp
 	sepIndex := strings.IndexRune(val, ':')
 	if sepIndex > 0 {
 		varName = val[0:sepIndex]
 		if sepIndex+1 < len(val) {
-			regexPattern := val[sepIndex+1 : len(val)-1]
+			regexPattern = val[sepIndex+1 : len(val)-1]
 			if regexPattern != "*" && regexPattern != ".*" {
 				if caseInsensitive {
 					regexPattern = "(?i)" + regexPattern
@@ -155,7 +158,7 @@ func captureVarElement(val string, caseInsensitive bool) (*Element, error) {
 	}
 
 	return &Element{
-		MatchingType: kind,
+		MatchType: kind,
 		matcherFunc: func(pathIndex int, mc MatchingContext) bool {
 			if pathIndex >= len(mc.elements) {
 				return false
@@ -172,6 +175,7 @@ func captureVarElement(val string, caseInsensitive bool) (*Element, error) {
 				return false
 			}
 		},
-		value: val,
+		RawVal:       val,
+		MatchPattern: regexPattern,
 	}, nil
 }

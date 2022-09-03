@@ -20,7 +20,7 @@ var defaultErrLogFunc = func(err error) {
 type Router struct {
 	caseInsensitivePathMatch bool
 	errLogFunc               func(err error)
-	endpoints                []*endpoint
+	endpointMatcher          *endpointMatcher
 }
 
 func NewRouter(caseInsensitivePathMatch bool, errLogFunc func(err error)) *Router {
@@ -30,6 +30,7 @@ func NewRouter(caseInsensitivePathMatch bool, errLogFunc func(err error)) *Route
 	return &Router{
 		caseInsensitivePathMatch: caseInsensitivePathMatch,
 		errLogFunc:               errLogFunc,
+		endpointMatcher:          newEndpointMatcher(),
 	}
 }
 
@@ -39,21 +40,26 @@ func (r *Router) Handle(method string, apiPath string, handler Handler) {
 		r.errLogFunc(fmt.Errorf("failed parsing the path: %s, err: %w", apiPath, err))
 		os.Exit(1)
 	}
-	r.endpoints = append(r.endpoints, &endpoint{
+	if err := r.endpointMatcher.addEndpoint(&endpoint{
 		method:   method,
 		rootPath: rootPath,
 		handler:  handler,
-	})
+	}); err != nil {
+		r.errLogFunc(fmt.Errorf("failed to register the apiPath: %s, err: %w", apiPath, err))
+		os.Exit(1)
+	}
 }
 
 // ServeHTTP implements the http.Handler interface.
 // It's the entry point for all http traffic
 func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	mc := path.ParseRequestURL(req.URL)
-	var e *endpoint
+	e := r.endpointMatcher.getClosestEndpoint(mc)
 	if e == nil {
-
+		w.WriteHeader(http.StatusNotFound)
+		return
 	}
+
 	handler := e.handler
 	// Pull the context from the request and use it as a separate parameter.
 	ctx := req.Context()
@@ -66,7 +72,7 @@ func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 
 	httpRequest := request.HttpRequest{
 		RawRequest: req,
-		PathVars:   mc.ExtractedUriVariables,
+		UriVars:    mc.ExtractedUriVariables,
 	}
 
 	// Call the wrapped handler functions.

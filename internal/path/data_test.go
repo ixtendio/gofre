@@ -75,11 +75,11 @@ func Test_nonCaptureVarElement(t *testing.T) {
 				t.Errorf("nonCaptureVarElement() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			if got.MatchingType != tt.want.matchingType {
-				t.Errorf("nonCaptureVarElement() got MatchingType = %v, want %v", got.MatchingType, tt.want.matchingType)
+			if got.MatchType != tt.want.matchingType {
+				t.Errorf("nonCaptureVarElement() got MatchType = %v, want %v", got.MatchType, tt.want.matchingType)
 			}
-			if got.value != tt.want.value {
-				t.Errorf("nonCaptureVarElement() got value = %v, want %v", got.value, tt.want.value)
+			if got.RawVal != tt.want.value {
+				t.Errorf("nonCaptureVarElement() got RawVal = %v, want %v", got.RawVal, tt.want.value)
 			}
 		})
 	}

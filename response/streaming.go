@@ -2,6 +2,7 @@ package response
 
 import (
 	"fmt"
+	"github.com/ixtendio/gow/request"
 	"io"
 	"net/http"
 )
@@ -11,7 +12,7 @@ type HttpStreamResponse struct {
 	Reader io.Reader
 }
 
-func (r *HttpStreamResponse) Write(w http.ResponseWriter, reqContext *HttpRequest) error {
+func (r *HttpStreamResponse) Write(w http.ResponseWriter, reqContext *request.HttpRequest) error {
 	// write the headers
 	if err := r.HttpHeadersResponse.Write(w, reqContext); err != nil {
 		return err
