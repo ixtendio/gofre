@@ -6,7 +6,7 @@ import (
 	"strings"
 )
 
-const pathSeparator = "/"
+const Separator = "/"
 
 const (
 	MatchSeparatorType = iota + 1
@@ -58,9 +58,9 @@ func separatorElement() *Element {
 	return &Element{
 		MatchType: MatchSeparatorType,
 		matcherFunc: func(pathIndex int, mc MatchingContext) bool {
-			return pathIndex < len(mc.elements) && mc.elements[pathIndex] == pathSeparator
+			return pathIndex < len(mc.elements) && mc.elements[pathIndex] == Separator
 		},
-		RawVal: pathSeparator,
+		RawVal: Separator,
 	}
 }
 

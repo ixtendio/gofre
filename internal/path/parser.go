@@ -22,7 +22,7 @@ func ParseRequestURL(requestUrl *url.URL) *MatchingContext {
 	}
 	if elementStartPos != -1 && elementStartPos < pathLen {
 		el := requestPath[elementStartPos:pathLen]
-		if el == pathSeparator {
+		if el == Separator {
 			elements = addPathSeparator(elements)
 		} else if el != "" {
 			elements = addPathSegment(elements, el)
@@ -35,15 +35,14 @@ func ParseRequestURL(requestUrl *url.URL) *MatchingContext {
 	}
 }
 
-func Parse(pathPattern string, caseInsensitive bool) (*Element, error) {
+func Parse(pathPattern string, caseInsensitive bool) ([]*Element, error) {
 	if pathPattern[0] != '/' {
 		return nil, fmt.Errorf("the path pattern should start with /")
 	}
+	var elements []*Element
 	pathPatternLen := len(pathPattern)
-	root := separatorElement()
-	head := root
-	pos := 1
-	elementStartPos := 1
+	pos := 0
+	elementStartPos := -1
 	for pos < pathPatternLen {
 		ch := pathPattern[pos]
 		switch ch {
@@ -54,11 +53,10 @@ func Parse(pathPattern string, caseInsensitive bool) (*Element, error) {
 					return nil, err
 				}
 				if nextElement != nil {
-					head.Next = nextElement
-					head = head.Next
+					elements = append(elements, nextElement)
 				}
 			}
-			head = addSeparatorElement(head)
+			elements = addSeparatorElement(elements)
 			elementStartPos = pos + 1
 		case '%':
 			if pos+2 < pathPatternLen &&
@@ -69,10 +67,9 @@ func Parse(pathPattern string, caseInsensitive bool) (*Element, error) {
 					return nil, err
 				}
 				if nextElement != nil {
-					head.Next = nextElement
-					head = head.Next
+					elements = append(elements, nextElement)
 				}
-				head = addSeparatorElement(head)
+				elements = addSeparatorElement(elements)
 				pos = pos + 2
 			}
 			elementStartPos = pos + 1
@@ -85,18 +82,18 @@ func Parse(pathPattern string, caseInsensitive bool) (*Element, error) {
 			return nil, err
 		}
 		if nextElement != nil {
-			head.Next = nextElement
+			elements = append(elements, nextElement)
 		}
 	}
-	return root, nil
+	return elements, nil
 }
 
-func addSeparatorElement(head *Element) *Element {
-	if head.MatchType == MatchSeparatorType {
-		return head
+func addSeparatorElement(elements []*Element) []*Element {
+	elLen := len(elements)
+	if elLen > 0 && elements[elLen-1].MatchType == MatchSeparatorType {
+		return elements
 	}
-	head.Next = separatorElement()
-	return head.Next
+	return append(elements, separatorElement())
 }
 
 func parseElement(element string, caseInsensitive bool) (*Element, error) {
@@ -125,7 +122,7 @@ func addPathSegment(elements []string, segment string) []string {
 		case 2:
 			return elements[0:1]
 		default:
-			if elements[length-1] == pathSeparator {
+			if elements[length-1] == Separator {
 				return elements[0 : length-2]
 			}
 			return elements[0 : length-1]
@@ -137,8 +134,8 @@ func addPathSegment(elements []string, segment string) []string {
 
 func addPathSeparator(elements []string) []string {
 	elementsLen := len(elements)
-	if elementsLen == 0 || elements[elementsLen-1] != pathSeparator {
-		return append(elements, pathSeparator)
+	if elementsLen == 0 || elements[elementsLen-1] != Separator {
+		return append(elements, Separator)
 	}
 	return elements
 }

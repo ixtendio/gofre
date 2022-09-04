@@ -20,7 +20,7 @@ var defaultErrLogFunc = func(err error) {
 type Router struct {
 	caseInsensitivePathMatch bool
 	errLogFunc               func(err error)
-	endpointMatcher          *endpointMatcher
+	endpointMatcher          *matcher
 }
 
 func NewRouter(caseInsensitivePathMatch bool, errLogFunc func(err error)) *Router {
@@ -30,22 +30,13 @@ func NewRouter(caseInsensitivePathMatch bool, errLogFunc func(err error)) *Route
 	return &Router{
 		caseInsensitivePathMatch: caseInsensitivePathMatch,
 		errLogFunc:               errLogFunc,
-		endpointMatcher:          newEndpointMatcher(),
+		endpointMatcher:          newMatcher(),
 	}
 }
 
-func (r *Router) Handle(method string, apiPath string, handler Handler) {
-	rootPath, err := path.Parse(apiPath, r.caseInsensitivePathMatch)
-	if err != nil {
-		r.errLogFunc(fmt.Errorf("failed parsing the path: %s, err: %w", apiPath, err))
-		os.Exit(1)
-	}
-	if err := r.endpointMatcher.addEndpoint(&endpoint{
-		method:   method,
-		rootPath: rootPath,
-		handler:  handler,
-	}); err != nil {
-		r.errLogFunc(fmt.Errorf("failed to register the apiPath: %s, err: %w", apiPath, err))
+func (r *Router) Handle(method string, pathPattern string, handler Handler) {
+	if err := r.endpointMatcher.addEndpoint(method, pathPattern, r.caseInsensitivePathMatch, handler); err != nil {
+		r.errLogFunc(fmt.Errorf("failed registring the pathPattern: %s, err: %w", pathPattern, err))
 		os.Exit(1)
 	}
 }
@@ -54,13 +45,12 @@ func (r *Router) Handle(method string, apiPath string, handler Handler) {
 // It's the entry point for all http traffic
 func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	mc := path.ParseRequestURL(req.URL)
-	e := r.endpointMatcher.getClosestEndpoint(mc)
-	if e == nil {
+	handler := r.endpointMatcher.match(mc)
+	if handler == nil {
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
 
-	handler := e.handler
 	// Pull the context from the request and use it as a separate parameter.
 	ctx := req.Context()
 

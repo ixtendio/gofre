@@ -4,6 +4,7 @@ import (
 	"log"
 	"net/url"
 	"reflect"
+	"strings"
 	"testing"
 )
 
@@ -78,8 +79,9 @@ func TestParse(t *testing.T) {
 				t.Errorf("Parse() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			if got.String() != tt.want {
-				t.Errorf("Parse() got = %v, want %v", got.String(), tt.want)
+			gotAsString := elementsToString(got)
+			if gotAsString != tt.want {
+				t.Errorf("Parse() got = %v, want %v", gotAsString, tt.want)
 			}
 		})
 	}
@@ -208,6 +210,14 @@ func TestParseRequestURL(t *testing.T) {
 			}
 		})
 	}
+}
+
+func elementsToString(elements []*Element) string {
+	var sb strings.Builder
+	for i := 0; i < len(elements); i++ {
+		sb.WriteString(elements[i].String())
+	}
+	return sb.String()
 }
 
 func mustParseURL(rawURL string) *url.URL {
