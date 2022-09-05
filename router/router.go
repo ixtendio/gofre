@@ -45,7 +45,7 @@ func (r *Router) Handle(method string, pathPattern string, handler Handler) {
 // It's the entry point for all http traffic
 func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	mc := path.ParseRequestURL(req.URL)
-	handler := r.endpointMatcher.match(mc)
+	handler := r.endpointMatcher.match(req.Method, mc)
 	if handler == nil {
 		w.WriteHeader(http.StatusNotFound)
 		return

@@ -18,47 +18,31 @@ const (
 )
 
 type MatchingContext struct {
-	originalPath          string
-	elements              []string
+	// The original request path
+	OriginalPath string
+	// The path elements where the double slashes were removed
+	PathElements []string
+	// A map where the var captured are stored
 	ExtractedUriVariables map[string]string
 }
 
 type Element struct {
+	// The path segment type
 	MatchType int
-	// The Next path element in the chain
-	Next         *Element
-	RawVal       string
+	// The string value of the path pattern segment
+	RawVal string
+	// The match pattern of the path segment, if exists
 	MatchPattern string
-	matcherFunc  func(pathIndex int, mc MatchingContext) bool
-}
-
-func (e *Element) Matches(pathIndex int, mc MatchingContext) bool {
-	if e.matcherFunc(pathIndex, mc) {
-		if e.Next != nil {
-			return e.Next.Matches(pathIndex+1, mc)
-		}
-		return true
-	}
-	return false
-}
-
-func (p *Element) String() string {
-	var toString strings.Builder
-	c := p
-	for c != nil {
-		toString.WriteRune('[')
-		toString.WriteString(string(c.RawVal))
-		toString.WriteRune(']')
-		c = c.Next
-	}
-	return toString.String()
+	// A function that matches a request path segment with the current pattern segment.
+	// If the pattern segment supports variables, then these will be published to the MatchingContext
+	MatchFunc func(pathIndex int, mc *MatchingContext) bool
 }
 
 func separatorElement() *Element {
 	return &Element{
 		MatchType: MatchSeparatorType,
-		matcherFunc: func(pathIndex int, mc MatchingContext) bool {
-			return pathIndex < len(mc.elements) && mc.elements[pathIndex] == Separator
+		MatchFunc: func(pathIndex int, mc *MatchingContext) bool {
+			return pathIndex < len(mc.PathElements) && mc.PathElements[pathIndex] == Separator
 		},
 		RawVal: Separator,
 	}
@@ -96,11 +80,11 @@ func nonCaptureVarElement(val string, caseInsensitive bool) (*Element, error) {
 	}
 	return &Element{
 		MatchType: kind,
-		matcherFunc: func(pathIndex int, mc MatchingContext) bool {
-			if pathIndex >= len(mc.elements) {
+		MatchFunc: func(pathIndex int, mc *MatchingContext) bool {
+			if pathIndex >= len(mc.PathElements) {
 				return false
 			}
-			valToCompare := mc.elements[pathIndex]
+			valToCompare := mc.PathElements[pathIndex]
 			switch kind {
 			case MatchLiteralType:
 				if len(val) != len(valToCompare) {
@@ -138,7 +122,7 @@ func captureVarElement(val string, caseInsensitive bool) (*Element, error) {
 	var constraintPattern *regexp.Regexp
 	sepIndex := strings.IndexRune(val, ':')
 	if sepIndex > 0 {
-		varName = val[0:sepIndex]
+		varName = val[1:sepIndex]
 		if sepIndex+1 < len(val) {
 			regexPattern = val[sepIndex+1 : len(val)-1]
 			if regexPattern != "*" && regexPattern != ".*" {
@@ -159,11 +143,11 @@ func captureVarElement(val string, caseInsensitive bool) (*Element, error) {
 
 	return &Element{
 		MatchType: kind,
-		matcherFunc: func(pathIndex int, mc MatchingContext) bool {
-			if pathIndex >= len(mc.elements) {
+		MatchFunc: func(pathIndex int, mc *MatchingContext) bool {
+			if pathIndex >= len(mc.PathElements) {
 				return false
 			}
-			valToMatch := mc.elements[pathIndex]
+			valToMatch := mc.PathElements[pathIndex]
 			if constraintPattern == nil {
 				mc.ExtractedUriVariables[varName] = valToMatch
 				return true

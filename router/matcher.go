@@ -11,7 +11,7 @@ type trieNode struct {
 	parent      *trieNode
 	children    []*trieNode
 	pathElement *path.Element
-	data        Handler
+	handler     Handler
 }
 
 func (n *trieNode) sortChildren() {
@@ -29,7 +29,7 @@ func (n *trieNode) sortChildren() {
 }
 
 func (n *trieNode) isLeaf() bool {
-	return n.data != nil
+	return n.handler != nil
 }
 
 func (n *trieNode) addChild(pathElement *path.Element) (*trieNode, error) {
@@ -86,8 +86,8 @@ func (n *trieNode) addLeaf(data Handler) error {
 		}
 	}
 	n.children = append(n.children, &trieNode{
-		parent: n,
-		data:   data,
+		parent:  n,
+		handler: data,
 	})
 	n.sortChildren()
 	return nil
@@ -106,11 +106,10 @@ func (m *matcher) addEndpoint(method string, pathPattern string, caseInsensitive
 
 	rootNode, found := m.trieRoots[method]
 	if !found {
-		rootNode = &trieNode{}
+		rootNode = &trieNode{pathElement: pathElements[0]}
 		m.trieRoots[method] = rootNode
 	}
-
-	for i := 0; i < len(pathElements); i++ {
+	for i := 1; i < len(pathElements); i++ {
 		n, err := rootNode.addChild(pathElements[i])
 		if err != nil {
 			return err
@@ -120,7 +119,46 @@ func (m *matcher) addEndpoint(method string, pathPattern string, caseInsensitive
 	return rootNode.addLeaf(handler)
 }
 
-func (m *matcher) match(mc *path.MatchingContext) Handler {
+func (m *matcher) match(method string, mc *path.MatchingContext) Handler {
+	method = strings.ToUpper(method)
+	pathLen := len(mc.PathElements)
+	var matcher func(int, *trieNode) *trieNode
+	matcher = func(pathIndex int, root *trieNode) *trieNode {
+		if root == nil {
+			return nil
+		}
+
+		if root.isLeaf() {
+			if pathIndex == pathLen {
+				return root
+			}
+			return nil
+		}
+
+		if root.pathElement.MatchFunc(pathIndex, mc) {
+			for i := 0; i < len(root.children); {
+				node := root.children[i]
+				h := matcher(pathIndex+1, node)
+				if h != nil {
+					return h
+				}
+
+				if !node.isLeaf() && node.pathElement.MatchType == path.MatchMultiplePathsType {
+					if pathIndex == pathLen-1 {
+						return nil
+					}
+					pathIndex++
+				} else {
+					i++
+				}
+			}
+		}
+		return nil
+	}
+	leaf := matcher(0, m.trieRoots[method])
+	if leaf != nil {
+		return leaf.handler
+	}
 	return nil
 }
 

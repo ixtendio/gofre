@@ -143,15 +143,15 @@ func Test_nonCaptureVarElement_matcherFunc(t *testing.T) {
 				t.Errorf("nonCaptureVarElement() error = %v", err)
 				return
 			}
-			var mc MatchingContext
+			mc := &MatchingContext{}
 			for key := range tt.want {
-				mc.elements = append(mc.elements, key)
+				mc.PathElements = append(mc.PathElements, key)
 			}
-			for i := 0; i < len(mc.elements); i++ {
-				key := mc.elements[i]
+			for i := 0; i < len(mc.PathElements); i++ {
+				key := mc.PathElements[i]
 				expectedResult := tt.want[key]
-				if got.matcherFunc(i, mc) != expectedResult {
-					t.Errorf("nonCaptureVarElement().matcherFunc(%d, '%s') = %v, want %v", i, key, !expectedResult, expectedResult)
+				if got.MatchFunc(i, mc) != expectedResult {
+					t.Errorf("nonCaptureVarElement().MatchFunc(%d, '%s') = %v, want %v", i, key, !expectedResult, expectedResult)
 				}
 			}
 		})

@@ -29,8 +29,8 @@ func ParseRequestURL(requestUrl *url.URL) *MatchingContext {
 		}
 	}
 	return &MatchingContext{
-		originalPath:          requestPath,
-		elements:              elements,
+		OriginalPath:          requestPath,
+		PathElements:          elements,
 		ExtractedUriVariables: make(map[string]string),
 	}
 }
