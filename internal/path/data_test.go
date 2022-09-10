@@ -70,7 +70,7 @@ func Test_nonCaptureVarElement(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := nonCaptureVarElement(tt.args.val, tt.args.caseInsensitive)
+			got, err := nonCaptureVarElement("12345", tt.args.val, tt.args.caseInsensitive)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("nonCaptureVarElement() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -138,7 +138,7 @@ func Test_nonCaptureVarElement_matcherFunc(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := nonCaptureVarElement(tt.args.val, tt.args.caseInsensitive)
+			got, err := nonCaptureVarElement("12345", tt.args.val, tt.args.caseInsensitive)
 			if err != nil {
 				t.Errorf("nonCaptureVarElement() error = %v", err)
 				return
@@ -150,8 +150,9 @@ func Test_nonCaptureVarElement_matcherFunc(t *testing.T) {
 			for i := 0; i < len(mc.PathElements); i++ {
 				key := mc.PathElements[i]
 				expectedResult := tt.want[key]
-				if got.MatchFunc(i, mc) != expectedResult {
-					t.Errorf("nonCaptureVarElement().MatchFunc(%d, '%s') = %v, want %v", i, key, !expectedResult, expectedResult)
+				gotResult, _ := got.MatchPathSegment(key)
+				if gotResult != expectedResult {
+					t.Errorf("nonCaptureVarElement().MatchPathSegment(%d, '%s') got = %v, want = %v", i, key, gotResult, expectedResult)
 				}
 			}
 		})

@@ -8,10 +8,23 @@ import (
 )
 
 type trieNode struct {
-	parent      *trieNode
-	children    []*trieNode
-	pathElement *path.Element
-	handler     Handler
+	parent          *trieNode
+	children        []*trieNode
+	pathElement     *path.Element
+	captureVarNames []string
+	handler         Handler
+}
+
+func (n *trieNode) addCaptureVarNameIfNotExists(varName string) {
+	if varName == "" {
+		return
+	}
+	for i := 0; i < len(n.captureVarNames); i++ {
+		if n.captureVarNames[i] == varName {
+			return
+		}
+	}
+	n.captureVarNames = append(n.captureVarNames, varName)
 }
 
 func (n *trieNode) sortChildren() {
@@ -32,44 +45,50 @@ func (n *trieNode) isLeaf() bool {
 	return n.handler != nil
 }
 
-func (n *trieNode) addChild(pathElement *path.Element) (*trieNode, error) {
+func (n *trieNode) addChild(newPathElement *path.Element) (*trieNode, error) {
 	if n.isLeaf() {
 		return nil, fmt.Errorf("a trie leaf can not have a child")
 	}
+	pathPatternId := newPathElement.PathPatternId
+	captureVarName := newPathElement.CaptureVarName
 	for i := 0; i < len(n.children); i++ {
 		child := n.children[i]
 		if !child.isLeaf() {
-			switch pathElement.MatchType {
+			switch newPathElement.MatchType {
 			case path.MatchSeparatorType:
 				if child.pathElement.MatchType == path.MatchSeparatorType {
 					return child, nil
 				}
 			case path.MatchLiteralType:
 				if child.pathElement.MatchType == path.MatchLiteralType &&
-					child.pathElement.RawVal == pathElement.RawVal {
+					child.pathElement.RawVal == newPathElement.RawVal {
 					return child, nil
 				}
 			case path.MatchRegexType:
 				if child.pathElement.MatchType == path.MatchRegexType &&
-					child.pathElement.MatchPattern == pathElement.MatchPattern {
+					child.pathElement.MatchPattern == newPathElement.MatchPattern {
 					return child, nil
 				}
 			case path.MatchVarCaptureType:
 				if child.pathElement.MatchType == path.MatchVarCaptureType {
+					child.addCaptureVarNameIfNotExists(pathPatternId + "/" + captureVarName)
 					return child, nil
 				}
 			case path.MatchVarCaptureWithConstraintType:
 				if child.pathElement.MatchType == path.MatchVarCaptureWithConstraintType &&
-					child.pathElement.MatchPattern == pathElement.MatchPattern {
+					child.pathElement.MatchPattern == newPathElement.MatchPattern {
+					child.addCaptureVarNameIfNotExists(pathPatternId + "/" + captureVarName)
 					return child, nil
 				}
 			}
-
 		}
 	}
 	child := &trieNode{
 		parent:      n,
-		pathElement: pathElement,
+		pathElement: newPathElement,
+	}
+	if captureVarName != "" {
+		child.addCaptureVarNameIfNotExists(pathPatternId + "/" + captureVarName)
 	}
 	n.children = append(n.children, child)
 	n.sortChildren()
@@ -98,7 +117,7 @@ type matcher struct {
 }
 
 func (m *matcher) addEndpoint(method string, pathPattern string, caseInsensitivePathMatch bool, handler Handler) error {
-	pathElements, err := path.Parse(pathPattern, caseInsensitivePathMatch)
+	pathElementsRoot, err := path.ParsePattern(pathPattern, caseInsensitivePathMatch)
 	if err != nil {
 		return fmt.Errorf("failed parsing pathPattern: %s, err: %w", pathPattern, err)
 	}
@@ -106,11 +125,12 @@ func (m *matcher) addEndpoint(method string, pathPattern string, caseInsensitive
 
 	rootNode, found := m.trieRoots[method]
 	if !found {
-		rootNode = &trieNode{pathElement: pathElements[0]}
+		rootNode = &trieNode{pathElement: pathElementsRoot}
 		m.trieRoots[method] = rootNode
 	}
-	for i := 1; i < len(pathElements); i++ {
-		n, err := rootNode.addChild(pathElements[i])
+
+	for nextElement := pathElementsRoot.Next; nextElement != nil; nextElement = nextElement.Next {
+		n, err := rootNode.addChild(nextElement)
 		if err != nil {
 			return err
 		}
@@ -119,35 +139,44 @@ func (m *matcher) addEndpoint(method string, pathPattern string, caseInsensitive
 	return rootNode.addLeaf(handler)
 }
 
-func (m *matcher) match(method string, mc *path.MatchingContext) Handler {
+func (m *matcher) match(method string, mc *path.MatchingContext) (Handler, map[string]string) {
+	allCapturedVars := make(map[string]string)
 	method = strings.ToUpper(method)
 	pathLen := len(mc.PathElements)
-	var matcher func(int, *trieNode) *trieNode
-	matcher = func(pathIndex int, root *trieNode) *trieNode {
+	var matcherFunc func(int, *trieNode) *trieNode
+	matcherFunc = func(pathSegmentIndex int, root *trieNode) *trieNode {
 		if root == nil {
 			return nil
 		}
 
 		if root.isLeaf() {
-			if pathIndex == pathLen {
+			if pathSegmentIndex == pathLen {
 				return root
 			}
 			return nil
 		}
 
-		if root.pathElement.MatchFunc(pathIndex, mc) {
+		pathSegment := mc.PathElements[pathSegmentIndex]
+		captureVarNames := root.captureVarNames
+		matched, varValue := root.pathElement.MatchPathSegment(pathSegment)
+		if matched {
+			if varValue != "" {
+				for _, captureVarName := range captureVarNames {
+					allCapturedVars[captureVarName] = varValue
+				}
+			}
 			for i := 0; i < len(root.children); {
-				node := root.children[i]
-				h := matcher(pathIndex+1, node)
-				if h != nil {
-					return h
+				childNode := root.children[i]
+				leaf := matcherFunc(pathSegmentIndex+1, childNode)
+				if leaf != nil {
+					return leaf
 				}
 
-				if !node.isLeaf() && node.pathElement.MatchType == path.MatchMultiplePathsType {
-					if pathIndex == pathLen-1 {
+				if !childNode.isLeaf() && childNode.pathElement.MatchType == path.MatchMultiplePathsType {
+					if pathSegmentIndex == pathLen-1 {
 						return nil
 					}
-					pathIndex++
+					pathSegmentIndex++
 				} else {
 					i++
 				}
@@ -155,11 +184,18 @@ func (m *matcher) match(method string, mc *path.MatchingContext) Handler {
 		}
 		return nil
 	}
-	leaf := matcher(0, m.trieRoots[method])
-	if leaf != nil {
-		return leaf.handler
+	leaf := matcherFunc(0, m.trieRoots[method])
+	if leaf == nil {
+		return nil, nil
 	}
-	return nil
+	capturedVars := make(map[string]string)
+	for node := leaf.parent.pathElement; node != nil; node = node.Previous {
+		if node.CaptureVarName != "" {
+			captureVal := allCapturedVars[node.PathPatternId+"/"+node.CaptureVarName]
+			capturedVars[node.CaptureVarName] = captureVal
+		}
+	}
+	return leaf.handler, capturedVars
 }
 
 func newMatcher() *matcher {

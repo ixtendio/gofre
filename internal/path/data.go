@@ -22,33 +22,49 @@ type MatchingContext struct {
 	OriginalPath string
 	// The path elements where the double slashes were removed
 	PathElements []string
-	// A map where the var captured are stored
-	ExtractedUriVariables map[string]string
 }
 
 type Element struct {
+	// A unique identifier of the pattern from where this element was extracted
+	PathPatternId string
 	// The path segment type
 	MatchType int
+	// The next element in path or nil
+	Next *Element
+	// The previous element in path or nil
+	Previous *Element
 	// The string value of the path pattern segment
 	RawVal string
 	// The match pattern of the path segment, if exists
 	MatchPattern string
-	// A function that matches a request path segment with the current pattern segment.
-	// If the pattern segment supports variables, then these will be published to the MatchingContext
-	MatchFunc func(pathIndex int, mc *MatchingContext) bool
+	// The name of the capture variable or empty
+	CaptureVarName string
+	// A function that matches a request path segment with the current pattern.
+	// If the pattern segment supports variable capture then, the value will be returned
+	MatchPathSegment func(pathSegment string) (bool, string)
 }
 
-func separatorElement() *Element {
+func (e *Element) linkNext(next *Element) *Element {
+	if next == nil {
+		return e
+	}
+	e.Next = next
+	next.Previous = e
+	return next
+}
+
+func separatorElement(pathPatternId string) *Element {
 	return &Element{
-		MatchType: MatchSeparatorType,
-		MatchFunc: func(pathIndex int, mc *MatchingContext) bool {
-			return pathIndex < len(mc.PathElements) && mc.PathElements[pathIndex] == Separator
+		PathPatternId: pathPatternId,
+		MatchType:     MatchSeparatorType,
+		MatchPathSegment: func(pathSegment string) (bool, string) {
+			return pathSegment == Separator, ""
 		},
 		RawVal: Separator,
 	}
 }
 
-func nonCaptureVarElement(val string, caseInsensitive bool) (*Element, error) {
+func nonCaptureVarElement(pathPatternId string, val string, caseInsensitive bool) (*Element, error) {
 	var matchPattern *regexp.Regexp
 	kind := MatchLiteralType
 	if val == "**" {
@@ -79,28 +95,25 @@ func nonCaptureVarElement(val string, caseInsensitive bool) (*Element, error) {
 		}
 	}
 	return &Element{
-		MatchType: kind,
-		MatchFunc: func(pathIndex int, mc *MatchingContext) bool {
-			if pathIndex >= len(mc.PathElements) {
-				return false
-			}
-			valToCompare := mc.PathElements[pathIndex]
+		PathPatternId: pathPatternId,
+		MatchType:     kind,
+		MatchPathSegment: func(pathSegment string) (bool, string) {
 			switch kind {
 			case MatchLiteralType:
-				if len(val) != len(valToCompare) {
-					return false
+				if len(val) != len(pathSegment) {
+					return false, ""
 				}
 				if caseInsensitive {
-					return strings.EqualFold(val, valToCompare)
+					return strings.EqualFold(val, pathSegment), ""
 				} else {
-					return val == valToCompare
+					return val == pathSegment, ""
 				}
 			case MatchRegexType:
-				return matchPattern.MatchString(valToCompare)
+				return matchPattern.MatchString(pathSegment), ""
 			case MatchMultiplePathsType:
-				return true
+				return true, ""
 			default:
-				return false
+				return false, ""
 			}
 		},
 		RawVal:       val,
@@ -108,7 +121,7 @@ func nonCaptureVarElement(val string, caseInsensitive bool) (*Element, error) {
 	}, nil
 }
 
-func captureVarElement(val string, caseInsensitive bool) (*Element, error) {
+func captureVarElement(pathPatternId string, val string, caseInsensitive bool) (*Element, error) {
 	if len(val) < 3 {
 		return nil, fmt.Errorf("the capture var path should have at least 3 chars, should start with '{' and end with '}'")
 	}
@@ -138,28 +151,20 @@ func captureVarElement(val string, caseInsensitive bool) (*Element, error) {
 			}
 		}
 	} else {
-		varName = val
+		varName = val[1 : len(val)-1]
 	}
 
 	return &Element{
-		MatchType: kind,
-		MatchFunc: func(pathIndex int, mc *MatchingContext) bool {
-			if pathIndex >= len(mc.PathElements) {
-				return false
+		PathPatternId: pathPatternId,
+		MatchType:     kind,
+		MatchPathSegment: func(pathSegment string) (bool, string) {
+			if constraintPattern == nil || constraintPattern.MatchString(pathSegment) {
+				return true, pathSegment
 			}
-			valToMatch := mc.PathElements[pathIndex]
-			if constraintPattern == nil {
-				mc.ExtractedUriVariables[varName] = valToMatch
-				return true
-			} else {
-				if constraintPattern.MatchString(valToMatch) {
-					mc.ExtractedUriVariables[varName] = valToMatch
-					return true
-				}
-				return false
-			}
+			return false, ""
 		},
-		RawVal:       val,
-		MatchPattern: regexPattern,
+		CaptureVarName: varName,
+		RawVal:         val,
+		MatchPattern:   regexPattern,
 	}, nil
 }

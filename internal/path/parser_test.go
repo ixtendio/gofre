@@ -8,9 +8,19 @@ import (
 	"testing"
 )
 
+func BenchmarkConcat(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		a1 := "a"
+		b1 := "b"
+		c1 := a1 + "_" + b1
+		//c1 := fmt.Sprintf("%s_%s", a1, b1)
+		_ = c1
+	}
+}
+
 func BenchmarkTestParse(b *testing.B) {
 	for i := 0; i < b.N; i++ {
-		_, err := Parse("/abc/def/{abc:def}/", false)
+		_, err := ParsePattern("/abc/def/{abc:def}/", false)
 		if err != nil {
 			b.Errorf("%v", err)
 		}
@@ -18,9 +28,9 @@ func BenchmarkTestParse(b *testing.B) {
 }
 
 func BenchmarkTestParseRequestURL(b *testing.B) {
-	requstUrl := mustParseURL("https://example.com/abc/def/ghe")
+	requstUrl := mustParseURL("https://example.com/abc/def/ghe/as/df/aa/bb/../../../../cc/../../dd/ee/aa")
 	for i := 0; i < b.N; i++ {
-		_ = ParseRequestURL(requstUrl)
+		_ = ParseURL(requstUrl)
 	}
 }
 
@@ -74,14 +84,14 @@ func TestParse(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := Parse(tt.args.pathPattern, tt.args.caseInsensitive)
+			got, err := ParsePattern(tt.args.pathPattern, tt.args.caseInsensitive)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("Parse() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("ParsePattern() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 			gotAsString := elementsToString(got)
 			if gotAsString != tt.want {
-				t.Errorf("Parse() got = %v, want %v", gotAsString, tt.want)
+				t.Errorf("ParsePattern() got = %v, want %v", gotAsString, tt.want)
 			}
 		})
 	}
@@ -100,124 +110,111 @@ func TestParseRequestURL(t *testing.T) {
 			name: "/",
 			args: args{requestUrl: mustParseURL("https://example.com/?q=morefoo%25bar")},
 			want: &MatchingContext{
-				OriginalPath:          "/",
-				PathElements:          []string{"/"},
-				ExtractedUriVariables: map[string]string{},
+				OriginalPath: "/",
+				PathElements: []string{"/"},
 			},
 		},
 		{
 			name: "/abc",
 			args: args{requestUrl: mustParseURL("https://example.com/abc?q=morefoo%25bar")},
 			want: &MatchingContext{
-				OriginalPath:          "/abc",
-				PathElements:          []string{"/", "abc"},
-				ExtractedUriVariables: map[string]string{},
+				OriginalPath: "/abc",
+				PathElements: []string{"/", "abc"},
 			},
 		},
 		{
 			name: "//",
 			args: args{requestUrl: mustParseURL("https://example.com//?q=morefoo%25bar")},
 			want: &MatchingContext{
-				OriginalPath:          "//",
-				PathElements:          []string{"/"},
-				ExtractedUriVariables: map[string]string{},
+				OriginalPath: "//",
+				PathElements: []string{"/"},
 			},
 		},
 		{
 			name: "//abc",
 			args: args{requestUrl: mustParseURL("https://example.com//abc?q=morefoo%25bar")},
 			want: &MatchingContext{
-				OriginalPath:          "//abc",
-				PathElements:          []string{"/", "abc"},
-				ExtractedUriVariables: map[string]string{},
+				OriginalPath: "//abc",
+				PathElements: []string{"/", "abc"},
 			},
 		},
 		{
 			name: "/abc/",
 			args: args{requestUrl: mustParseURL("https://example.com/abc/?q=morefoo%25bar")},
 			want: &MatchingContext{
-				OriginalPath:          "/abc/",
-				PathElements:          []string{"/", "abc", "/"},
-				ExtractedUriVariables: map[string]string{},
+				OriginalPath: "/abc/",
+				PathElements: []string{"/", "abc", "/"},
 			},
 		},
 		{
 			name: "/abc//def",
 			args: args{requestUrl: mustParseURL("https://example.com/abc//def?q=morefoo%25bar")},
 			want: &MatchingContext{
-				OriginalPath:          "/abc//def",
-				PathElements:          []string{"/", "abc", "/", "def"},
-				ExtractedUriVariables: map[string]string{},
+				OriginalPath: "/abc//def",
+				PathElements: []string{"/", "abc", "/", "def"},
 			},
 		},
 		{
 			name: "/foo%25fbar",
 			args: args{requestUrl: mustParseURL("https://example.com/foo%25fbar?q=morefoo%25bar")},
 			want: &MatchingContext{
-				OriginalPath:          "/foo%fbar",
-				PathElements:          []string{"/", "foo%fbar"},
-				ExtractedUriVariables: map[string]string{},
+				OriginalPath: "/foo%fbar",
+				PathElements: []string{"/", "foo%fbar"},
 			},
 		},
 		{
 			name: "/foo%2fbar",
 			args: args{requestUrl: mustParseURL("https://example.com/foo%2fbar?q=morefoo%25bar")},
 			want: &MatchingContext{
-				OriginalPath:          "/foo/bar",
-				PathElements:          []string{"/", "foo", "/", "bar"},
-				ExtractedUriVariables: map[string]string{},
+				OriginalPath: "/foo/bar",
+				PathElements: []string{"/", "foo", "/", "bar"},
 			},
 		},
 		{
 			name: "/path/to/new/../file",
 			args: args{requestUrl: mustParseURL("https://example.com/path/to/new/../file")},
 			want: &MatchingContext{
-				OriginalPath:          "/path/to/new/../file",
-				PathElements:          []string{"/", "path", "/", "to", "/", "file"},
-				ExtractedUriVariables: map[string]string{},
+				OriginalPath: "/path/to/new/../file",
+				PathElements: []string{"/", "path", "/", "to", "/", "file"},
 			},
 		},
 		{
 			name: "/foo/../../bar",
 			args: args{requestUrl: mustParseURL("https://example.com/foo/../../bar")},
 			want: &MatchingContext{
-				OriginalPath:          "/foo/../../bar",
-				PathElements:          []string{"/", "bar"},
-				ExtractedUriVariables: map[string]string{},
+				OriginalPath: "/foo/../../bar",
+				PathElements: []string{"/", "bar"},
 			},
 		},
 		{
 			name: "/foo/../..",
 			args: args{requestUrl: mustParseURL("https://example.com/foo/../..")},
 			want: &MatchingContext{
-				OriginalPath:          "/foo/../..",
-				PathElements:          []string{"/"},
-				ExtractedUriVariables: map[string]string{},
+				OriginalPath: "/foo/../..",
+				PathElements: []string{"/"},
 			},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := ParseRequestURL(tt.args.requestUrl)
+			got := ParseURL(tt.args.requestUrl)
 			if got.OriginalPath != tt.want.OriginalPath {
-				t.Errorf("ParseRequestURL() OriginalPath = %v, want %v", got.OriginalPath, tt.want.OriginalPath)
+				t.Errorf("ParseURL() OriginalPath = %v, want %v", got.OriginalPath, tt.want.OriginalPath)
 			}
 			if !reflect.DeepEqual(got.PathElements, tt.want.PathElements) {
-				t.Errorf("ParseRequestURL() PathElements = %v, want %v", got.PathElements, tt.want.PathElements)
-			}
-			if !reflect.DeepEqual(got.ExtractedUriVariables, tt.want.ExtractedUriVariables) {
-				t.Errorf("ParseRequestURL() ExtractedUriVariables = %v, want %v", got.ExtractedUriVariables, tt.want.ExtractedUriVariables)
+				t.Errorf("ParseURL() PathElements = %v, want %v", got.PathElements, tt.want.PathElements)
 			}
 		})
 	}
 }
 
-func elementsToString(elements []*Element) string {
+func elementsToString(root *Element) string {
 	var sb strings.Builder
-	for i := 0; i < len(elements); i++ {
+	for root != nil {
 		sb.WriteString("[")
-		sb.WriteString(elements[i].RawVal)
+		sb.WriteString(root.RawVal)
 		sb.WriteString("]")
+		root = root.Next
 	}
 	return sb.String()
 }

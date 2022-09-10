@@ -44,8 +44,8 @@ func (r *Router) Handle(method string, pathPattern string, handler Handler) {
 // ServeHTTP implements the http.Handler interface.
 // It's the entry point for all http traffic
 func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
-	mc := path.ParseRequestURL(req.URL)
-	handler := r.endpointMatcher.match(req.Method, mc)
+	mc := path.ParseURL(req.URL)
+	handler, capturedVars := r.endpointMatcher.match(req.Method, mc)
 	if handler == nil {
 		w.WriteHeader(http.StatusNotFound)
 		return
@@ -62,7 +62,7 @@ func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 
 	httpRequest := request.HttpRequest{
 		RawRequest: req,
-		UriVars:    mc.ExtractedUriVariables,
+		UriVars:    capturedVars,
 	}
 
 	// Call the wrapped handler functions.

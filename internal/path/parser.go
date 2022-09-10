@@ -5,7 +5,7 @@ import (
 	"net/url"
 )
 
-func ParseRequestURL(requestUrl *url.URL) *MatchingContext {
+func ParseURL(requestUrl *url.URL) *MatchingContext {
 	requestPath := requestUrl.Path
 	pathLen := len(requestPath)
 	var elements []string
@@ -29,47 +29,44 @@ func ParseRequestURL(requestUrl *url.URL) *MatchingContext {
 		}
 	}
 	return &MatchingContext{
-		OriginalPath:          requestPath,
-		PathElements:          elements,
-		ExtractedUriVariables: make(map[string]string),
+		OriginalPath: requestPath,
+		PathElements: elements,
 	}
 }
 
-func Parse(pathPattern string, caseInsensitive bool) ([]*Element, error) {
+func ParsePattern(pathPattern string, caseInsensitive bool) (*Element, error) {
 	if pathPattern[0] != '/' {
 		return nil, fmt.Errorf("the path pattern should start with /")
 	}
-	var elements []*Element
+	pathPatternId := generateUniqueId()
 	pathPatternLen := len(pathPattern)
-	pos := 0
-	elementStartPos := -1
+	root := separatorElement(pathPatternId)
+	head := root
+	pos := 1
+	elementStartPos := 1
 	for pos < pathPatternLen {
 		ch := pathPattern[pos]
 		switch ch {
 		case '/':
 			if elementStartPos != -1 {
-				nextElement, err := parseElement(pathPattern[elementStartPos:pos], caseInsensitive)
+				nextElement, err := parseElement(pathPatternId, pathPattern[elementStartPos:pos], caseInsensitive)
 				if err != nil {
 					return nil, err
 				}
-				if nextElement != nil {
-					elements = append(elements, nextElement)
-				}
+				head = head.linkNext(nextElement)
 			}
-			elements = addSeparatorElement(elements)
+			head = addSeparatorElement(pathPatternId, head)
 			elementStartPos = pos + 1
 		case '%':
 			if pos+2 < pathPatternLen &&
 				pathPattern[pos+1] == '2' &&
 				(pathPattern[pos+2] == 'f' || pathPattern[pos+2] == 'F') {
-				nextElement, err := parseElement(pathPattern[elementStartPos:pos], caseInsensitive)
+				nextElement, err := parseElement(pathPatternId, pathPattern[elementStartPos:pos], caseInsensitive)
 				if err != nil {
 					return nil, err
 				}
-				if nextElement != nil {
-					elements = append(elements, nextElement)
-				}
-				elements = addSeparatorElement(elements)
+				head = head.linkNext(nextElement)
+				head = addSeparatorElement(pathPatternId, head)
 				pos = pos + 2
 			}
 			elementStartPos = pos + 1
@@ -77,26 +74,23 @@ func Parse(pathPattern string, caseInsensitive bool) ([]*Element, error) {
 		pos++
 	}
 	if elementStartPos != -1 && elementStartPos < pathPatternLen {
-		nextElement, err := parseElement(pathPattern[elementStartPos:pathPatternLen], caseInsensitive)
+		nextElement, err := parseElement(pathPatternId, pathPattern[elementStartPos:pathPatternLen], caseInsensitive)
 		if err != nil {
 			return nil, err
 		}
-		if nextElement != nil {
-			elements = append(elements, nextElement)
-		}
+		head.linkNext(nextElement)
 	}
-	return elements, nil
+	return root, nil
 }
 
-func addSeparatorElement(elements []*Element) []*Element {
-	elLen := len(elements)
-	if elLen > 0 && elements[elLen-1].MatchType == MatchSeparatorType {
-		return elements
+func addSeparatorElement(pathPatternId string, head *Element) *Element {
+	if head.MatchType == MatchSeparatorType {
+		return head
 	}
-	return append(elements, separatorElement())
+	return head.linkNext(separatorElement(pathPatternId))
 }
 
-func parseElement(element string, caseInsensitive bool) (*Element, error) {
+func parseElement(pathPatternId string, element string, caseInsensitive bool) (*Element, error) {
 	elementLen := len(element)
 	if elementLen == 0 {
 		return nil, nil
@@ -105,9 +99,9 @@ func parseElement(element string, caseInsensitive bool) (*Element, error) {
 		if elementLen == 2 {
 			return nil, nil
 		}
-		return captureVarElement(element[0:elementLen], caseInsensitive)
+		return captureVarElement(pathPatternId, element[0:elementLen], caseInsensitive)
 	}
-	return nonCaptureVarElement(element, caseInsensitive)
+	return nonCaptureVarElement(pathPatternId, element, caseInsensitive)
 }
 
 func addPathSegment(elements []string, segment string) []string {
