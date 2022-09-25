@@ -18,9 +18,9 @@ type HttpJsonResponse struct {
 	Payload any
 }
 
-func (r *HttpJsonResponse) Write(w http.ResponseWriter, responseContext *request.HttpRequest) error {
+func (r *HttpJsonResponse) Write(w http.ResponseWriter, req *request.HttpRequest) error {
 	// write the headers
-	if err := r.HttpHeadersResponse.Write(w, responseContext); err != nil {
+	if err := r.HttpHeadersResponse.Write(w, req); err != nil {
 		return err
 	}
 

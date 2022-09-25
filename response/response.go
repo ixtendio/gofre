@@ -33,7 +33,7 @@ func (r *HttpHeadersResponse) Cookies() []*http.Cookie {
 	return r.HttpCookies
 }
 
-func (r *HttpHeadersResponse) Write(w http.ResponseWriter, responseContext *request.HttpRequest) error {
+func (r *HttpHeadersResponse) Write(w http.ResponseWriter, req *request.HttpRequest) error {
 	// Write the cookies
 	for i := 0; i < len(r.HttpCookies); i++ {
 		if r.HttpCookies[i] != nil {

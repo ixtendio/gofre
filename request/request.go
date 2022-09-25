@@ -5,6 +5,6 @@ import (
 )
 
 type HttpRequest struct {
-	RawRequest *http.Request
-	UriVars    map[string]string
+	R       *http.Request
+	UriVars map[string]string
 }

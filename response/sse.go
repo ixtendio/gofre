@@ -12,8 +12,12 @@ import (
 const headerLastEventId = "Last-Event-Id"
 
 var errNotHttp2Request = errors.New("rejected, not a HTTP/2 request")
+var defaultSSEHeaders = map[string]string{
+	"Cache-Control": "no-cache",
+	"Content-Type":  "text/event-stream",
+}
 
-// https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events/Using_server-sent_events
+// ServerSentEvent defines the server-sent event fields. More about server-sent events can be found here: https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events/Using_server-sent_events
 type ServerSentEvent struct {
 	// A string identifying the type of event described
 	Name string
@@ -26,11 +30,20 @@ type ServerSentEvent struct {
 }
 
 func (evt ServerSentEvent) String() string {
+	var startDataWithNewLine bool
 	var sb strings.Builder
-	sb.WriteString("event: ")
-	sb.WriteString(evt.Name)
+	if evt.Name != "" {
+		sb.WriteString("event: ")
+		sb.WriteString(evt.Name)
+		startDataWithNewLine = true
+	}
 	for _, data := range evt.Data {
-		sb.WriteString("\ndata: ")
+		if !startDataWithNewLine {
+			sb.WriteString("data: ")
+			startDataWithNewLine = true
+		} else {
+			sb.WriteString("\ndata: ")
+		}
 		sb.WriteString(data)
 	}
 	if evt.Id != "" {
@@ -52,20 +65,20 @@ type HttpSSEResponse struct {
 	EventGenerator EventGenerator
 }
 
-func (r *HttpSSEResponse) Write(w http.ResponseWriter, reqContext *request.HttpRequest) error {
-	if reqContext.RawRequest.ProtoMajor != 2 {
+func (r *HttpSSEResponse) Write(w http.ResponseWriter, req *request.HttpRequest) error {
+	if req.R.ProtoMajor != 2 {
 		w.WriteHeader(http.StatusInternalServerError)
 		return errNotHttp2Request
 	}
 
 	// get the last event id that was sent
-	lastEventId := reqContext.RawRequest.Header.Get(headerLastEventId)
+	lastEventId := req.R.Header.Get(headerLastEventId)
 
 	// write the headers
-	if err := r.HttpHeadersResponse.Write(w, reqContext); err != nil {
+	if err := r.HttpHeadersResponse.Write(w, req); err != nil {
 		return err
 	}
-	reqCtx := reqContext.RawRequest.Context()
+	reqCtx := req.R.Context()
 	ctx, cancelFunc := context.WithCancel(reqCtx)
 	defer cancelFunc()
 
@@ -94,10 +107,7 @@ func SSEHttpResponse(ew EventGenerator) *HttpSSEResponse {
 	return &HttpSSEResponse{
 		HttpHeadersResponse: HttpHeadersResponse{
 			HttpStatusCode: http.StatusOK,
-			HttpHeaders: map[string]string{
-				"Cache-Control": "no-cache",
-				"Content-Type":  "text/event-stream",
-			},
+			HttpHeaders:    defaultSSEHeaders,
 		},
 		EventGenerator: ew,
 	}
@@ -105,7 +115,8 @@ func SSEHttpResponse(ew EventGenerator) *HttpSSEResponse {
 
 // SSEHttpResponseWithHeaders creates a SSE response with custom headers
 func SSEHttpResponseWithHeaders(ew EventGenerator, headers map[string]string) *HttpSSEResponse {
-	headers["Content-Type"] = "text/event-stream"
+	headers["Cache-Control"] = defaultSSEHeaders["Cache-Control"]
+	headers["Content-Type"] = defaultSSEHeaders["Content-Type"]
 	return &HttpSSEResponse{
 		HttpHeadersResponse: HttpHeadersResponse{
 			HttpStatusCode: http.StatusOK,
@@ -117,7 +128,8 @@ func SSEHttpResponseWithHeaders(ew EventGenerator, headers map[string]string) *H
 
 // SSEHttpResponseWithHeadersAndCookies creates a SSE response with custom headers and cookies
 func SSEHttpResponseWithHeadersAndCookies(ew EventGenerator, headers map[string]string, cookies []*http.Cookie) *HttpSSEResponse {
-	headers["Content-Type"] = "text/event-stream"
+	headers["Cache-Control"] = defaultSSEHeaders["Cache-Control"]
+	headers["Content-Type"] = defaultSSEHeaders["Content-Type"]
 	return &HttpSSEResponse{
 		HttpHeadersResponse: HttpHeadersResponse{
 			HttpStatusCode: http.StatusOK,

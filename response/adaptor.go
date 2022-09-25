@@ -24,9 +24,9 @@ func (r *HttpHandlerAdaptorResponse) Cookies() []*http.Cookie {
 
 func (r *HttpHandlerAdaptorResponse) Write(w http.ResponseWriter, responseContext *request.HttpRequest) error {
 	if r.handler != nil {
-		r.handler.ServeHTTP(w, responseContext.RawRequest)
+		r.handler.ServeHTTP(w, responseContext.R)
 	} else {
-		r.handlerFunc(w, responseContext.RawRequest)
+		r.handlerFunc(w, responseContext.R)
 	}
 	return nil
 }

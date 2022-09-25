@@ -61,8 +61,8 @@ func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	})
 
 	httpRequest := request.HttpRequest{
-		RawRequest: req,
-		UriVars:    capturedVars,
+		R:       req,
+		UriVars: capturedVars,
 	}
 
 	// Call the wrapped handler functions.
