@@ -29,11 +29,13 @@ type Element struct {
 	PathPatternId string
 	// The path segment type
 	MatchType int
-	// The next element in path or nil
+	// Indicates how many path elements can be matched by this pattern element. A value if -1 indicates unlimited
+	MaxMatchElements int
+	// The next path element or nil
 	Next *Element
-	// The previous element in path or nil
+	// The previous path element or nil
 	Previous *Element
-	// The string value of the path pattern segment
+	// The string raw value of the path pattern segment
 	RawVal string
 	// The match pattern of the path segment, if exists
 	MatchPattern string
@@ -55,8 +57,9 @@ func (e *Element) linkNext(next *Element) *Element {
 
 func separatorElement(pathPatternId string) *Element {
 	return &Element{
-		PathPatternId: pathPatternId,
-		MatchType:     MatchSeparatorType,
+		PathPatternId:    pathPatternId,
+		MatchType:        MatchSeparatorType,
+		MaxMatchElements: 1,
 		MatchPathSegment: func(pathSegment string) (bool, string) {
 			return pathSegment == Separator, ""
 		},
@@ -67,8 +70,10 @@ func separatorElement(pathPatternId string) *Element {
 func nonCaptureVarElement(pathPatternId string, val string, caseInsensitive bool) (*Element, error) {
 	var matchPattern *regexp.Regexp
 	kind := MatchLiteralType
+	maxMatchElements := 1
 	if val == "**" {
 		kind = MatchMultiplePathsType
+		maxMatchElements = -1
 	} else {
 		for i := 0; i < len(val); i++ {
 			if val[i] == '*' || val[i] == '?' {
@@ -95,8 +100,9 @@ func nonCaptureVarElement(pathPatternId string, val string, caseInsensitive bool
 		}
 	}
 	return &Element{
-		PathPatternId: pathPatternId,
-		MatchType:     kind,
+		PathPatternId:    pathPatternId,
+		MatchType:        kind,
+		MaxMatchElements: maxMatchElements,
 		MatchPathSegment: func(pathSegment string) (bool, string) {
 			switch kind {
 			case MatchLiteralType:
@@ -155,8 +161,9 @@ func captureVarElement(pathPatternId string, val string, caseInsensitive bool) (
 	}
 
 	return &Element{
-		PathPatternId: pathPatternId,
-		MatchType:     kind,
+		PathPatternId:    pathPatternId,
+		MatchType:        kind,
+		MaxMatchElements: 1,
 		MatchPathSegment: func(pathSegment string) (bool, string) {
 			if constraintPattern == nil || constraintPattern.MatchString(pathSegment) {
 				return true, pathSegment

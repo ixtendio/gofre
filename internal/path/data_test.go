@@ -10,8 +10,9 @@ func Test_nonCaptureVarElement(t *testing.T) {
 		caseInsensitive bool
 	}
 	type want struct {
-		matchingType int
-		value        string
+		matchingType     int
+		maxMatchElements int
+		value            string
 	}
 	tests := []struct {
 		name    string
@@ -26,8 +27,9 @@ func Test_nonCaptureVarElement(t *testing.T) {
 				caseInsensitive: false,
 			},
 			want: want{
-				matchingType: MatchLiteralType,
-				value:        "text",
+				matchingType:     MatchLiteralType,
+				maxMatchElements: 1,
+				value:            "text",
 			},
 			wantErr: false,
 		},
@@ -38,8 +40,9 @@ func Test_nonCaptureVarElement(t *testing.T) {
 				caseInsensitive: false,
 			},
 			want: want{
-				matchingType: MatchRegexType,
-				value:        "te?t",
+				matchingType:     MatchRegexType,
+				maxMatchElements: 1,
+				value:            "te?t",
 			},
 			wantErr: false,
 		},
@@ -50,8 +53,9 @@ func Test_nonCaptureVarElement(t *testing.T) {
 				caseInsensitive: false,
 			},
 			want: want{
-				matchingType: MatchRegexType,
-				value:        "te*t",
+				matchingType:     MatchRegexType,
+				maxMatchElements: 1,
+				value:            "te*t",
 			},
 			wantErr: false,
 		},
@@ -62,8 +66,9 @@ func Test_nonCaptureVarElement(t *testing.T) {
 				caseInsensitive: false,
 			},
 			want: want{
-				matchingType: MatchMultiplePathsType,
-				value:        "**",
+				matchingType:     MatchMultiplePathsType,
+				maxMatchElements: -1,
+				value:            "**",
 			},
 			wantErr: false,
 		},
@@ -77,6 +82,9 @@ func Test_nonCaptureVarElement(t *testing.T) {
 			}
 			if got.MatchType != tt.want.matchingType {
 				t.Errorf("nonCaptureVarElement() got MatchType = %v, want %v", got.MatchType, tt.want.matchingType)
+			}
+			if got.MaxMatchElements != tt.want.maxMatchElements {
+				t.Errorf("nonCaptureVarElement() got MaxMatchElements = %v, want %v", got.MaxMatchElements, tt.want.maxMatchElements)
 			}
 			if got.RawVal != tt.want.value {
 				t.Errorf("nonCaptureVarElement() got RawVal = %v, want %v", got.RawVal, tt.want.value)

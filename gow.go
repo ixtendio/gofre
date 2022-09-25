@@ -4,6 +4,7 @@ import (
 	"context"
 	"expvar"
 	"fmt"
+	"github.com/ixtendio/gow/middleware"
 	"github.com/ixtendio/gow/request"
 	"github.com/ixtendio/gow/response"
 	"github.com/ixtendio/gow/router"
@@ -19,13 +20,10 @@ var defaultTemplateFunc = func(templatesPathPattern string) (*template.Template,
 	}).ParseGlob(templatesPathPattern)
 }
 
-// A Middleware is a function that receives a Handler and returns another Handler
-type Middleware func(handler router.Handler) router.Handler
-
-type TemplateConfig struct {
+type ResourcesConfig struct {
 	//the dir path pattern that matches the Go templates. Default: "resources/templates/*.html"
 	TemplatesPathPattern string
-	//the dir path to the static resources (HTML pages, JS pages, IMAGES, etc). Default: "./resources/assets"
+	//the dir path to the static resources (HTML pages, JS pages, Images, etc). Default: "./resources/assets"
 	AssetsDirPath string
 	//the web path to server the static resources. Default: "assets"
 	AssetsPath string
@@ -33,14 +31,14 @@ type TemplateConfig struct {
 	Template *template.Template
 }
 
-// A Config is a type used to pass the configurations to the Gow
+// A Config is a type used to pass the configurations to the MuxHandler
 type Config struct {
 	//if the path match should be case-sensitive or not. Default false
 	CaseInsensitivePathMatch bool
 	//the application context path. Default: "/"
 	ContextPath string
-	//the TemplateConfig if the application supports static resources and templates. Default: nil
-	TemplateConfig *TemplateConfig
+	//the ResourcesConfig if the application supports static resources and templates. Default: nil
+	ResourcesConfig *ResourcesConfig
 	//a log function for critical errors. Default: defaultErrLogFunc
 	ErrLogFunc func(err error)
 }
@@ -54,96 +52,86 @@ func (c *Config) setDefaults() error {
 			log.Printf("An error occured while handling the request, err: %v\n", err)
 		}
 	}
-	if c.TemplateConfig != nil {
-		if c.TemplateConfig.TemplatesPathPattern == "" {
-			c.TemplateConfig.TemplatesPathPattern = "resources/templates/*.html"
+	if c.ResourcesConfig != nil {
+		if c.ResourcesConfig.TemplatesPathPattern == "" {
+			c.ResourcesConfig.TemplatesPathPattern = "resources/templates/*.html"
 		}
-		if c.TemplateConfig.AssetsDirPath == "" {
-			c.TemplateConfig.AssetsDirPath = "./resources/assets"
+		if c.ResourcesConfig.AssetsDirPath == "" {
+			c.ResourcesConfig.AssetsDirPath = "./resources/assets"
 		}
-		if c.TemplateConfig.AssetsPath == "" {
-			c.TemplateConfig.AssetsPath = "assets"
+		if c.ResourcesConfig.AssetsPath == "" {
+			c.ResourcesConfig.AssetsPath = "assets"
 		}
-		if c.TemplateConfig.Template == nil {
-			tmpl, err := defaultTemplateFunc(c.TemplateConfig.TemplatesPathPattern)
+		if c.ResourcesConfig.Template == nil {
+			tmpl, err := defaultTemplateFunc(c.ResourcesConfig.TemplatesPathPattern)
 			if err != nil {
 				return fmt.Errorf("failed parsing the templates, err: %w", err)
 			}
-			c.TemplateConfig.Template = tmpl
+			c.ResourcesConfig.Template = tmpl
 		}
 	}
 	return nil
 }
 
-type Gow struct {
+type MuxHandler struct {
 	router            *router.Router
-	commonMiddlewares []Middleware
+	commonMiddlewares []middleware.Middleware
 	webConfig         *Config
 }
 
-// NewGow creates a new Gow instance
-func NewGow(config *Config) (*Gow, error) {
+// NewMuxHandler creates a new MuxHandler instance
+func NewMuxHandler(config *Config) (*MuxHandler, error) {
 	if err := config.setDefaults(); err != nil {
 		return nil, err
 	}
 	r := router.NewRouter(config.CaseInsensitivePathMatch, config.ErrLogFunc)
-	if config.TemplateConfig != nil {
+	if config.ResourcesConfig != nil {
 		contextPath := config.ContextPath
 		if contextPath == "/" {
 			contextPath = ""
 		}
-		assetsPath := config.TemplateConfig.AssetsPath
-		assetsDirPath := config.TemplateConfig.AssetsDirPath
+		assetsPath := config.ResourcesConfig.AssetsPath
+		assetsDirPath := config.ResourcesConfig.AssetsDirPath
 		r.Handle(http.MethodGet, fmt.Sprintf("%s/%s/*", contextPath, assetsPath), router.Handler2Handler(http.StripPrefix(fmt.Sprintf("%s/%s/", contextPath, assetsPath), http.FileServer(http.Dir(assetsDirPath)))))
 	}
-	return &Gow{
+	return &MuxHandler{
 		router:    r,
 		webConfig: config,
 	}, nil
 }
 
 // RegisterCommonMiddlewares allows registering common middlewares
-func (g *Gow) RegisterCommonMiddlewares(middlewares ...Middleware) {
-	for _, middleware := range middlewares {
-		g.commonMiddlewares = append(g.commonMiddlewares, middleware)
+func (g *MuxHandler) RegisterCommonMiddlewares(middlewares ...middleware.Middleware) {
+	for _, mid := range middlewares {
+		g.commonMiddlewares = append(g.commonMiddlewares, mid)
 	}
 }
 
-//// HandleAssetsResources add a handler for serving the static resources
-//func (a *Gow) HandleAssetsResources() {
-//	contextPath := a.contextPath
-//	if a.templateConfig != nil {
-//		assetsPath := a.assetsPath
-//		assetsDirPath := a.assetsDirPath
-//		a.mux.Handler(http.MethodGet, fmt.Sprintf("%s/%s/*", contextPath, assetsPath), http.StripPrefix(fmt.Sprintf("%s/%s/", contextPath, assetsPath), http.FileServer(http.Dir(assetsDirPath))))
-//	}
-//}
-
 // HandleGet add a handler for handling a GET request
-func (g *Gow) HandleGet(path string, handler router.Handler, middlewares ...Middleware) {
+func (g *MuxHandler) HandleGet(path string, handler router.Handler, middlewares ...middleware.Middleware) {
 	g.HandleRequest(http.MethodGet, path, handler, middlewares...)
 }
 
 // HandlePost add a handler for handling a POST request
-func (g *Gow) HandlePost(path string, handler router.Handler, middlewares ...Middleware) {
+func (g *MuxHandler) HandlePost(path string, handler router.Handler, middlewares ...middleware.Middleware) {
 	g.HandleRequest(http.MethodPost, path, handler, middlewares...)
 }
 
 // HandlePut add a handler for handling a PUT request
-func (g *Gow) HandlePut(path string, handler router.Handler, middlewares ...Middleware) {
+func (g *MuxHandler) HandlePut(path string, handler router.Handler, middlewares ...middleware.Middleware) {
 	g.HandleRequest(http.MethodPut, path, handler, middlewares...)
 }
 
 // HandleDelete add a handler for handling a DELETE request
-func (g *Gow) HandleDelete(path string, handler router.Handler, middlewares ...Middleware) {
+func (g *MuxHandler) HandleDelete(path string, handler router.Handler, middlewares ...middleware.Middleware) {
 	g.HandleRequest(http.MethodDelete, path, handler, middlewares...)
 }
 
-func (g *Gow) HandleRequest(method string, path string, handler router.Handler, middlewares ...Middleware) {
+func (g *MuxHandler) HandleRequest(method string, path string, handler router.Handler, middlewares ...middleware.Middleware) {
 	handler = wrapMiddleware(wrapMiddleware(handler, middlewares...), g.commonMiddlewares...)
 	var tmpl *template.Template
-	if g.webConfig.TemplateConfig != nil {
-		tmpl = g.webConfig.TemplateConfig.Template
+	if g.webConfig.ResourcesConfig != nil {
+		tmpl = g.webConfig.ResourcesConfig.Template
 	}
 	//expose contextPath and template on request context
 	handler = wrapMiddleware(handler, func(handler router.Handler) router.Handler {
@@ -159,7 +147,7 @@ func (g *Gow) HandleRequest(method string, path string, handler router.Handler, 
 }
 
 // EnableDebugEndpoints enable debug endpoints
-func (g Gow) EnableDebugEndpoints() {
+func (g MuxHandler) EnableDebugEndpoints() {
 	// Register all the standard library debug endpoints.
 	g.router.Handle(http.MethodGet, "/debug/pprof/", router.HandlerFunc2Handler(pprof.Index))
 	g.router.Handle(http.MethodGet, "/debug/pprof/allocs", router.HandlerFunc2Handler(pprof.Index))
@@ -175,13 +163,17 @@ func (g Gow) EnableDebugEndpoints() {
 	g.router.Handle(http.MethodGet, "/debug/vars", router.Handler2Handler(expvar.Handler()))
 }
 
-func wrapMiddleware(handler router.Handler, middlewares ...Middleware) router.Handler {
+func wrapMiddleware(handler router.Handler, middlewares ...middleware.Middleware) router.Handler {
 	wrappedHandlers := handler
 	for i := len(middlewares) - 1; i >= 0; i-- {
-		middleware := middlewares[i]
-		if middleware != nil {
-			wrappedHandlers = middleware(wrappedHandlers)
+		mid := middlewares[i]
+		if mid != nil {
+			wrappedHandlers = mid(wrappedHandlers)
 		}
 	}
 	return wrappedHandlers
+}
+
+func (g *MuxHandler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
+	g.router.ServeHTTP(w, req)
 }

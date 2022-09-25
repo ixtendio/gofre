@@ -49,8 +49,10 @@ func (r *HttpHeadersResponse) Write(w http.ResponseWriter, responseContext *requ
 		}
 	}
 
-	// Write the status code to the response.
-	w.WriteHeader(r.HttpStatusCode)
+	if r.HttpStatusCode > 0 {
+		// Write the status code to the response.
+		w.WriteHeader(r.HttpStatusCode)
+	}
 	return nil
 }
 

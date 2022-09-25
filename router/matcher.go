@@ -47,7 +47,7 @@ func (n *trieNode) isLeaf() bool {
 
 func (n *trieNode) addChild(newPathElement *path.Element) (*trieNode, error) {
 	if n.isLeaf() {
-		return nil, fmt.Errorf("a trie leaf can not have a child")
+		return nil, fmt.Errorf("a trie leaf can not have children")
 	}
 	pathPatternId := newPathElement.PathPatternId
 	captureVarName := newPathElement.CaptureVarName
@@ -97,7 +97,7 @@ func (n *trieNode) addChild(newPathElement *path.Element) (*trieNode, error) {
 
 func (n *trieNode) addLeaf(data Handler) error {
 	if n.isLeaf() {
-		return fmt.Errorf("a trie leaf can not have a child (leaf)")
+		return fmt.Errorf("a trie leaf can not have children (leaf)")
 	}
 	for i := 0; i < len(n.children); i++ {
 		if n.children[i].isLeaf() {
@@ -119,7 +119,7 @@ type matcher struct {
 func (m *matcher) addEndpoint(method string, pathPattern string, caseInsensitivePathMatch bool, handler Handler) error {
 	pathElementsRoot, err := path.ParsePattern(pathPattern, caseInsensitivePathMatch)
 	if err != nil {
-		return fmt.Errorf("failed parsing pathPattern: %s, err: %w", pathPattern, err)
+		return fmt.Errorf("failed parsing pathPattern: %s, err: %writer", pathPattern, err)
 	}
 	method = strings.ToUpper(method)
 

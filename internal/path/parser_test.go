@@ -8,16 +8,6 @@ import (
 	"testing"
 )
 
-func BenchmarkConcat(b *testing.B) {
-	for i := 0; i < b.N; i++ {
-		a1 := "a"
-		b1 := "b"
-		c1 := a1 + "_" + b1
-		//c1 := fmt.Sprintf("%s_%s", a1, b1)
-		_ = c1
-	}
-}
-
 func BenchmarkTestParse(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		_, err := ParsePattern("/abc/def/{abc:def}/", false)
@@ -191,6 +181,22 @@ func TestParseRequestURL(t *testing.T) {
 			args: args{requestUrl: mustParseURL("https://example.com/foo/../..")},
 			want: &MatchingContext{
 				OriginalPath: "/foo/../..",
+				PathElements: []string{"/"},
+			},
+		},
+		{
+			name: "/foo/.%2e",
+			args: args{requestUrl: mustParseURL("https://example.com/foo/.%2e")},
+			want: &MatchingContext{
+				OriginalPath: "/foo/..",
+				PathElements: []string{"/"},
+			},
+		},
+		{
+			name: "/foo/%2e%2e",
+			args: args{requestUrl: mustParseURL("https://example.com/foo/%2e%2e")},
+			want: &MatchingContext{
+				OriginalPath: "/foo/..",
 				PathElements: []string{"/"},
 			},
 		},

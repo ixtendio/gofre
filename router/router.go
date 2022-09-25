@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"github.com/ixtendio/gow/internal/path"
 	"github.com/ixtendio/gow/request"
-	"github.com/ixtendio/gow/response"
 	"log"
 	"math/rand"
 	"net/http"
@@ -19,8 +18,8 @@ var defaultErrLogFunc = func(err error) {
 
 type Router struct {
 	caseInsensitivePathMatch bool
-	errLogFunc               func(err error)
 	endpointMatcher          *matcher
+	errLogFunc               func(err error)
 }
 
 func NewRouter(caseInsensitivePathMatch bool, errLogFunc func(err error)) *Router {
@@ -29,16 +28,17 @@ func NewRouter(caseInsensitivePathMatch bool, errLogFunc func(err error)) *Route
 	}
 	return &Router{
 		caseInsensitivePathMatch: caseInsensitivePathMatch,
-		errLogFunc:               errLogFunc,
 		endpointMatcher:          newMatcher(),
+		errLogFunc:               errLogFunc,
 	}
 }
 
-func (r *Router) Handle(method string, pathPattern string, handler Handler) {
+func (r *Router) Handle(method string, pathPattern string, handler Handler) *Router {
 	if err := r.endpointMatcher.addEndpoint(method, pathPattern, r.caseInsensitivePathMatch, handler); err != nil {
-		r.errLogFunc(fmt.Errorf("failed registring the pathPattern: %s, err: %w", pathPattern, err))
+		r.errLogFunc(fmt.Errorf("failed registring the pathPattern: %s, err: %writer", pathPattern, err))
 		os.Exit(1)
 	}
+	return r
 }
 
 // ServeHTTP implements the http.Handler interface.
@@ -69,7 +69,8 @@ func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	resp, err := handler(ctx, &httpRequest)
 	if err != nil {
 		r.errLogFunc(fmt.Errorf("uncaught error, err: %w", err))
-		resp = response.InternalServerErrorHttpResponse()
+		w.WriteHeader(http.StatusInternalServerError)
+		return
 	}
 
 	if err := resp.Write(w, &httpRequest); err != nil {

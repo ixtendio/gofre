@@ -12,7 +12,7 @@ func TestConfig_setDefaults(t *testing.T) {
 	defaultTemplateFunc = func(templatesPathPattern string) (*template.Template, error) { return template.New(""), nil }
 	type fields struct {
 		ContextPath    string
-		TemplateConfig *TemplateConfig
+		TemplateConfig *ResourcesConfig
 		ErrLogFunc     func(err error)
 	}
 	tests := []struct {
@@ -32,16 +32,16 @@ func TestConfig_setDefaults(t *testing.T) {
 				if c.ErrLogFunc == nil {
 					t.Errorf("ErrLogFunc should not be nil")
 				}
-				if c.TemplateConfig != nil {
-					t.Errorf("TemplateConfig should be nil")
+				if c.ResourcesConfig != nil {
+					t.Errorf("ResourcesConfig should be nil")
 				}
 			},
 		},
 		{
-			name: "test when TemplateConfig values are empty",
+			name: "test when ResourcesConfig values are empty",
 			fields: fields{
 				ContextPath:    "/a_path",
-				TemplateConfig: &TemplateConfig{},
+				TemplateConfig: &ResourcesConfig{},
 				ErrLogFunc:     errLogFunc,
 			},
 			wantErr: false,
@@ -52,17 +52,17 @@ func TestConfig_setDefaults(t *testing.T) {
 				if reflect.ValueOf(c.ErrLogFunc).Pointer() != reflect.ValueOf(errLogFunc).Pointer() {
 					t.Errorf("ErrLogFunc should be errLogFunc")
 				}
-				if c.TemplateConfig.TemplatesPathPattern != "resources/templates/*.html" {
-					t.Errorf("TemplateConfig.TemplatesPathPattern = %s, want = resources/templates/*.html", c.TemplateConfig.TemplatesPathPattern)
+				if c.ResourcesConfig.TemplatesPathPattern != "resources/templates/*.html" {
+					t.Errorf("ResourcesConfig.TemplatesPathPattern = %s, want = resources/templates/*.html", c.ResourcesConfig.TemplatesPathPattern)
 				}
-				if c.TemplateConfig.AssetsDirPath != "./resources/assets" {
-					t.Errorf("TemplateConfig.AssetsDirPath = %s, want = ./resources/assets", c.TemplateConfig.AssetsDirPath)
+				if c.ResourcesConfig.AssetsDirPath != "./resources/assets" {
+					t.Errorf("ResourcesConfig.AssetsDirPath = %s, want = ./resources/assets", c.ResourcesConfig.AssetsDirPath)
 				}
-				if c.TemplateConfig.AssetsPath != "assets" {
-					t.Errorf("TemplateConfig.AssetsPath = %s, want = assets", c.TemplateConfig.AssetsPath)
+				if c.ResourcesConfig.AssetsPath != "assets" {
+					t.Errorf("ResourcesConfig.AssetsPath = %s, want = assets", c.ResourcesConfig.AssetsPath)
 				}
-				if c.TemplateConfig.Template == nil {
-					t.Errorf("TemplateConfig.Template is nil, want not nil")
+				if c.ResourcesConfig.Template == nil {
+					t.Errorf("ResourcesConfig.Template is nil, want not nil")
 				}
 			},
 		},
@@ -70,7 +70,7 @@ func TestConfig_setDefaults(t *testing.T) {
 			name: "test when all values are provided",
 			fields: fields{
 				ContextPath: "/a_path",
-				TemplateConfig: &TemplateConfig{
+				TemplateConfig: &ResourcesConfig{
 					TemplatesPathPattern: "pattern",
 					AssetsDirPath:        "dir_path",
 					AssetsPath:           "assets_path",
@@ -86,17 +86,17 @@ func TestConfig_setDefaults(t *testing.T) {
 				if reflect.ValueOf(c.ErrLogFunc).Pointer() != reflect.ValueOf(errLogFunc).Pointer() {
 					t.Errorf("ErrLogFunc should be errLogFunc")
 				}
-				if c.TemplateConfig.TemplatesPathPattern != "pattern" {
-					t.Errorf("TemplateConfig.TemplatesPathPattern = %s, want = pattern", c.TemplateConfig.TemplatesPathPattern)
+				if c.ResourcesConfig.TemplatesPathPattern != "pattern" {
+					t.Errorf("ResourcesConfig.TemplatesPathPattern = %s, want = pattern", c.ResourcesConfig.TemplatesPathPattern)
 				}
-				if c.TemplateConfig.AssetsDirPath != "dir_path" {
-					t.Errorf("TemplateConfig.AssetsDirPath = %s, want = dir_path", c.TemplateConfig.AssetsDirPath)
+				if c.ResourcesConfig.AssetsDirPath != "dir_path" {
+					t.Errorf("ResourcesConfig.AssetsDirPath = %s, want = dir_path", c.ResourcesConfig.AssetsDirPath)
 				}
-				if c.TemplateConfig.AssetsPath != "assets_path" {
-					t.Errorf("TemplateConfig.AssetsPath = %s, want = assets_path", c.TemplateConfig.AssetsPath)
+				if c.ResourcesConfig.AssetsPath != "assets_path" {
+					t.Errorf("ResourcesConfig.AssetsPath = %s, want = assets_path", c.ResourcesConfig.AssetsPath)
 				}
-				if c.TemplateConfig.Template != tmpl {
-					t.Errorf("TemplateConfig.Template = %v, want = %v", c.TemplateConfig.Template, tmpl)
+				if c.ResourcesConfig.Template != tmpl {
+					t.Errorf("ResourcesConfig.Template = %v, want = %v", c.ResourcesConfig.Template, tmpl)
 				}
 			},
 		},
@@ -104,9 +104,9 @@ func TestConfig_setDefaults(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			c := &Config{
-				ContextPath:    tt.fields.ContextPath,
-				TemplateConfig: tt.fields.TemplateConfig,
-				ErrLogFunc:     tt.fields.ErrLogFunc,
+				ContextPath:     tt.fields.ContextPath,
+				ResourcesConfig: tt.fields.TemplateConfig,
+				ErrLogFunc:      tt.fields.ErrLogFunc,
 			}
 			if err := c.setDefaults(); (err != nil) != tt.wantErr {
 				t.Errorf("setDefaults() error = %v, wantErr %v", err, tt.wantErr)
@@ -123,20 +123,20 @@ func TestNewSunshine(t *testing.T) {
 	tests := []struct {
 		name    string
 		args    args
-		want    *Gow
+		want    *MuxHandler
 		wantErr bool
 	}{
 		// TODO: Add test cases.
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := NewGow(tt.args.config)
+			got, err := NewMuxHandler(tt.args.config)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("NewGow() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("NewMuxHandler() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("NewGow() got = %v, want %v", got, tt.want)
+				t.Errorf("NewMuxHandler() got = %v, want %v", got, tt.want)
 			}
 		})
 	}

@@ -38,7 +38,7 @@ func ParsePattern(pathPattern string, caseInsensitive bool) (*Element, error) {
 	if pathPattern[0] != '/' {
 		return nil, fmt.Errorf("the path pattern should start with /")
 	}
-	pathPatternId := generateUniqueId()
+	pathPatternId := generateUniqueId(6)
 	pathPatternLen := len(pathPattern)
 	root := separatorElement(pathPatternId)
 	head := root

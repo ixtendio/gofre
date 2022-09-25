@@ -7,8 +7,8 @@ import (
 
 const randLetters = "abcdefghijklmnopqrstuvwxyz1234567890"
 
-func generateUniqueId() string {
-	b := make([]byte, 6)
+func generateUniqueId(length int) string {
+	b := make([]byte, length)
 	for i := range b {
 		b[i] = randLetters[rand.Int63()%int64(len(randLetters))]
 	}
