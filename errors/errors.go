@@ -2,6 +2,7 @@ package errors
 
 import "errors"
 
+var ErrDenied = errors.New("denied request")
 var ErrUnauthorized = errors.New("unauthorized request")
 var ErrWrongCredentials = errors.New("wrong credentials")
 
