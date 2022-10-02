@@ -12,9 +12,9 @@ import (
 const headerLastEventId = "Last-Event-Id"
 
 var errNotHttp2Request = errors.New("rejected, not a HTTP/2 request")
-var defaultSSEHeaders = map[string]string{
-	"Cache-Control": "no-cache",
-	"Content-Type":  "text/event-stream",
+var defaultSSEHeaders = map[string][]string{
+	"Cache-Control": {"no-cache"},
+	"Content-Type":  {"text/event-stream"},
 }
 
 // ServerSentEvent defines the server-sent event fields. More about server-sent events can be found here: https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events/Using_server-sent_events
@@ -114,7 +114,7 @@ func SSEHttpResponse(ew EventGenerator) *HttpSSEResponse {
 }
 
 // SSEHttpResponseWithHeaders creates a SSE response with custom headers
-func SSEHttpResponseWithHeaders(ew EventGenerator, headers map[string]string) *HttpSSEResponse {
+func SSEHttpResponseWithHeaders(ew EventGenerator, headers map[string][]string) *HttpSSEResponse {
 	headers["Cache-Control"] = defaultSSEHeaders["Cache-Control"]
 	headers["Content-Type"] = defaultSSEHeaders["Content-Type"]
 	return &HttpSSEResponse{
@@ -127,7 +127,7 @@ func SSEHttpResponseWithHeaders(ew EventGenerator, headers map[string]string) *H
 }
 
 // SSEHttpResponseWithHeadersAndCookies creates a SSE response with custom headers and cookies
-func SSEHttpResponseWithHeadersAndCookies(ew EventGenerator, headers map[string]string, cookies []*http.Cookie) *HttpSSEResponse {
+func SSEHttpResponseWithHeadersAndCookies(ew EventGenerator, headers map[string][]string, cookies []*http.Cookie) *HttpSSEResponse {
 	headers["Cache-Control"] = defaultSSEHeaders["Cache-Control"]
 	headers["Content-Type"] = defaultSSEHeaders["Content-Type"]
 	return &HttpSSEResponse{

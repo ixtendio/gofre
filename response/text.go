@@ -6,8 +6,8 @@ import (
 	"net/http"
 )
 
-var defaultPlainTextHeaders = map[string]string{
-	"Content-Type": "text/plain; charset=utf-8",
+var defaultPlainTextHeaders = map[string][]string{
+	"Content-Type": {"text/plain; charset=utf-8"},
 }
 
 type HttpTextResponse struct {
@@ -77,7 +77,7 @@ func HtmlHttpResponse(statusCode int, payload string) *HttpTextResponse {
 }
 
 // PlainTextHttpResponseWithHeaders creates a plain text response with a specific status code and headers
-func PlainTextHttpResponseWithHeaders(statusCode int, payload string, headers map[string]string) *HttpTextResponse {
+func PlainTextHttpResponseWithHeaders(statusCode int, payload string, headers map[string][]string) *HttpTextResponse {
 	headers["Content-Type"] = defaultPlainTextHeaders["Content-Type"]
 	return &HttpTextResponse{
 		HttpHeadersResponse: HttpHeadersResponse{
@@ -90,7 +90,7 @@ func PlainTextHttpResponseWithHeaders(statusCode int, payload string, headers ma
 }
 
 // HtmlHttpResponseWithHeaders creates an HTML response with a specific status code and headers
-func HtmlHttpResponseWithHeaders(statusCode int, payload string, headers map[string]string) *HttpTextResponse {
+func HtmlHttpResponseWithHeaders(statusCode int, payload string, headers map[string][]string) *HttpTextResponse {
 	headers["Content-Type"] = defaultHtmlHeaders["Content-Type"]
 	return &HttpTextResponse{
 		HttpHeadersResponse: HttpHeadersResponse{
@@ -103,7 +103,7 @@ func HtmlHttpResponseWithHeaders(statusCode int, payload string, headers map[str
 }
 
 // PlainTextResponseWithHeadersAndCookies creates a plain text response with a specific status code, custom headers and cookies
-func PlainTextResponseWithHeadersAndCookies(statusCode int, payload string, headers map[string]string, cookies []*http.Cookie) *HttpTextResponse {
+func PlainTextResponseWithHeadersAndCookies(statusCode int, payload string, headers map[string][]string, cookies []*http.Cookie) *HttpTextResponse {
 	headers["Content-Type"] = defaultPlainTextHeaders["Content-Type"]
 	return &HttpTextResponse{
 		HttpHeadersResponse: HttpHeadersResponse{
@@ -116,7 +116,7 @@ func PlainTextResponseWithHeadersAndCookies(statusCode int, payload string, head
 }
 
 // HtmlResponseWithHeadersAndCookies creates a plain text response with a specific status code, custom headers and cookies
-func HtmlResponseWithHeadersAndCookies(statusCode int, payload string, headers map[string]string, cookies []*http.Cookie) *HttpTextResponse {
+func HtmlResponseWithHeadersAndCookies(statusCode int, payload string, headers map[string][]string, cookies []*http.Cookie) *HttpTextResponse {
 	headers["Content-Type"] = defaultHtmlHeaders["Content-Type"]
 	return &HttpTextResponse{
 		HttpHeadersResponse: HttpHeadersResponse{

@@ -1,6 +1,331 @@
 package middleware
 
+import (
+	"context"
+	"github.com/ixtendio/gow/errors"
+	"github.com/ixtendio/gow/request"
+	"github.com/ixtendio/gow/response"
+	"github.com/ixtendio/gow/router"
+	"net/http"
+	"net/url"
+	"strconv"
+	"strings"
+)
+
+const (
+	contentTypeValueTextPlain                   = "text/plain"
+	contentTypeValueFormData                    = "multipart/form-data"
+	contentTypeValueFormUrlencodedData          = "application/x-www-form-urlencoded"
+	requestHeaderContentType                    = "Content-Type"
+	requestHeaderOrigin                         = "Origin"
+	requestHeaderAccessControlRequestMethod     = "Access-Control-Request-Method"
+	requestHeaderAccessControlRequestHeaders    = "Access-Control-Request-Headers"
+	responseHeaderAccessControlAllowOrigin      = "Access-Control-Allow-Origin"
+	responseHeaderAccessControlAllowCredentials = "Access-Control-Allow-Credentials"
+	responseHeaderAccessControlExposeHeaders    = "Access-Control-Expose-Headers"
+	responseHeaderAccessControlMaxAge           = "Access-Control-Max-Age"
+	responseHeaderAccessControlAllowMethods     = "Access-Control-Allow-Methods"
+	responseHeaderAccessControlAllowHeaders     = "Access-Control-Allow-Headers"
+	varyHeader                                  = "vary"
+)
+
+type CorsSettings struct {
+	// determines if any origin is allowed to make request
+	AnyOriginAllowed bool
+	// this flag should be true when the resource supports user credentials in the request and false otherwise.
+	SupportsCredentials bool
+	// indicates how long the results of a pre-flight request can be cached in a pre-flight result cache
+	PreflightMaxAgeSeconds int
+	// a list of exposed headers that the resource might use and can be exposed (can be empty)
+	ExposedHeaders []string
+	// a list of methods that are supported by the resource (can be empty)
+	AllowedHttpMethods []string
+	// a list of headers that are supported by the resource (can be empty)
+	AllowedHttpHeaders []string
+	// a list of origins that are allowed access to the resource (can be empty)
+	AllowedOrigins []string
+}
+
+func (s *CorsSettings) containsAllowedMethod(method string) bool {
+	for _, m := range s.AllowedHttpMethods {
+		if m == method {
+			return true
+		}
+	}
+	return false
+}
+
+func (s *CorsSettings) containsAllowedHeaderCaseInsensitive(header string) bool {
+	for _, h := range s.AllowedHttpHeaders {
+		if strings.EqualFold(h, header) {
+			return true
+		}
+	}
+	return false
+}
+
+func (s *CorsSettings) containsAllowedOrigin(origin string) bool {
+	for _, o := range s.AllowedOrigins {
+		if o == origin {
+			return true
+		}
+	}
+	return false
+}
+
+type corsRequestType int
+
+const (
+	simpleCorsRequestType corsRequestType = iota
+	actualCorsRequestType
+	preFlightCorsRequestType
+	notCorsRequestType
+	invalidCorsRequestType
+)
+
 // Cors enable client-side cross-origin requests by implementing W3C's CORS (Cross-Origin Resource Sharing) specification for resources
-func Cors(nonceCache NonceCache) Middleware {
+// This function is a transcription of Java code org.apache.catalina.filters.CorsFilter
+func Cors(settings CorsSettings) Middleware {
+	return func(handler router.Handler) router.Handler {
+		return func(ctx context.Context, req *request.HttpRequest) (response.HttpResponse, error) {
+			httpResponse, err := handler(ctx, req)
+			if err != nil {
+				return nil, err
+			}
+			switch getRequestType(req.R) {
+			case simpleCorsRequestType, actualCorsRequestType:
+				if err := addSimpleCorsHeaders(req.R, httpResponse.Headers(), settings); err != nil {
+					return nil, err
+				}
+				return httpResponse, nil
+			case preFlightCorsRequestType:
+				if err := addPreFlightCorsHeaders(req.R, httpResponse.Headers(), settings); err != nil {
+					return nil, err
+				}
+				return httpResponse, nil
+			case notCorsRequestType:
+				addStandardCorsHeaders(req.R, httpResponse.Headers(), settings)
+				return httpResponse, nil
+			default:
+				return nil, errors.ErrDenied
+			}
+		}
+	}
+}
+
+func addSimpleCorsHeaders(r *http.Request, responseHeaders http.Header, settings CorsSettings) error {
+	method := r.Method
+	origin := r.Header.Get(requestHeaderOrigin)
+
+	// Section 6.1.2
+	if !isOriginAllowed(origin, settings) {
+		return errors.ErrDenied
+	}
+
+	if !settings.containsAllowedMethod(method) {
+		return errors.ErrDenied
+	}
+
+	addStandardCorsHeaders(r, responseHeaders, settings)
 	return nil
+}
+
+func addPreFlightCorsHeaders(r *http.Request, responseHeaders http.Header, settings CorsSettings) error {
+	origin := r.Header.Get(requestHeaderOrigin)
+
+	// Section 6.2.2
+	if !isOriginAllowed(origin, settings) {
+		return errors.ErrDenied
+	}
+
+	// Section 6.2.3
+	if _, found := r.Header[requestHeaderAccessControlRequestMethod]; !found {
+		return errors.ErrDenied
+	}
+
+	// Section 6.2.5
+	accessControlRequestMethod := strings.TrimSpace(r.Header.Get(requestHeaderAccessControlRequestMethod))
+	if !settings.containsAllowedMethod(accessControlRequestMethod) {
+		return errors.ErrDenied
+	}
+
+	// Section 6.2.4
+	accessControlRequestHeadersHeader := strings.TrimSpace(r.Header.Get(requestHeaderAccessControlRequestHeaders))
+	for _, h := range strings.Split(accessControlRequestHeadersHeader, ",") {
+		h = strings.TrimSpace(h)
+		if !settings.containsAllowedHeaderCaseInsensitive(strings.TrimSpace(h)) {
+			return errors.ErrDenied
+		}
+	}
+
+	addStandardCorsHeaders(r, responseHeaders, settings)
+	return nil
+}
+
+func addStandardCorsHeaders(r *http.Request, responseHeaders http.Header, settings CorsSettings) {
+	method := r.Method
+	origin := r.Header.Get(requestHeaderOrigin)
+
+	// Local copy to avoid concurrency issues if isAnyOriginAllowed()
+	// is overridden.
+	if settings.AnyOriginAllowed {
+		responseHeaders.Set(responseHeaderAccessControlAllowOrigin, "*")
+	} else {
+		responseHeaders.Set(responseHeaderAccessControlAllowOrigin, origin)
+		addVaryHeader(responseHeaders, requestHeaderOrigin)
+	}
+
+	if settings.SupportsCredentials {
+		responseHeaders.Set(responseHeaderAccessControlAllowCredentials, "true")
+	}
+
+	if len(settings.ExposedHeaders) > 0 {
+		responseHeaders.Set(responseHeaderAccessControlExposeHeaders, strings.Join(settings.ExposedHeaders, ","))
+	}
+
+	if method == http.MethodOptions {
+		addVaryHeader(responseHeaders, requestHeaderAccessControlRequestMethod)
+		addVaryHeader(responseHeaders, requestHeaderAccessControlRequestHeaders)
+
+		if settings.PreflightMaxAgeSeconds > 0 {
+			responseHeaders.Set(responseHeaderAccessControlMaxAge, strconv.Itoa(settings.PreflightMaxAgeSeconds))
+		}
+
+		if len(settings.AllowedHttpMethods) > 0 {
+			responseHeaders.Set(responseHeaderAccessControlAllowMethods, strings.Join(settings.AllowedHttpMethods, ","))
+		}
+
+		if len(settings.AllowedHttpHeaders) > 0 {
+			responseHeaders.Set(responseHeaderAccessControlAllowHeaders, strings.Join(settings.AllowedHttpHeaders, ","))
+		}
+	}
+}
+
+func addVaryHeader(responseHeaders http.Header, name string) {
+	varyHeaders, found := responseHeaders[varyHeader]
+	if name == "*" || !found || len(varyHeaders) == 0 {
+		responseHeaders.Set(varyHeader, name)
+		return
+	}
+
+	if len(varyHeaders) == 1 && strings.TrimSpace(varyHeaders[0]) == "*" {
+		// No need to add an additional field
+		return
+	}
+
+	for _, vh := range varyHeaders {
+		if strings.TrimSpace(vh) == "*" {
+			responseHeaders.Set(varyHeader, name)
+			return
+		}
+	}
+
+	varyHeaders = append(varyHeaders, name)
+	responseHeaders.Set(varyHeader, strings.Join(varyHeaders, ","))
+}
+
+func isOriginAllowed(originHeader string, settings CorsSettings) bool {
+	if settings.AnyOriginAllowed {
+		return true
+	}
+
+	// 'Origin' header is a case-sensitive match
+	return settings.containsAllowedOrigin(originHeader)
+}
+
+func getRequestType(r *http.Request) corsRequestType {
+	if _, found := r.Header[requestHeaderOrigin]; !found {
+		return notCorsRequestType
+	}
+
+	originHeader := r.Header.Get(requestHeaderOrigin)
+	if !isValidOrigin(originHeader) {
+		return invalidCorsRequestType
+	} else if isSameOrigin(r, originHeader) {
+		return notCorsRequestType
+	} else {
+		switch r.Method {
+		case http.MethodGet, http.MethodHead:
+			return simpleCorsRequestType
+		case http.MethodOptions:
+			if _, found := r.Header[requestHeaderAccessControlRequestMethod]; found {
+				if r.Header.Get(requestHeaderAccessControlRequestMethod) == "" {
+					return invalidCorsRequestType
+				}
+				return preFlightCorsRequestType
+			}
+			return actualCorsRequestType
+		case http.MethodPost:
+			mediaType := getMediaType(r.Header.Get(requestHeaderContentType))
+			if mediaType != "" {
+				if mediaType == contentTypeValueTextPlain ||
+					mediaType == contentTypeValueFormData ||
+					mediaType == contentTypeValueFormUrlencodedData {
+					return simpleCorsRequestType
+				}
+				return actualCorsRequestType
+			}
+		default:
+			return actualCorsRequestType
+		}
+	}
+
+	return invalidCorsRequestType
+}
+
+func isValidOrigin(origin string) bool {
+	if origin == "" || strings.ContainsRune(origin, '%') {
+		return false
+	}
+
+	if origin == "null" || strings.Index(origin, "file://") == 0 {
+		return true
+	}
+
+	parse, err := url.Parse(origin)
+	if err != nil {
+		return false
+	}
+	return parse.Scheme != ""
+}
+
+func isSameOrigin(r *http.Request, origin string) bool {
+	reqUrl := r.URL
+	if reqUrl.Scheme == "" || reqUrl.Host == "" {
+		return false
+	}
+
+	scheme := strings.ToLower(reqUrl.Scheme)
+	var sb strings.Builder
+	sb.WriteString(scheme)
+	sb.WriteString("://")
+	sb.WriteString(reqUrl.Host)
+
+	port := reqUrl.Port()
+	if sb.Len() == len(origin) {
+		// origin and target can only be equal if both are using default ports
+		if (("http" == scheme || "ws" == scheme) && port != "80") ||
+			(("https" == scheme || "wss" == scheme) && port != "443") {
+			return false
+		}
+	} else {
+		sb.WriteString(":")
+		sb.WriteString(port)
+	}
+
+	// the CORS spec states this check should be case-sensitive
+	return sb.String() == origin
+}
+
+func getMediaType(contentType string) string {
+	if contentType == "" {
+		return ""
+	}
+
+	contentType = strings.ToLower(contentType)
+	firstSemiColonIndex := strings.IndexRune(contentType, ';')
+	if firstSemiColonIndex >= 0 {
+		contentType = contentType[0:firstSemiColonIndex]
+	}
+	return strings.TrimSpace(contentType)
 }

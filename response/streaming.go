@@ -29,8 +29,8 @@ func StreamHttpResponse(reader io.Reader, contentType string) *HttpStreamRespons
 	return &HttpStreamResponse{
 		HttpHeadersResponse: HttpHeadersResponse{
 			HttpStatusCode: http.StatusOK,
-			HttpHeaders: map[string]string{
-				"Content-Type": contentType,
+			HttpHeaders: map[string][]string{
+				"Content-Type": {contentType},
 			},
 			HttpCookies: nil,
 		},
@@ -39,8 +39,8 @@ func StreamHttpResponse(reader io.Reader, contentType string) *HttpStreamRespons
 }
 
 // StreamHttpResponseWithHeaders creates a 200 success reader response with custom headers
-func StreamHttpResponseWithHeaders(statusCode int, reader io.Reader, contentType string, headers map[string]string) *HttpStreamResponse {
-	headers["Content-Type"] = contentType
+func StreamHttpResponseWithHeaders(statusCode int, reader io.Reader, contentType string, headers map[string][]string) *HttpStreamResponse {
+	headers["Content-Type"] = []string{contentType}
 	return &HttpStreamResponse{
 		HttpHeadersResponse: HttpHeadersResponse{
 			HttpStatusCode: statusCode,
@@ -56,8 +56,8 @@ func StreamHttpResponseWithCookies(statusCode int, reader io.Reader, contentType
 	return &HttpStreamResponse{
 		HttpHeadersResponse: HttpHeadersResponse{
 			HttpStatusCode: statusCode,
-			HttpHeaders: map[string]string{
-				"Content-Type": contentType,
+			HttpHeaders: map[string][]string{
+				"Content-Type": {contentType},
 			},
 			HttpCookies: cookies,
 		},
@@ -66,8 +66,8 @@ func StreamHttpResponseWithCookies(statusCode int, reader io.Reader, contentType
 }
 
 // StreamHttpResponseWithHeadersAndCookies creates a 200 success reader response with custom headers and cookies
-func StreamHttpResponseWithHeadersAndCookies(statusCode int, reader io.Reader, contentType string, headers map[string]string, cookies []*http.Cookie) *HttpStreamResponse {
-	headers["Content-Type"] = contentType
+func StreamHttpResponseWithHeadersAndCookies(statusCode int, reader io.Reader, contentType string, headers map[string][]string, cookies []*http.Cookie) *HttpStreamResponse {
+	headers["Content-Type"] = []string{contentType}
 	return &HttpStreamResponse{
 		HttpHeadersResponse: HttpHeadersResponse{
 			HttpStatusCode: statusCode,

@@ -7,14 +7,14 @@ import (
 
 type HttpResponse interface {
 	StatusCode() int
-	Headers() map[string]string
+	Headers() http.Header
 	Cookies() []*http.Cookie
 	Write(w http.ResponseWriter, reqContext *request.HttpRequest) error
 }
 
 type HttpHeadersResponse struct {
 	HttpStatusCode int
-	HttpHeaders    map[string]string
+	HttpHeaders    http.Header
 	HttpCookies    []*http.Cookie
 }
 
@@ -25,7 +25,7 @@ func (r *HttpHeadersResponse) StatusCode() int {
 	return r.HttpStatusCode
 }
 
-func (r *HttpHeadersResponse) Headers() map[string]string {
+func (r *HttpHeadersResponse) Headers() http.Header {
 	return r.HttpHeaders
 }
 
@@ -45,7 +45,9 @@ func (r *HttpHeadersResponse) Write(w http.ResponseWriter, req *request.HttpRequ
 	w.Header().Set("X-Content-Type-Options", "nosniff")
 	if r.HttpHeaders != nil {
 		for k, v := range r.HttpHeaders {
-			w.Header().Set(k, v)
+			for _, e := range v {
+				w.Header().Add(k, e)
+			}
 		}
 	}
 

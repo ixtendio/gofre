@@ -7,8 +7,8 @@ import (
 	"net/http"
 )
 
-var defaultHtmlHeaders = map[string]string{
-	"Content-Type": "text/html; charset=utf-8",
+var defaultHtmlHeaders = map[string][]string{
+	"Content-Type": {"text/html; charset=utf-8"},
 }
 
 type HttpTemplateResponse struct {
@@ -59,8 +59,8 @@ func TemplateHttpResponseNotFound(template *template.Template, templateName stri
 }
 
 // TemplateHttpResponseWithHeaders creates an HTML response with custom headers
-func TemplateHttpResponseWithHeaders(template *template.Template, statusCode int, templateName string, templateData any, headers map[string]string) *HttpTemplateResponse {
-	headers["Content-Type"] = "text/html; charset=utf-8"
+func TemplateHttpResponseWithHeaders(template *template.Template, statusCode int, templateName string, templateData any, headers map[string][]string) *HttpTemplateResponse {
+	headers["Content-Type"] = defaultHtmlHeaders["Content-Type"]
 	return &HttpTemplateResponse{
 		HttpHeadersResponse: HttpHeadersResponse{
 			HttpStatusCode: statusCode,
@@ -88,8 +88,8 @@ func TemplateHttpResponseWithCookies(template *template.Template, statusCode int
 }
 
 // TemplateHttpResponseWithHeadersAndCookies creates an HTML response with custom headers and cookies
-func TemplateHttpResponseWithHeadersAndCookies(template *template.Template, statusCode int, templateName string, templateData any, headers map[string]string, cookies []*http.Cookie) *HttpTemplateResponse {
-	headers["Content-Type"] = "text/html; charset=utf-8"
+func TemplateHttpResponseWithHeadersAndCookies(template *template.Template, statusCode int, templateName string, templateData any, headers map[string][]string, cookies []*http.Cookie) *HttpTemplateResponse {
+	headers["Content-Type"] = defaultHtmlHeaders["Content-Type"]
 	return &HttpTemplateResponse{
 		HttpHeadersResponse: HttpHeadersResponse{
 			HttpStatusCode: statusCode,
