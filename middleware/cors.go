@@ -29,7 +29,7 @@ const (
 	varyHeader                                  = "vary"
 )
 
-type CorsSettings struct {
+type CorsConfig struct {
 	// determines if any origin is allowed to make request
 	AnyOriginAllowed bool
 	// this flag should be true when the resource supports user credentials in the request and false otherwise.
@@ -46,8 +46,8 @@ type CorsSettings struct {
 	AllowedOrigins []string
 }
 
-func (s *CorsSettings) containsAllowedMethod(method string) bool {
-	for _, m := range s.AllowedHttpMethods {
+func (c *CorsConfig) containsAllowedMethod(method string) bool {
+	for _, m := range c.AllowedHttpMethods {
 		if m == method {
 			return true
 		}
@@ -55,8 +55,8 @@ func (s *CorsSettings) containsAllowedMethod(method string) bool {
 	return false
 }
 
-func (s *CorsSettings) containsAllowedHeaderCaseInsensitive(header string) bool {
-	for _, h := range s.AllowedHttpHeaders {
+func (c *CorsConfig) containsAllowedHeaderCaseInsensitive(header string) bool {
+	for _, h := range c.AllowedHttpHeaders {
 		if strings.EqualFold(h, header) {
 			return true
 		}
@@ -64,8 +64,8 @@ func (s *CorsSettings) containsAllowedHeaderCaseInsensitive(header string) bool 
 	return false
 }
 
-func (s *CorsSettings) containsAllowedOrigin(origin string) bool {
-	for _, o := range s.AllowedOrigins {
+func (c *CorsConfig) containsAllowedOrigin(origin string) bool {
+	for _, o := range c.AllowedOrigins {
 		if o == origin {
 			return true
 		}
@@ -85,7 +85,7 @@ const (
 
 // Cors enable client-side cross-origin requests by implementing W3C's CORS (Cross-Origin Resource Sharing) specification for resources
 // This function is a transcription of Java code org.apache.catalina.filters.CorsFilter
-func Cors(settings CorsSettings) Middleware {
+func Cors(config CorsConfig) Middleware {
 	return func(handler router.Handler) router.Handler {
 		return func(ctx context.Context, req *request.HttpRequest) (response.HttpResponse, error) {
 			httpResponse, err := handler(ctx, req)
@@ -94,17 +94,17 @@ func Cors(settings CorsSettings) Middleware {
 			}
 			switch getRequestType(req.R) {
 			case simpleCorsRequestType, actualCorsRequestType:
-				if err := addSimpleCorsHeaders(req.R, httpResponse.Headers(), settings); err != nil {
+				if err := addSimpleCorsHeaders(req.R, httpResponse.Headers(), config); err != nil {
 					return nil, err
 				}
 				return httpResponse, nil
 			case preFlightCorsRequestType:
-				if err := addPreFlightCorsHeaders(req.R, httpResponse.Headers(), settings); err != nil {
+				if err := addPreFlightCorsHeaders(req.R, httpResponse.Headers(), config); err != nil {
 					return nil, err
 				}
 				return httpResponse, nil
 			case notCorsRequestType:
-				addStandardCorsHeaders(req.R, httpResponse.Headers(), settings)
+				addStandardCorsHeaders(req.R, httpResponse.Headers(), config)
 				return httpResponse, nil
 			default:
 				return nil, errors.ErrDenied
@@ -113,28 +113,28 @@ func Cors(settings CorsSettings) Middleware {
 	}
 }
 
-func addSimpleCorsHeaders(r *http.Request, responseHeaders http.Header, settings CorsSettings) error {
+func addSimpleCorsHeaders(r *http.Request, responseHeaders http.Header, config CorsConfig) error {
 	method := r.Method
 	origin := r.Header.Get(requestHeaderOrigin)
 
 	// Section 6.1.2
-	if !isOriginAllowed(origin, settings) {
+	if !isOriginAllowed(origin, config) {
 		return errors.ErrDenied
 	}
 
-	if !settings.containsAllowedMethod(method) {
+	if !config.containsAllowedMethod(method) {
 		return errors.ErrDenied
 	}
 
-	addStandardCorsHeaders(r, responseHeaders, settings)
+	addStandardCorsHeaders(r, responseHeaders, config)
 	return nil
 }
 
-func addPreFlightCorsHeaders(r *http.Request, responseHeaders http.Header, settings CorsSettings) error {
+func addPreFlightCorsHeaders(r *http.Request, responseHeaders http.Header, config CorsConfig) error {
 	origin := r.Header.Get(requestHeaderOrigin)
 
 	// Section 6.2.2
-	if !isOriginAllowed(origin, settings) {
+	if !isOriginAllowed(origin, config) {
 		return errors.ErrDenied
 	}
 
@@ -145,7 +145,7 @@ func addPreFlightCorsHeaders(r *http.Request, responseHeaders http.Header, setti
 
 	// Section 6.2.5
 	accessControlRequestMethod := strings.TrimSpace(r.Header.Get(requestHeaderAccessControlRequestMethod))
-	if !settings.containsAllowedMethod(accessControlRequestMethod) {
+	if !config.containsAllowedMethod(accessControlRequestMethod) {
 		return errors.ErrDenied
 	}
 
@@ -153,50 +153,50 @@ func addPreFlightCorsHeaders(r *http.Request, responseHeaders http.Header, setti
 	accessControlRequestHeadersHeader := strings.TrimSpace(r.Header.Get(requestHeaderAccessControlRequestHeaders))
 	for _, h := range strings.Split(accessControlRequestHeadersHeader, ",") {
 		h = strings.TrimSpace(h)
-		if !settings.containsAllowedHeaderCaseInsensitive(strings.TrimSpace(h)) {
+		if !config.containsAllowedHeaderCaseInsensitive(strings.TrimSpace(h)) {
 			return errors.ErrDenied
 		}
 	}
 
-	addStandardCorsHeaders(r, responseHeaders, settings)
+	addStandardCorsHeaders(r, responseHeaders, config)
 	return nil
 }
 
-func addStandardCorsHeaders(r *http.Request, responseHeaders http.Header, settings CorsSettings) {
+func addStandardCorsHeaders(r *http.Request, responseHeaders http.Header, config CorsConfig) {
 	method := r.Method
 	origin := r.Header.Get(requestHeaderOrigin)
 
 	// Local copy to avoid concurrency issues if isAnyOriginAllowed()
 	// is overridden.
-	if settings.AnyOriginAllowed {
+	if config.AnyOriginAllowed {
 		responseHeaders.Set(responseHeaderAccessControlAllowOrigin, "*")
 	} else {
 		responseHeaders.Set(responseHeaderAccessControlAllowOrigin, origin)
 		addVaryHeader(responseHeaders, requestHeaderOrigin)
 	}
 
-	if settings.SupportsCredentials {
+	if config.SupportsCredentials {
 		responseHeaders.Set(responseHeaderAccessControlAllowCredentials, "true")
 	}
 
-	if len(settings.ExposedHeaders) > 0 {
-		responseHeaders.Set(responseHeaderAccessControlExposeHeaders, strings.Join(settings.ExposedHeaders, ","))
+	if len(config.ExposedHeaders) > 0 {
+		responseHeaders.Set(responseHeaderAccessControlExposeHeaders, strings.Join(config.ExposedHeaders, ","))
 	}
 
 	if method == http.MethodOptions {
 		addVaryHeader(responseHeaders, requestHeaderAccessControlRequestMethod)
 		addVaryHeader(responseHeaders, requestHeaderAccessControlRequestHeaders)
 
-		if settings.PreflightMaxAgeSeconds > 0 {
-			responseHeaders.Set(responseHeaderAccessControlMaxAge, strconv.Itoa(settings.PreflightMaxAgeSeconds))
+		if config.PreflightMaxAgeSeconds > 0 {
+			responseHeaders.Set(responseHeaderAccessControlMaxAge, strconv.Itoa(config.PreflightMaxAgeSeconds))
 		}
 
-		if len(settings.AllowedHttpMethods) > 0 {
-			responseHeaders.Set(responseHeaderAccessControlAllowMethods, strings.Join(settings.AllowedHttpMethods, ","))
+		if len(config.AllowedHttpMethods) > 0 {
+			responseHeaders.Set(responseHeaderAccessControlAllowMethods, strings.Join(config.AllowedHttpMethods, ","))
 		}
 
-		if len(settings.AllowedHttpHeaders) > 0 {
-			responseHeaders.Set(responseHeaderAccessControlAllowHeaders, strings.Join(settings.AllowedHttpHeaders, ","))
+		if len(config.AllowedHttpHeaders) > 0 {
+			responseHeaders.Set(responseHeaderAccessControlAllowHeaders, strings.Join(config.AllowedHttpHeaders, ","))
 		}
 	}
 }
@@ -224,13 +224,13 @@ func addVaryHeader(responseHeaders http.Header, name string) {
 	responseHeaders.Set(varyHeader, strings.Join(varyHeaders, ","))
 }
 
-func isOriginAllowed(originHeader string, settings CorsSettings) bool {
-	if settings.AnyOriginAllowed {
+func isOriginAllowed(originHeader string, config CorsConfig) bool {
+	if config.AnyOriginAllowed {
 		return true
 	}
 
 	// 'Origin' header is a case-sensitive match
-	return settings.containsAllowedOrigin(originHeader)
+	return config.containsAllowedOrigin(originHeader)
 }
 
 func getRequestType(r *http.Request) corsRequestType {
@@ -241,7 +241,7 @@ func getRequestType(r *http.Request) corsRequestType {
 	originHeader := r.Header.Get(requestHeaderOrigin)
 	if !isValidOrigin(originHeader) {
 		return invalidCorsRequestType
-	} else if isSameOrigin(r, originHeader) {
+	} else if isSameOrigin(r.URL, originHeader) {
 		return notCorsRequestType
 	} else {
 		switch r.Method {
@@ -289,8 +289,7 @@ func isValidOrigin(origin string) bool {
 	return parse.Scheme != ""
 }
 
-func isSameOrigin(r *http.Request, origin string) bool {
-	reqUrl := r.URL
+func isSameOrigin(reqUrl *url.URL, origin string) bool {
 	if reqUrl.Scheme == "" || reqUrl.Host == "" {
 		return false
 	}
@@ -302,6 +301,13 @@ func isSameOrigin(r *http.Request, origin string) bool {
 	sb.WriteString(reqUrl.Host)
 
 	port := reqUrl.Port()
+	if port == "" {
+		if "https" == scheme || "wss" == scheme {
+			port = "443"
+		} else {
+			port = "80"
+		}
+	}
 	if sb.Len() == len(origin) {
 		// origin and target can only be equal if both are using default ports
 		if (("http" == scheme || "ws" == scheme) && port != "80") ||

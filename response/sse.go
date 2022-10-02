@@ -13,6 +13,7 @@ const headerLastEventId = "Last-Event-Id"
 
 var errNotHttp2Request = errors.New("rejected, not a HTTP/2 request")
 var defaultSSEHeaders = map[string][]string{
+	"Connection":    {"keep-alive"},
 	"Cache-Control": {"no-cache"},
 	"Content-Type":  {"text/event-stream"},
 }
@@ -106,8 +107,8 @@ func (r *HttpSSEResponse) Write(w http.ResponseWriter, req *request.HttpRequest)
 func SSEHttpResponse(ew EventGenerator) *HttpSSEResponse {
 	return &HttpSSEResponse{
 		HttpHeadersResponse: HttpHeadersResponse{
-			HttpStatusCode: http.StatusOK,
-			HttpHeaders:    defaultSSEHeaders,
+			//HttpStatusCode: http.StatusOK,
+			HttpHeaders: defaultSSEHeaders,
 		},
 		EventGenerator: ew,
 	}
@@ -117,6 +118,7 @@ func SSEHttpResponse(ew EventGenerator) *HttpSSEResponse {
 func SSEHttpResponseWithHeaders(ew EventGenerator, headers map[string][]string) *HttpSSEResponse {
 	headers["Cache-Control"] = defaultSSEHeaders["Cache-Control"]
 	headers["Content-Type"] = defaultSSEHeaders["Content-Type"]
+	headers["Connection"] = defaultSSEHeaders["Connection"]
 	return &HttpSSEResponse{
 		HttpHeadersResponse: HttpHeadersResponse{
 			HttpStatusCode: http.StatusOK,
@@ -130,6 +132,7 @@ func SSEHttpResponseWithHeaders(ew EventGenerator, headers map[string][]string) 
 func SSEHttpResponseWithHeadersAndCookies(ew EventGenerator, headers map[string][]string, cookies []*http.Cookie) *HttpSSEResponse {
 	headers["Cache-Control"] = defaultSSEHeaders["Cache-Control"]
 	headers["Content-Type"] = defaultSSEHeaders["Content-Type"]
+	headers["Connection"] = defaultSSEHeaders["Connection"]
 	return &HttpSSEResponse{
 		HttpHeadersResponse: HttpHeadersResponse{
 			HttpStatusCode: http.StatusOK,

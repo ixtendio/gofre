@@ -14,7 +14,7 @@ func (r *HttpHandlerAdaptorResponse) StatusCode() int {
 	return 0
 }
 
-func (r *HttpHandlerAdaptorResponse) Headers() map[string]string {
+func (r *HttpHandlerAdaptorResponse) Headers() http.Header {
 	return nil
 }
 
