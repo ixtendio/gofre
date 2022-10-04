@@ -325,7 +325,7 @@ func isSameOrigin(reqUrl *url.URL, origin string) bool {
 
 func getMediaType(contentType string) string {
 	if contentType == "" {
-		return ""
+		return contentType
 	}
 
 	contentType = strings.ToLower(contentType)

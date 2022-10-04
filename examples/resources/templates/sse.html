@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet"
+          integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js"
+            integrity="sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM"
+            crossorigin="anonymous"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"
+            integrity="sha256-/xUj+3OJU5yExlq6GSYGSHk7tPXikynS7ogEvDej/m4="
+            crossorigin="anonymous"></script>
+    <style>
+        /* Split the screen in half */
+        .split {
+            height: 100%;
+            width: 50%;
+            position: fixed;
+            z-index: 1;
+            top: 0;
+            overflow-x: hidden;
+            padding-top: 20px;
+        }
+
+        /* Control the left side */
+        .left {
+            left: 0;
+            background-color: bisque;
+        }
+
+        /* Control the right side */
+        .right {
+            right: 0;
+            background-color: cadetblue;
+        }
+
+        /* If you want the content centered horizontally and vertically */
+        .centered {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+        }
+
+        /* Style the image inside the centered container, if needed */
+        .centered img {
+            width: 150px;
+            border-radius: 50%;
+        }
+    </style>
+</head>
+
+<body>
+<div class="container">
+    <p>IMPORTANT! If you don't see any data in the above panel, then clear the browser cache or refresh this page several times (keep pressing CTRL+R for 5-10 seconds)</p>
+    <div class="row align-items-end">
+        <div class="col">
+            <div id="chat1" class="card">
+                <div class="card-header">
+                    User Messages
+                </div>
+                <div id="chatCardBody" class="card-body" style="height: 300px; overflow-y: scroll;">
+
+                </div>
+            </div>
+        </div>
+        <div class="col">
+
+        </div>
+        <div class="col">
+            <div class="col">
+
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    if (!!window.EventSource) {
+        let cardBodyContainer = $("#chatCardBody");
+        const eventSource = new EventSource("/sse");
+        eventSource.addEventListener("open", function (e) {
+            console.log("Server Sent Event connection opened...");
+        }, false);
+        eventSource.addEventListener("error", function (e) {
+            if (e.readyState === EventSource.CLOSED) {
+                console.log("Server Sent Event connection closed");
+            } else {
+                console.log("Server Sent Event err", e);
+            }
+        }, false);
+        eventSource.addEventListener("message", function (event) {
+            cardBodyContainer.append("<div><small>" + event.data + "</small></div>");
+        });
+        window.addEventListener('beforeunload', () => {
+            eventSource.close();
+        });
+    } else {
+        console.log("Server Sent Event not available, please fallback to xhr");
+    }
+</script>
+</body>
+</html>
