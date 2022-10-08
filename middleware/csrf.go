@@ -4,51 +4,31 @@ import (
 	"context"
 	"crypto/rand"
 	"fmt"
+	"github.com/ixtendio/gow/cache"
 	"github.com/ixtendio/gow/errors"
 	"github.com/ixtendio/gow/request"
 	"github.com/ixtendio/gow/response"
 	"github.com/ixtendio/gow/router"
 	"net/http"
 	"strings"
+	"time"
 )
 
-type NonceCache interface {
-	Add(nonce string) error
-	Remove(nonce string)
-	Contains(nonce string) bool
-}
-
-type InMemoryNonceCache struct {
-	cache map[string]any
-}
-
-func (i InMemoryNonceCache) Add(nonce string) error {
-	i.cache[nonce] = struct{}{}
-	return nil
-}
-
-func (i InMemoryNonceCache) Remove(nonce string) {
-	delete(i.cache, nonce)
-}
-
-func (i InMemoryNonceCache) Contains(nonce string) bool {
-	_, found := i.cache[nonce]
-	return found
-}
-
 type csrfCtxKey int
+
+var CSRFExpirationTime = 1 * time.Hour
 
 const CSRFNonceKey csrfCtxKey = 1
 const CSRFNonceRequestParamName = "_csrf"
 const CSRFRestNonceHeaderName = "X-CSRF-Token"
 
 // CSRFPrevention provides basic CSRF protection for a web application
-func CSRFPrevention(nonceCache NonceCache) Middleware {
+func CSRFPrevention(nonceCache cache.Cache) Middleware {
 	return CSRFPreventionWithCustomParamAndHeaderName(nonceCache, CSRFNonceRequestParamName, CSRFRestNonceHeaderName)
 }
 
 // CSRFPreventionWithCustomParamAndHeaderName provides basic CSRF protection for a web application using a custom form param name and header name
-func CSRFPreventionWithCustomParamAndHeaderName(nonceCache NonceCache, csrfNonceRequestParamName string, csrfNonceRequestHeaderName string) Middleware {
+func CSRFPreventionWithCustomParamAndHeaderName(nonceCache cache.Cache, csrfNonceRequestParamName string, csrfNonceRequestHeaderName string) Middleware {
 	return func(handler router.Handler) router.Handler {
 		return func(ctx context.Context, req *request.HttpRequest) (response.HttpResponse, error) {
 			skipNonceCheck := req.R.Method == http.MethodGet ||
@@ -70,7 +50,7 @@ func CSRFPreventionWithCustomParamAndHeaderName(nonceCache NonceCache, csrfNonce
 			if err != nil {
 				return nil, err
 			}
-			if err := nonceCache.Add(newNonce); err != nil {
+			if err := nonceCache.Add(newNonce, CSRFExpirationTime); err != nil {
 				return nil, err
 			}
 			ctx = context.WithValue(ctx, CSRFNonceKey, newNonce)

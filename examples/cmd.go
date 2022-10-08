@@ -3,6 +3,9 @@ package main
 import (
 	"context"
 	"github.com/ixtendio/gow"
+	"github.com/ixtendio/gow/auth"
+	"github.com/ixtendio/gow/auth/oauth"
+	"github.com/ixtendio/gow/cache"
 	"github.com/ixtendio/gow/middleware"
 	"github.com/ixtendio/gow/request"
 	"github.com/ixtendio/gow/response"
@@ -37,6 +40,33 @@ func main() {
 	// template example
 	gowMux.HandleGet("/", func(ctx context.Context, r *request.HttpRequest) (response.HttpResponse, error) {
 		return response.TemplateHttpResponseOK(gowConfig.ResourcesConfig.Template, "index.html", nil), nil
+	})
+
+	// OAUTH2 flow with user details extraction
+	gowMux.HandleOAUTH2(oauth.Config{
+		WebsiteUrl:       "https://localhost:8080",
+		FetchUserDetails: true,
+		Providers: []oauth.Provider{
+			oauth.GitHubProvider{
+				ClientId:     os.Getenv("GITHUB_OAUTH_CLIENT_ID"),
+				ClientSecret: os.Getenv("GITHUB_OAUTH_CLIENT_SECRET"),
+			},
+			oauth.GoogleProvider{
+				ClientId:     os.Getenv("GOOGLE_OAUTH_CLIENT_ID"),
+				ClientSecret: os.Getenv("GOOGLE_OAUTH_CLIENT_SECRET"),
+				Scopes:       []string{"openid"},
+			}},
+		CacheConfig: oauth.CacheConfig{
+			Cache:             cache.NewInMemory(),
+			KeyExpirationTime: 1 * time.Minute,
+		},
+	}, func(ctx context.Context, r *request.HttpRequest) (response.HttpResponse, error) {
+		accessToken := oauth.GetAccessTokenFromContext(ctx)
+		securityPrincipal := auth.GetSecurityPrincipalFromContext(ctx)
+		return response.JsonHttpResponseOK(map[string]interface{}{
+			"accessToken":       accessToken,
+			"authenticatedUser": securityPrincipal,
+		}), nil
 	})
 
 	// TEXT plain response

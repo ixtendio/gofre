@@ -35,7 +35,7 @@ func NewRouter(caseInsensitivePathMatch bool, errLogFunc func(err error)) *Route
 
 func (r *Router) Handle(method string, pathPattern string, handler Handler) *Router {
 	if err := r.endpointMatcher.addEndpoint(method, pathPattern, r.caseInsensitivePathMatch, handler); err != nil {
-		r.errLogFunc(fmt.Errorf("failed registring the pathPattern: %s, err: %writer", pathPattern, err))
+		r.errLogFunc(fmt.Errorf("failed registring the path pattern: %s, err: %w", pathPattern, err))
 		os.Exit(1)
 	}
 	return r

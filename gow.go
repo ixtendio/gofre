@@ -4,14 +4,19 @@ import (
 	"context"
 	"expvar"
 	"fmt"
+	"github.com/ixtendio/gow/auth"
+	"github.com/ixtendio/gow/auth/oauth"
+	"github.com/ixtendio/gow/errors"
 	"github.com/ixtendio/gow/middleware"
 	"github.com/ixtendio/gow/request"
 	"github.com/ixtendio/gow/response"
 	"github.com/ixtendio/gow/router"
 	"html/template"
 	"log"
+	"math/rand"
 	"net/http"
 	"net/http/pprof"
+	"unsafe"
 )
 
 var defaultTemplateFunc = func(templatesPathPattern string) (*template.Template, error) {
@@ -31,7 +36,7 @@ type ResourcesConfig struct {
 	Template *template.Template
 }
 
-// A Config is a type used to pass the configurations to the MuxHandler
+// A Config is a type used to pass the configuration to the MuxHandler
 type Config struct {
 	//if the path match should be case-sensitive or not. Default false
 	CaseInsensitivePathMatch bool
@@ -100,67 +105,154 @@ func NewMuxHandler(config *Config) (*MuxHandler, error) {
 	}, nil
 }
 
-// RegisterCommonMiddlewares allows registering common middlewares
-func (g *MuxHandler) RegisterCommonMiddlewares(middlewares ...middleware.Middleware) {
+// RegisterCommonMiddlewares registers middlewares that will be applied for all handlers
+func (m *MuxHandler) RegisterCommonMiddlewares(middlewares ...middleware.Middleware) {
 	for _, mid := range middlewares {
-		g.commonMiddlewares = append(g.commonMiddlewares, mid)
+		m.commonMiddlewares = append(m.commonMiddlewares, mid)
 	}
 }
 
-// HandleGet add a handler for handling a GET request
-func (g *MuxHandler) HandleGet(path string, handler router.Handler, middlewares ...middleware.Middleware) {
-	g.HandleRequest(http.MethodGet, path, handler, middlewares...)
+// HandleOAUTH2 registers the necessary handlers to initiate and complete the OAUTH2 flow
+//
+// this method registers two endpoints:
+// 1. GET: /oauth/initiate - initiate the OAUTH2 flow using a provider. If multiple providers are passed in the oauth.Config, then the parameter `provider` should be specified in the query string (example: /oauth/initiate?provider=github)
+// 2. GET: /oauth/authorize/{provider} - (the redirect URI) exchange the authorization code for a JWT. The provider value is the name of the OAUTH2 provider (example: /oauth/authorize/github )
+//
+// If the OAUTH2 flow successfully completes, then the oauth.AccessToken will be passed to context.Context
+// to extract it, you have to use the method oauth.GetAccessTokenFromContext(context.Context)
+func (m *MuxHandler) HandleOAUTH2(oauthConfig oauth.Config, handler router.Handler, middlewares ...middleware.Middleware) {
+	cache := oauthConfig.CacheConfig.Cache
+	// initiate OAUTH flow handler
+	authorizationFlowBasePath := "/oauth/authorize"
+	m.HandleGet("/oauth/initiate", func(ctx context.Context, r *request.HttpRequest) (response.HttpResponse, error) {
+		var provider oauth.Provider
+		if len(oauthConfig.Providers) == 1 {
+			provider = oauthConfig.Providers[0]
+		} else {
+			providerName := r.R.FormValue("provider")
+			if providerName == "" {
+				return nil, errors.NewErrInvalidRequestWithMessage("oauth provider not specified")
+			}
+			provider = oauthConfig.GetProviderByName(providerName)
+		}
+		if provider == nil {
+			return nil, errors.NewErrInvalidRequestWithMessage("oauth provider not supported")
+		}
+		redirectUrl := oauthConfig.WebsiteUrl + authorizationFlowBasePath + "/" + provider.Name()
+		state := generateUniqueId(12)
+		if cache != nil {
+			if err := cache.Add(state, oauthConfig.CacheConfig.KeyExpirationTime); err != nil {
+				return nil, fmt.Errorf("failed to save the OAUTH2 state random value, err: %w", err)
+			}
+		}
+
+		return response.RedirectHttpResponse(provider.InitiateUrl(redirectUrl, state, oauthConfig.FetchUserDetails)), nil
+	}, middlewares...)
+
+	// authorize OAUTH flow handler
+	m.HandleGet(authorizationFlowBasePath+"/{providerName}", func(ctx context.Context, r *request.HttpRequest) (response.HttpResponse, error) {
+		providerName := r.UriVars["providerName"]
+		provider := oauthConfig.GetProviderByName(providerName)
+		if provider == nil {
+			return nil, errors.NewErrInvalidRequestWithMessage("oauth provider not supported")
+		}
+
+		redirectUrl := oauthConfig.WebsiteUrl + authorizationFlowBasePath + "/" + provider.Name()
+		errCode := r.R.FormValue("error")
+		if errCode != "" {
+			return nil, errors.ErrUnauthorized
+		}
+
+		state := r.R.FormValue("state")
+		if cache != nil && !cache.Contains(state) {
+			return nil, errors.ErrUnauthorized
+
+		}
+		code := r.R.FormValue("code")
+		accessToken, err := provider.FetchAccessToken(ctx, redirectUrl, code)
+		if err != nil {
+			return nil, err
+		}
+		ctx = context.WithValue(ctx, oauth.KeyValues, accessToken)
+
+		if oauthConfig.FetchUserDetails {
+			user, err := provider.FetchAuthenticatedUser(ctx, accessToken)
+			if err != nil {
+				return nil, err
+			}
+			ctx = context.WithValue(ctx, auth.KeyValues, &user)
+		}
+
+		return handler(ctx, r)
+	}, middlewares...)
 }
 
-// HandlePost add a handler for handling a POST request
-func (g *MuxHandler) HandlePost(path string, handler router.Handler, middlewares ...middleware.Middleware) {
-	g.HandleRequest(http.MethodPost, path, handler, middlewares...)
+// HandleGet registers a handler with middlewares for GET requests
+// The middlewares will be applied only for this handler
+func (m *MuxHandler) HandleGet(path string, handler router.Handler, middlewares ...middleware.Middleware) {
+	m.HandleRequest(http.MethodGet, path, handler, middlewares...)
 }
 
-// HandlePut add a handler for handling a PUT request
-func (g *MuxHandler) HandlePut(path string, handler router.Handler, middlewares ...middleware.Middleware) {
-	g.HandleRequest(http.MethodPut, path, handler, middlewares...)
+// HandlePost registers a handler with middlewares for POST requests
+// The middlewares will be applied only for this handler
+func (m *MuxHandler) HandlePost(path string, handler router.Handler, middlewares ...middleware.Middleware) {
+	m.HandleRequest(http.MethodPost, path, handler, middlewares...)
 }
 
-// HandleDelete add a handler for handling a DELETE request
-func (g *MuxHandler) HandleDelete(path string, handler router.Handler, middlewares ...middleware.Middleware) {
-	g.HandleRequest(http.MethodDelete, path, handler, middlewares...)
+// HandlePut registers a handler with middlewares for PUT requests
+// The middlewares will be applied only for this handler
+func (m *MuxHandler) HandlePut(path string, handler router.Handler, middlewares ...middleware.Middleware) {
+	m.HandleRequest(http.MethodPut, path, handler, middlewares...)
 }
 
-func (g *MuxHandler) HandleRequest(method string, path string, handler router.Handler, middlewares ...middleware.Middleware) {
-	handler = wrapMiddleware(wrapMiddleware(handler, middlewares...), g.commonMiddlewares...)
+// HandlePath registers a handler with middlewares for PATCH requests
+// The middlewares will be applied only for this handler
+func (m *MuxHandler) HandlePath(path string, handler router.Handler, middlewares ...middleware.Middleware) {
+	m.HandleRequest(http.MethodPatch, path, handler, middlewares...)
+}
+
+// HandleDelete registers a handler with middlewares for DELETE requests
+// The middlewares will be applied only for this handler
+func (m *MuxHandler) HandleDelete(path string, handler router.Handler, middlewares ...middleware.Middleware) {
+	m.HandleRequest(http.MethodDelete, path, handler, middlewares...)
+}
+
+// HandleRequest registers a handler with middlewares for the specified HTTP method
+// The middlewares will be applied only for this handler
+func (m *MuxHandler) HandleRequest(httpMethod string, path string, handler router.Handler, middlewares ...middleware.Middleware) {
+	handler = wrapMiddleware(wrapMiddleware(handler, middlewares...), m.commonMiddlewares...)
 	var tmpl *template.Template
-	if g.webConfig.ResourcesConfig != nil {
-		tmpl = g.webConfig.ResourcesConfig.Template
+	if m.webConfig.ResourcesConfig != nil {
+		tmpl = m.webConfig.ResourcesConfig.Template
 	}
 	//expose contextPath and template on request context
 	handler = wrapMiddleware(handler, func(handler router.Handler) router.Handler {
 		return func(ctx context.Context, r *request.HttpRequest) (response.HttpResponse, error) {
 			ctx = context.WithValue(ctx, KeyValues, &CtxValues{
-				ContextPath: g.webConfig.ContextPath,
+				ContextPath: m.webConfig.ContextPath,
 				Template:    tmpl,
 			})
 			return handler(ctx, r)
 		}
 	})
-	g.router.Handle(method, path, handler)
+	m.router.Handle(httpMethod, path, handler)
 }
 
 // EnableDebugEndpoints enable debug endpoints
-func (g MuxHandler) EnableDebugEndpoints() {
+func (m MuxHandler) EnableDebugEndpoints() {
 	// Register all the standard library debug endpoints.
-	g.router.Handle(http.MethodGet, "/debug/pprof/", router.HandlerFunc2Handler(pprof.Index))
-	g.router.Handle(http.MethodGet, "/debug/pprof/allocs", router.HandlerFunc2Handler(pprof.Index))
-	g.router.Handle(http.MethodGet, "/debug/pprof/block", router.HandlerFunc2Handler(pprof.Index))
-	g.router.Handle(http.MethodGet, "/debug/pprof/goroutine", router.HandlerFunc2Handler(pprof.Index))
-	g.router.Handle(http.MethodGet, "/debug/pprof/heap", router.HandlerFunc2Handler(pprof.Index))
-	g.router.Handle(http.MethodGet, "/debug/pprof/mutex", router.HandlerFunc2Handler(pprof.Index))
-	g.router.Handle(http.MethodGet, "/debug/pprof/threadcreate", router.HandlerFunc2Handler(pprof.Index))
-	g.router.Handle(http.MethodGet, "/debug/pprof/cmdline", router.HandlerFunc2Handler(pprof.Cmdline))
-	g.router.Handle(http.MethodGet, "/debug/pprof/profile", router.HandlerFunc2Handler(pprof.Profile))
-	g.router.Handle(http.MethodGet, "/debug/pprof/symbol", router.HandlerFunc2Handler(pprof.Symbol))
-	g.router.Handle(http.MethodGet, "/debug/pprof/trace", router.HandlerFunc2Handler(pprof.Trace))
-	g.router.Handle(http.MethodGet, "/debug/vars", router.Handler2Handler(expvar.Handler()))
+	m.router.Handle(http.MethodGet, "/debug/pprof/", router.HandlerFunc2Handler(pprof.Index))
+	m.router.Handle(http.MethodGet, "/debug/pprof/allocs", router.HandlerFunc2Handler(pprof.Index))
+	m.router.Handle(http.MethodGet, "/debug/pprof/block", router.HandlerFunc2Handler(pprof.Index))
+	m.router.Handle(http.MethodGet, "/debug/pprof/goroutine", router.HandlerFunc2Handler(pprof.Index))
+	m.router.Handle(http.MethodGet, "/debug/pprof/heap", router.HandlerFunc2Handler(pprof.Index))
+	m.router.Handle(http.MethodGet, "/debug/pprof/mutex", router.HandlerFunc2Handler(pprof.Index))
+	m.router.Handle(http.MethodGet, "/debug/pprof/threadcreate", router.HandlerFunc2Handler(pprof.Index))
+	m.router.Handle(http.MethodGet, "/debug/pprof/cmdline", router.HandlerFunc2Handler(pprof.Cmdline))
+	m.router.Handle(http.MethodGet, "/debug/pprof/profile", router.HandlerFunc2Handler(pprof.Profile))
+	m.router.Handle(http.MethodGet, "/debug/pprof/symbol", router.HandlerFunc2Handler(pprof.Symbol))
+	m.router.Handle(http.MethodGet, "/debug/pprof/trace", router.HandlerFunc2Handler(pprof.Trace))
+	m.router.Handle(http.MethodGet, "/debug/vars", router.Handler2Handler(expvar.Handler()))
 }
 
 func wrapMiddleware(handler router.Handler, middlewares ...middleware.Middleware) router.Handler {
@@ -174,6 +266,16 @@ func wrapMiddleware(handler router.Handler, middlewares ...middleware.Middleware
 	return wrappedHandlers
 }
 
-func (g *MuxHandler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
-	g.router.ServeHTTP(w, req)
+const randLetters = "abcdefghijklmnopqrstuvwxyz1234567890"
+
+func generateUniqueId(length int) string {
+	b := make([]byte, length)
+	for i := range b {
+		b[i] = randLetters[rand.Int63()%int64(len(randLetters))]
+	}
+	return *(*string)(unsafe.Pointer(&b))
+}
+
+func (m *MuxHandler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
+	m.router.ServeHTTP(w, req)
 }
