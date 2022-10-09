@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"strconv"
+	"strings"
 )
 
 type ctxKey int
@@ -13,13 +14,16 @@ const KeyValues ctxKey = 1
 
 // GetSecurityPrincipalFromContext returns the SecurityPrincipal from the request context.Context
 func GetSecurityPrincipalFromContext(ctx context.Context) SecurityPrincipal {
-	return ctx.Value(KeyValues).(SecurityPrincipal)
+	if sp, ok := ctx.Value(KeyValues).(SecurityPrincipal); ok {
+		return sp
+	}
+	return nil
 }
 
 type Access uint32
 
 const (
-	AccessRead Access = 1 << (32 - 1 - iota)
+	AccessRead Access = 1 << iota
 	AccessCreate
 	AccessUpdate
 	AccessDelete
@@ -28,11 +32,18 @@ const (
 	AccessDisable
 	AccessEnable
 	AccessApprove
-
-	AccessAll = AccessRead & AccessCreate & AccessUpdate & AccessDelete & AccessAdd & AccessRemove & AccessDisable & AccessEnable & AccessApprove
+	accessUnknown
 )
 
-var ScopeSeparator = "/"
+func AccessAll() Access {
+	var all Access
+	for i := 1 << 0; Access(i) < accessUnknown; i = i << 1 {
+		all |= Access(i)
+	}
+	return all
+}
+
+var ScopeSeparator = '/'
 
 // A SecurityPrincipal represents any managed identity that is requesting access to a resource (a user, a service principal, etc)
 type SecurityPrincipal interface {
@@ -44,26 +55,62 @@ type SecurityPrincipal interface {
 	HasPermission(permission Permission) bool
 }
 
-// A Permission represents a set of resources and allowed Access
+// A Permission has a Scope and Access. A Scope describes where an action can be performed
+// For simplicity, the scope might have maximum 3 levels, (domain, subdomain and resource) separated by ScopeSeparator
+// Scopes should be structured in a parent-child relationship. Each level of hierarchy makes the scope more specific
+//
+// Examples:
+//  1. admin/timesheet/team1 -> Allow access only to the resource team1 from admin/timesheet
+//  2. admin/timesheet/*     -> Allow access to all resources from admin/timesheet
+//  3. admin/*/team1 		 -> Allow access to all subdomains from the admin domain related to the resource team1
+//  4. admin/*   			 -> Allow access to all subdomains and all resources from the admin domain
+//  5. *  					 -> Allow access to all domains
 type Permission struct {
+	Scope  string
 	Access Access
-	// A Scope describes where an action can be performed
-	// A scope might have many levels, and each level should be separated by a separator defined by ScopeSeparator
-	// Scopes should be structured in a parent-child relationship. Each level of hierarchy makes the scope more specific
-	// Examples:
-	//	1. timesheet/team/team1 -> Allow the Access only to the timesheet of the team members from team1
-	//	2. timesheet/*  -> Allow the Access to any timesheet from the organization
-	//	3. *  -> Allow the Access to everything
-	Scope string
 }
 
-// Implies returns true if the current Permission implies another Permission
-func (p Permission) Implies(permission Permission) bool {
-	//pScopeParts := strings.Split(p.Scope, ScopeSeparator)
-	//ipScopeParts := strings.Split(permission.Scope, ScopeSeparator)
+func NewPermission(scope string, access Access) (Permission, error) {
+	var separatorsCount int
+	for _, c := range scope {
+		if c == ScopeSeparator {
+			separatorsCount++
+		}
+		if separatorsCount > 2 {
+			return Permission{}, errors.New("the scope should have maximum 3 levels")
+		}
+	}
+	return Permission{scope, access}, nil
+}
 
-	//todo
-	return false
+// Implies returns true if the current Permission implies anotherPermission
+// This function assumes that the scope of the Permission from the argument, does not contain the wildcard (*)
+func (p Permission) Implies(anotherPermission Permission) bool {
+	sep := string(ScopeSeparator)
+	pScopeParts := strings.Split(p.Scope, sep)
+	ipScopeParts := strings.Split(anotherPermission.Scope, sep)
+	if len(ipScopeParts) < len(pScopeParts) {
+		return false
+	}
+
+	if p.Access&anotherPermission.Access != anotherPermission.Access {
+		return false
+	}
+
+	var s string
+	var j int
+	for i := 0; i < len(ipScopeParts); i++ {
+		si := ipScopeParts[i]
+		if j < len(pScopeParts) {
+			s = pScopeParts[j]
+			j++
+		}
+
+		if s != "*" && s != si {
+			return false
+		}
+	}
+	return true
 }
 
 func (p Permission) String() string {
@@ -154,22 +201,20 @@ func (u User) HasPermission(permission Permission) bool {
 func ParsePermission(permissionAsString string) (Permission, error) {
 	index := -1
 	for i := len(permissionAsString) - 1; i >= 0; i-- {
-		if i == ':' {
+		if permissionAsString[i] == ':' {
 			index = i
 			break
 		}
 	}
-	if index == -1 {
+	if index == -1 || index == len(permissionAsString)-1 {
 		return Permission{}, errors.New("permission parsing failed, access field not found")
 	}
 	scope := permissionAsString[0:index]
-	accessAsString := permissionAsString[index:]
-	access, err := strconv.Atoi(accessAsString)
+	accessAsString := permissionAsString[index+1:]
+	access, err := strconv.ParseUint(accessAsString, 10, 32)
 	if err != nil {
-		return Permission{}, errors.New("permission parsing failed, access field is not a number")
+		return Permission{}, errors.New("permission parsing failed, " + err.Error())
 	}
-	return Permission{
-		Access: Access(access),
-		Scope:  scope,
-	}, nil
+
+	return NewPermission(scope, Access(access))
 }
