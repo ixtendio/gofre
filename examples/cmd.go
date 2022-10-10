@@ -9,6 +9,7 @@ import (
 	"github.com/ixtendio/gow/middleware"
 	"github.com/ixtendio/gow/request"
 	"github.com/ixtendio/gow/response"
+	"github.com/ixtendio/gow/router"
 	"log"
 	"net"
 	"net/http"
@@ -127,6 +128,28 @@ func main() {
 			return ch
 		}), nil
 	})
+
+	// Authorization example
+	gowMux.HandleGet("/security/authorize/{permission}", func(ctx context.Context, r *request.HttpRequest) (response.HttpResponse, error) {
+		return response.JsonHttpResponseOK(map[string]string{"authorized": "true"}), nil
+	}, middleware.ErrJsonResponse(),
+		func(handler router.Handler) router.Handler {
+			// authentication provider
+			return func(ctx context.Context, req *request.HttpRequest) (resp response.HttpResponse, err error) {
+				permission, err := auth.ParsePermission("domain/subdomain/resource:" + req.UriVars["permission"])
+				if err != nil {
+					return nil, err
+				}
+				ctx = context.WithValue(ctx, auth.KeyValues, auth.User{
+					Groups: []auth.Group{{
+						Roles: []auth.Role{{
+							AllowedPermissions: []auth.Permission{permission},
+						}},
+					}},
+				})
+				return handler(ctx, req)
+			}
+		}, middleware.AuthorizeAll(auth.Permission{Scope: "domain/subdomain/resource", Access: auth.AccessDelete}))
 
 	httpServer := http.Server{
 		Addr:              ":8080",

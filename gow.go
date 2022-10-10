@@ -120,11 +120,17 @@ func (m *MuxHandler) RegisterCommonMiddlewares(middlewares ...middleware.Middlew
 //
 // If the OAUTH2 flow successfully completes, then the oauth.AccessToken will be passed to context.Context
 // to extract it, you have to use the method oauth.GetAccessTokenFromContext(context.Context)
+
 func (m *MuxHandler) HandleOAUTH2(oauthConfig oauth.Config, handler router.Handler, middlewares ...middleware.Middleware) {
+	m.HandleOAUTH2WithCustomPaths("/oauth/initiate", "/oauth/authorize", oauthConfig, handler, middlewares...)
+}
+
+// HandleOAUTH2WithCustomPaths registers the necessary handlers to initiate and complete the OAUTH2 flow using custom paths
+func (m *MuxHandler) HandleOAUTH2WithCustomPaths(initiatePath string, authorizeBasePath string, oauthConfig oauth.Config, handler router.Handler, middlewares ...middleware.Middleware) {
 	cache := oauthConfig.CacheConfig.Cache
 	// initiate OAUTH flow handler
-	authorizationFlowBasePath := "/oauth/authorize"
-	m.HandleGet("/oauth/initiate", func(ctx context.Context, r *request.HttpRequest) (response.HttpResponse, error) {
+	authorizationFlowBasePath := authorizeBasePath
+	m.HandleGet(initiatePath, func(ctx context.Context, r *request.HttpRequest) (response.HttpResponse, error) {
 		var provider oauth.Provider
 		if len(oauthConfig.Providers) == 1 {
 			provider = oauthConfig.Providers[0]

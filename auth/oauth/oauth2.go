@@ -27,7 +27,10 @@ const KeyValues ctxKey = 1
 
 // GetAccessTokenFromContext returns the OAUTH2 AccessToken from the request context.Context
 func GetAccessTokenFromContext(ctx context.Context) AccessToken {
-	return ctx.Value(KeyValues).(AccessToken)
+	if at, ok := ctx.Value(KeyValues).(AccessToken); ok {
+		return at
+	}
+	return AccessToken{}
 }
 
 // A CacheConfig encapsulate the cache related values

@@ -1,0 +1,168 @@
+package middleware
+
+import (
+	"context"
+	"github.com/ixtendio/gow/auth"
+	"github.com/ixtendio/gow/errors"
+	"github.com/ixtendio/gow/request"
+	"github.com/ixtendio/gow/response"
+	"testing"
+)
+
+func TestAuthorizeAll(t *testing.T) {
+	type args struct {
+		ctx         context.Context
+		permissions []auth.Permission
+	}
+	tests := []struct {
+		name string
+		args args
+		want error
+	}{
+		{
+			name: "user not authenticated",
+			args: args{
+				ctx:         context.Background(),
+				permissions: []auth.Permission{{"domain/subdomain/resource", auth.AccessRead}},
+			},
+			want: errors.ErrUnauthorized,
+		},
+		{
+			name: "user has all permissions",
+			args: args{
+				ctx: context.WithValue(context.Background(), auth.KeyValues, auth.User{
+					Groups: []auth.Group{{
+						Roles: []auth.Role{{
+							AllowedPermissions: []auth.Permission{{
+								Scope:  "domain/subdomain/*",
+								Access: auth.AccessRead,
+							}},
+						}},
+					}},
+				}),
+				permissions: []auth.Permission{
+					{"domain/subdomain/resource1", auth.AccessRead},
+					{"domain/subdomain/resource2", auth.AccessRead}},
+			},
+			want: nil,
+		},
+		{
+			name: "user has not all permissions",
+			args: args{
+				ctx: context.WithValue(context.Background(), auth.KeyValues, auth.User{
+					Groups: []auth.Group{{
+						Roles: []auth.Role{{
+							AllowedPermissions: []auth.Permission{{
+								Scope:  "domain/subdomain/resource1",
+								Access: auth.AccessRead,
+							}},
+						}},
+					}},
+				}),
+				permissions: []auth.Permission{
+					{"domain/subdomain/resource1", auth.AccessRead},
+					{"domain/subdomain/resource2", auth.AccessRead}},
+			},
+			want: errors.ErrUnauthorized,
+		},
+		{
+			name: "user has no permissions",
+			args: args{
+				ctx: context.WithValue(context.Background(), auth.KeyValues, auth.User{}),
+				permissions: []auth.Permission{
+					{"domain/subdomain/resource1", auth.AccessRead},
+					{"domain/subdomain/resource2", auth.AccessRead}},
+			},
+			want: errors.ErrUnauthorized,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := AuthorizeAll(tt.args.permissions...)(func(ctx context.Context, r *request.HttpRequest) (response.HttpResponse, error) {
+				return response.PlainTextHttpResponseOK("ok"), nil
+			})(tt.args.ctx, nil)
+			if err != tt.want {
+				t.Errorf("AuthorizeAll() = %v, want %v", err, tt.want)
+			}
+		})
+	}
+}
+
+func TestAuthorizeAny(t *testing.T) {
+	type args struct {
+		ctx         context.Context
+		permissions []auth.Permission
+	}
+	tests := []struct {
+		name string
+		args args
+		want error
+	}{
+		{
+			name: "user not authenticated",
+			args: args{
+				ctx:         context.Background(),
+				permissions: []auth.Permission{{"domain/subdomain/resource", auth.AccessRead}},
+			},
+			want: errors.ErrUnauthorized,
+		},
+		{
+			name: "user has all permissions",
+			args: args{
+				ctx: context.WithValue(context.Background(), auth.KeyValues, auth.User{
+					Groups: []auth.Group{{
+						Roles: []auth.Role{{
+							AllowedPermissions: []auth.Permission{{
+								Scope:  "domain/subdomain/*",
+								Access: auth.AccessRead,
+							}},
+						}},
+					}},
+				}),
+				permissions: []auth.Permission{
+					{"domain/subdomain/resource1", auth.AccessRead},
+					{"domain/subdomain/resource2", auth.AccessRead}},
+			},
+			want: nil,
+		},
+		{
+			name: "user has only a subset of permissions",
+			args: args{
+				ctx: context.WithValue(context.Background(), auth.KeyValues, auth.User{
+					Groups: []auth.Group{{
+						Roles: []auth.Role{{
+							AllowedPermissions: []auth.Permission{{
+								Scope:  "domain/subdomain/resource1",
+								Access: auth.AccessRead,
+							}},
+						}},
+					}},
+				}),
+				permissions: []auth.Permission{
+					{"domain/subdomain/resource1", auth.AccessRead},
+					{"domain/subdomain/resource2", auth.AccessRead}},
+			},
+			want: nil,
+		},
+		{
+			name: "user has no permissions",
+			args: args{
+				ctx: context.WithValue(context.Background(), auth.KeyValues, auth.User{}),
+				permissions: []auth.Permission{
+					{"domain/subdomain/resource1", auth.AccessRead},
+					{"domain/subdomain/resource2", auth.AccessRead}},
+			},
+			want: errors.ErrUnauthorized,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := AuthorizeAny(tt.args.permissions...)(func(ctx context.Context, r *request.HttpRequest) (response.HttpResponse, error) {
+				return response.PlainTextHttpResponseOK("ok"), nil
+			})(tt.args.ctx, nil)
+			if err != tt.want {
+				t.Errorf("AuthorizeAll() = %v, want %v", err, tt.want)
+			}
+		})
+	}
+}
