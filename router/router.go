@@ -3,8 +3,9 @@ package router
 import (
 	"context"
 	"fmt"
-	"github.com/ixtendio/gow/internal/path"
-	"github.com/ixtendio/gow/request"
+	"github.com/ixtendio/gofre/handler"
+	"github.com/ixtendio/gofre/internal/path"
+	"github.com/ixtendio/gofre/request"
 	"log"
 	"math/rand"
 	"net/http"
@@ -33,7 +34,7 @@ func NewRouter(caseInsensitivePathMatch bool, errLogFunc func(err error)) *Route
 	}
 }
 
-func (r *Router) Handle(method string, pathPattern string, handler Handler) *Router {
+func (r *Router) Handle(method string, pathPattern string, handler handler.Handler) *Router {
 	if err := r.endpointMatcher.addEndpoint(method, pathPattern, r.caseInsensitivePathMatch, handler); err != nil {
 		r.errLogFunc(fmt.Errorf("failed registring the path pattern: %s, err: %w", pathPattern, err))
 		os.Exit(1)

@@ -4,13 +4,14 @@ import (
 	"context"
 	"expvar"
 	"fmt"
-	"github.com/ixtendio/gow/auth"
-	"github.com/ixtendio/gow/auth/oauth"
-	"github.com/ixtendio/gow/errors"
-	"github.com/ixtendio/gow/middleware"
-	"github.com/ixtendio/gow/request"
-	"github.com/ixtendio/gow/response"
-	"github.com/ixtendio/gow/router"
+	"github.com/ixtendio/gofre/auth"
+	"github.com/ixtendio/gofre/auth/oauth"
+	"github.com/ixtendio/gofre/errors"
+	"github.com/ixtendio/gofre/handler"
+	"github.com/ixtendio/gofre/middleware"
+	"github.com/ixtendio/gofre/request"
+	"github.com/ixtendio/gofre/response"
+	"github.com/ixtendio/gofre/router"
 	"html/template"
 	"log"
 	"math/rand"
@@ -97,7 +98,7 @@ func NewMuxHandler(config *Config) (*MuxHandler, error) {
 		}
 		assetsPath := config.ResourcesConfig.AssetsPath
 		assetsDirPath := config.ResourcesConfig.AssetsDirPath
-		r.Handle(http.MethodGet, fmt.Sprintf("%s/%s/*", contextPath, assetsPath), router.Handler2Handler(http.StripPrefix(fmt.Sprintf("%s/%s/", contextPath, assetsPath), http.FileServer(http.Dir(assetsDirPath)))))
+		r.Handle(http.MethodGet, fmt.Sprintf("%s/%s/*", contextPath, assetsPath), handler.Handler2Handler(http.StripPrefix(fmt.Sprintf("%s/%s/", contextPath, assetsPath), http.FileServer(http.Dir(assetsDirPath)))))
 	}
 	return &MuxHandler{
 		router:    r,
@@ -121,12 +122,12 @@ func (m *MuxHandler) RegisterCommonMiddlewares(middlewares ...middleware.Middlew
 // If the OAUTH2 flow successfully completes, then the oauth.AccessToken will be passed to context.Context
 // to extract it, you have to use the method oauth.GetAccessTokenFromContext(context.Context)
 
-func (m *MuxHandler) HandleOAUTH2(oauthConfig oauth.Config, handler router.Handler, middlewares ...middleware.Middleware) {
+func (m *MuxHandler) HandleOAUTH2(oauthConfig oauth.Config, handler handler.Handler, middlewares ...middleware.Middleware) {
 	m.HandleOAUTH2WithCustomPaths("/oauth/initiate", "/oauth/authorize", oauthConfig, handler, middlewares...)
 }
 
 // HandleOAUTH2WithCustomPaths registers the necessary handlers to initiate and complete the OAUTH2 flow using custom paths
-func (m *MuxHandler) HandleOAUTH2WithCustomPaths(initiatePath string, authorizeBasePath string, oauthConfig oauth.Config, handler router.Handler, middlewares ...middleware.Middleware) {
+func (m *MuxHandler) HandleOAUTH2WithCustomPaths(initiatePath string, authorizeBasePath string, oauthConfig oauth.Config, handler handler.Handler, middlewares ...middleware.Middleware) {
 	cache := oauthConfig.CacheConfig.Cache
 	// initiate OAUTH flow handler
 	authorizationFlowBasePath := authorizeBasePath
@@ -195,73 +196,73 @@ func (m *MuxHandler) HandleOAUTH2WithCustomPaths(initiatePath string, authorizeB
 
 // HandleGet registers a handler with middlewares for GET requests
 // The middlewares will be applied only for this handler
-func (m *MuxHandler) HandleGet(path string, handler router.Handler, middlewares ...middleware.Middleware) {
+func (m *MuxHandler) HandleGet(path string, handler handler.Handler, middlewares ...middleware.Middleware) {
 	m.HandleRequest(http.MethodGet, path, handler, middlewares...)
 }
 
 // HandlePost registers a handler with middlewares for POST requests
 // The middlewares will be applied only for this handler
-func (m *MuxHandler) HandlePost(path string, handler router.Handler, middlewares ...middleware.Middleware) {
+func (m *MuxHandler) HandlePost(path string, handler handler.Handler, middlewares ...middleware.Middleware) {
 	m.HandleRequest(http.MethodPost, path, handler, middlewares...)
 }
 
 // HandlePut registers a handler with middlewares for PUT requests
 // The middlewares will be applied only for this handler
-func (m *MuxHandler) HandlePut(path string, handler router.Handler, middlewares ...middleware.Middleware) {
+func (m *MuxHandler) HandlePut(path string, handler handler.Handler, middlewares ...middleware.Middleware) {
 	m.HandleRequest(http.MethodPut, path, handler, middlewares...)
 }
 
 // HandlePath registers a handler with middlewares for PATCH requests
 // The middlewares will be applied only for this handler
-func (m *MuxHandler) HandlePath(path string, handler router.Handler, middlewares ...middleware.Middleware) {
+func (m *MuxHandler) HandlePath(path string, handler handler.Handler, middlewares ...middleware.Middleware) {
 	m.HandleRequest(http.MethodPatch, path, handler, middlewares...)
 }
 
 // HandleDelete registers a handler with middlewares for DELETE requests
 // The middlewares will be applied only for this handler
-func (m *MuxHandler) HandleDelete(path string, handler router.Handler, middlewares ...middleware.Middleware) {
+func (m *MuxHandler) HandleDelete(path string, handler handler.Handler, middlewares ...middleware.Middleware) {
 	m.HandleRequest(http.MethodDelete, path, handler, middlewares...)
 }
 
 // HandleRequest registers a handler with middlewares for the specified HTTP method
 // The middlewares will be applied only for this handler
-func (m *MuxHandler) HandleRequest(httpMethod string, path string, handler router.Handler, middlewares ...middleware.Middleware) {
-	handler = wrapMiddleware(wrapMiddleware(handler, middlewares...), m.commonMiddlewares...)
+func (m *MuxHandler) HandleRequest(httpMethod string, path string, h handler.Handler, middlewares ...middleware.Middleware) {
+	h = wrapMiddleware(wrapMiddleware(h, middlewares...), m.commonMiddlewares...)
 	var tmpl *template.Template
 	if m.webConfig.ResourcesConfig != nil {
 		tmpl = m.webConfig.ResourcesConfig.Template
 	}
 	//expose contextPath and template on request context
-	handler = wrapMiddleware(handler, func(handler router.Handler) router.Handler {
+	h = wrapMiddleware(h, func(h handler.Handler) handler.Handler {
 		return func(ctx context.Context, r *request.HttpRequest) (response.HttpResponse, error) {
 			ctx = context.WithValue(ctx, KeyValues, &CtxValues{
 				ContextPath: m.webConfig.ContextPath,
 				Template:    tmpl,
 			})
-			return handler(ctx, r)
+			return h(ctx, r)
 		}
 	})
-	m.router.Handle(httpMethod, path, handler)
+	m.router.Handle(httpMethod, path, h)
 }
 
 // EnableDebugEndpoints enable debug endpoints
 func (m MuxHandler) EnableDebugEndpoints() {
 	// Register all the standard library debug endpoints.
-	m.router.Handle(http.MethodGet, "/debug/pprof/", router.HandlerFunc2Handler(pprof.Index))
-	m.router.Handle(http.MethodGet, "/debug/pprof/allocs", router.HandlerFunc2Handler(pprof.Index))
-	m.router.Handle(http.MethodGet, "/debug/pprof/block", router.HandlerFunc2Handler(pprof.Index))
-	m.router.Handle(http.MethodGet, "/debug/pprof/goroutine", router.HandlerFunc2Handler(pprof.Index))
-	m.router.Handle(http.MethodGet, "/debug/pprof/heap", router.HandlerFunc2Handler(pprof.Index))
-	m.router.Handle(http.MethodGet, "/debug/pprof/mutex", router.HandlerFunc2Handler(pprof.Index))
-	m.router.Handle(http.MethodGet, "/debug/pprof/threadcreate", router.HandlerFunc2Handler(pprof.Index))
-	m.router.Handle(http.MethodGet, "/debug/pprof/cmdline", router.HandlerFunc2Handler(pprof.Cmdline))
-	m.router.Handle(http.MethodGet, "/debug/pprof/profile", router.HandlerFunc2Handler(pprof.Profile))
-	m.router.Handle(http.MethodGet, "/debug/pprof/symbol", router.HandlerFunc2Handler(pprof.Symbol))
-	m.router.Handle(http.MethodGet, "/debug/pprof/trace", router.HandlerFunc2Handler(pprof.Trace))
-	m.router.Handle(http.MethodGet, "/debug/vars", router.Handler2Handler(expvar.Handler()))
+	m.router.Handle(http.MethodGet, "/debug/pprof/", handler.HandlerFunc2Handler(pprof.Index))
+	m.router.Handle(http.MethodGet, "/debug/pprof/allocs", handler.HandlerFunc2Handler(pprof.Index))
+	m.router.Handle(http.MethodGet, "/debug/pprof/block", handler.HandlerFunc2Handler(pprof.Index))
+	m.router.Handle(http.MethodGet, "/debug/pprof/goroutine", handler.HandlerFunc2Handler(pprof.Index))
+	m.router.Handle(http.MethodGet, "/debug/pprof/heap", handler.HandlerFunc2Handler(pprof.Index))
+	m.router.Handle(http.MethodGet, "/debug/pprof/mutex", handler.HandlerFunc2Handler(pprof.Index))
+	m.router.Handle(http.MethodGet, "/debug/pprof/threadcreate", handler.HandlerFunc2Handler(pprof.Index))
+	m.router.Handle(http.MethodGet, "/debug/pprof/cmdline", handler.HandlerFunc2Handler(pprof.Cmdline))
+	m.router.Handle(http.MethodGet, "/debug/pprof/profile", handler.HandlerFunc2Handler(pprof.Profile))
+	m.router.Handle(http.MethodGet, "/debug/pprof/symbol", handler.HandlerFunc2Handler(pprof.Symbol))
+	m.router.Handle(http.MethodGet, "/debug/pprof/trace", handler.HandlerFunc2Handler(pprof.Trace))
+	m.router.Handle(http.MethodGet, "/debug/vars", handler.Handler2Handler(expvar.Handler()))
 }
 
-func wrapMiddleware(handler router.Handler, middlewares ...middleware.Middleware) router.Handler {
+func wrapMiddleware(handler handler.Handler, middlewares ...middleware.Middleware) handler.Handler {
 	wrappedHandlers := handler
 	for i := len(middlewares) - 1; i >= 0; i-- {
 		mid := middlewares[i]

@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/ixtendio/gow/auth"
+	"github.com/ixtendio/gofre/auth"
 	"net/http"
 	"net/url"
 	"strconv"

@@ -3,7 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
-	"github.com/ixtendio/gow/response"
+	"github.com/ixtendio/gofre/response"
 	"sync/atomic"
 	"time"
 )

@@ -2,10 +2,10 @@ package middleware
 
 import (
 	"context"
-	"github.com/ixtendio/gow/errors"
-	"github.com/ixtendio/gow/request"
-	"github.com/ixtendio/gow/response"
-	"github.com/ixtendio/gow/router"
+	"github.com/ixtendio/gofre/errors"
+	"github.com/ixtendio/gofre/handler"
+	"github.com/ixtendio/gofre/request"
+	"github.com/ixtendio/gofre/response"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -86,7 +86,7 @@ const (
 // Cors enable client-side cross-origin requests by implementing W3C's CORS (Cross-Origin Resource Sharing) specification for resources
 // This function is a transcription of Java code org.apache.catalina.filters.CorsFilter
 func Cors(config CorsConfig) Middleware {
-	return func(handler router.Handler) router.Handler {
+	return func(handler handler.Handler) handler.Handler {
 		return func(ctx context.Context, req *request.HttpRequest) (response.HttpResponse, error) {
 			httpResponse, err := handler(ctx, req)
 			if err != nil {

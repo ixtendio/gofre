@@ -2,14 +2,14 @@ package main
 
 import (
 	"context"
-	"github.com/ixtendio/gow"
-	"github.com/ixtendio/gow/auth"
-	"github.com/ixtendio/gow/auth/oauth"
-	"github.com/ixtendio/gow/cache"
-	"github.com/ixtendio/gow/middleware"
-	"github.com/ixtendio/gow/request"
-	"github.com/ixtendio/gow/response"
-	"github.com/ixtendio/gow/router"
+	"github.com/ixtendio/gofre"
+	"github.com/ixtendio/gofre/auth"
+	"github.com/ixtendio/gofre/auth/oauth"
+	"github.com/ixtendio/gofre/cache"
+	"github.com/ixtendio/gofre/handler"
+	"github.com/ixtendio/gofre/middleware"
+	"github.com/ixtendio/gofre/request"
+	"github.com/ixtendio/gofre/response"
 	"log"
 	"net"
 	"net/http"
@@ -133,7 +133,7 @@ func main() {
 	gowMux.HandleGet("/security/authorize/{permission}", func(ctx context.Context, r *request.HttpRequest) (response.HttpResponse, error) {
 		return response.JsonHttpResponseOK(map[string]string{"authorized": "true"}), nil
 	}, middleware.ErrJsonResponse(),
-		func(handler router.Handler) router.Handler {
+		func(handler handler.Handler) handler.Handler {
 			// authentication provider
 			return func(ctx context.Context, req *request.HttpRequest) (resp response.HttpResponse, err error) {
 				permission, err := auth.ParsePermission("domain/subdomain/resource:" + req.UriVars["permission"])

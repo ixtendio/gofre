@@ -2,10 +2,10 @@ package middleware
 
 import (
 	"context"
-	"github.com/ixtendio/gow/auth"
-	"github.com/ixtendio/gow/errors"
-	"github.com/ixtendio/gow/request"
-	"github.com/ixtendio/gow/response"
+	"github.com/ixtendio/gofre/auth"
+	"github.com/ixtendio/gofre/errors"
+	"github.com/ixtendio/gofre/request"
+	"github.com/ixtendio/gofre/response"
 	"testing"
 )
 

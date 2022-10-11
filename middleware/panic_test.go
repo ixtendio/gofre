@@ -2,10 +2,10 @@ package middleware
 
 import (
 	"context"
-	"github.com/ixtendio/gow/errors"
-	"github.com/ixtendio/gow/request"
-	"github.com/ixtendio/gow/response"
-	"github.com/ixtendio/gow/router"
+	"github.com/ixtendio/gofre/errors"
+	"github.com/ixtendio/gofre/handler"
+	"github.com/ixtendio/gofre/request"
+	"github.com/ixtendio/gofre/response"
 	"reflect"
 	"testing"
 )
@@ -17,7 +17,7 @@ func TestPanicMiddleware(t *testing.T) {
 	}
 	tests := []struct {
 		name    string
-		handler router.Handler
+		handler handler.Handler
 		want
 	}{
 		{

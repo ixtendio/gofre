@@ -2,9 +2,9 @@ package middleware
 
 import (
 	"context"
-	"github.com/ixtendio/gow/request"
-	"github.com/ixtendio/gow/response"
-	"github.com/ixtendio/gow/router"
+	"github.com/ixtendio/gofre/handler"
+	"github.com/ixtendio/gofre/request"
+	"github.com/ixtendio/gofre/response"
 	"strconv"
 	"strings"
 )
@@ -79,7 +79,7 @@ type SecurityHeadersConfig struct {
 
 // SecurityHeaders provides some security HTTP headers to the response
 func SecurityHeaders(config SecurityHeadersConfig) Middleware {
-	return func(handler router.Handler) router.Handler {
+	return func(handler handler.Handler) handler.Handler {
 		return func(ctx context.Context, req *request.HttpRequest) (response.HttpResponse, error) {
 			httpResponse, err := handler(ctx, req)
 			if err != nil {

@@ -3,9 +3,10 @@ package router
 import (
 	"context"
 	"fmt"
-	"github.com/ixtendio/gow/internal/path"
-	"github.com/ixtendio/gow/request"
-	"github.com/ixtendio/gow/response"
+	handler2 "github.com/ixtendio/gofre/handler"
+	"github.com/ixtendio/gofre/internal/path"
+	"github.com/ixtendio/gofre/request"
+	"github.com/ixtendio/gofre/response"
 	"net/url"
 	"reflect"
 	"sort"
@@ -26,7 +27,7 @@ func Test_endpointMatcher_addEndpoint(t *testing.T) {
 		method                   string
 		pathPattern              string
 		caseInsensitivePathMatch bool
-		handler                  Handler
+		handler                  handler2.Handler
 	}
 	tests := []struct {
 		name            string
@@ -414,13 +415,13 @@ func newEndpointMatcherWithPatterns(patterns ...string) (*matcher, error) {
 	return endpointMatcher, nil
 }
 
-func errorHandler(msg string) Handler {
+func errorHandler(msg string) handler2.Handler {
 	return func(ctx context.Context, r *request.HttpRequest) (response.HttpResponse, error) {
 		return nil, fmt.Errorf(msg)
 	}
 }
 
-func emptyHandler() Handler {
+func emptyHandler() handler2.Handler {
 	return func(ctx context.Context, r *request.HttpRequest) (response.HttpResponse, error) {
 		return nil, nil
 	}

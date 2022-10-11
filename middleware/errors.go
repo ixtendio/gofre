@@ -2,10 +2,10 @@ package middleware
 
 import (
 	"context"
-	"github.com/ixtendio/gow/errors"
-	"github.com/ixtendio/gow/request"
-	"github.com/ixtendio/gow/response"
-	"github.com/ixtendio/gow/router"
+	"github.com/ixtendio/gofre/errors"
+	"github.com/ixtendio/gofre/handler"
+	"github.com/ixtendio/gofre/request"
+	"github.com/ixtendio/gofre/response"
 	"net/http"
 )
 
@@ -20,7 +20,7 @@ func ErrJsonResponse() Middleware {
 }
 
 func ErrResponse(responseSupplier ResponseSupplier) Middleware {
-	return func(handler router.Handler) router.Handler {
+	return func(handler handler.Handler) handler.Handler {
 		return func(ctx context.Context, req *request.HttpRequest) (response.HttpResponse, error) {
 			resp, err := handler(ctx, req)
 			if err != nil {

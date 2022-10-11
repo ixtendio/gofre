@@ -3,13 +3,13 @@ package middleware
 import (
 	"context"
 	"fmt"
-	"github.com/ixtendio/gow/request"
-	"github.com/ixtendio/gow/response"
-	"github.com/ixtendio/gow/router"
+	"github.com/ixtendio/gofre/handler"
+	"github.com/ixtendio/gofre/request"
+	"github.com/ixtendio/gofre/response"
 )
 
 func Panic() Middleware {
-	return func(handler router.Handler) router.Handler {
+	return func(handler handler.Handler) handler.Handler {
 		return func(ctx context.Context, req *request.HttpRequest) (resp response.HttpResponse, err error) {
 			defer func() {
 				if r := recover(); r != nil {

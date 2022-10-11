@@ -1,9 +1,9 @@
-package router
+package handler
 
 import (
 	"context"
-	"github.com/ixtendio/gow/request"
-	"github.com/ixtendio/gow/response"
+	"github.com/ixtendio/gofre/request"
+	"github.com/ixtendio/gofre/response"
 	"net/http"
 )
 

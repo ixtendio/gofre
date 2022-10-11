@@ -3,7 +3,7 @@ package response
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/ixtendio/gow/request"
+	"github.com/ixtendio/gofre/request"
 	"net/http"
 	"unicode"
 )

@@ -3,10 +3,10 @@ package middleware
 import (
 	"context"
 	goerrors "errors"
-	"github.com/ixtendio/gow/errors"
-	"github.com/ixtendio/gow/request"
-	"github.com/ixtendio/gow/response"
-	"github.com/ixtendio/gow/router"
+	"github.com/ixtendio/gofre/errors"
+	"github.com/ixtendio/gofre/handler"
+	"github.com/ixtendio/gofre/request"
+	"github.com/ixtendio/gofre/response"
 	"net/http"
 	"reflect"
 	"testing"
@@ -14,7 +14,7 @@ import (
 
 func TestErrResponse(t *testing.T) {
 	type args struct {
-		handler router.Handler
+		handler handler.Handler
 	}
 	responseSupplier := func(statusCode int, err error) response.HttpResponse {
 		return response.HtmlHttpResponse(statusCode, err.Error())

@@ -3,8 +3,8 @@ package router
 import (
 	"context"
 	"fmt"
-	"github.com/ixtendio/gow/request"
-	"github.com/ixtendio/gow/response"
+	"github.com/ixtendio/gofre/request"
+	"github.com/ixtendio/gofre/response"
 	"log"
 	"net/http"
 	"net/url"

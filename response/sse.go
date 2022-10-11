@@ -3,7 +3,7 @@ package response
 import (
 	"context"
 	"errors"
-	"github.com/ixtendio/gow/request"
+	"github.com/ixtendio/gofre/request"
 	"net/http"
 	"strconv"
 	"strings"

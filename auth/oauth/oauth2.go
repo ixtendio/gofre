@@ -2,8 +2,8 @@ package oauth
 
 import (
 	"context"
-	"github.com/ixtendio/gow/auth"
-	"github.com/ixtendio/gow/cache"
+	"github.com/ixtendio/gofre/auth"
+	"github.com/ixtendio/gofre/cache"
 	"net"
 	"net/http"
 	"time"

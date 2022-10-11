@@ -2,18 +2,18 @@ package middleware
 
 import (
 	"context"
-	"github.com/ixtendio/gow/auth"
-	"github.com/ixtendio/gow/errors"
-	"github.com/ixtendio/gow/request"
-	"github.com/ixtendio/gow/response"
-	"github.com/ixtendio/gow/router"
+	"github.com/ixtendio/gofre/auth"
+	"github.com/ixtendio/gofre/errors"
+	"github.com/ixtendio/gofre/handler"
+	"github.com/ixtendio/gofre/request"
+	"github.com/ixtendio/gofre/response"
 )
 
 // AuthorizeAll checks if the authenticated auth.SecurityPrincipal has all the requested permissions
 // An errors.ErrUnauthorized error is returned if not all permissions are allowed to be executed
 // by the current auth.SecurityPrincipal
 func AuthorizeAll(permissions ...auth.Permission) Middleware {
-	return func(handler router.Handler) router.Handler {
+	return func(handler handler.Handler) handler.Handler {
 		return func(ctx context.Context, req *request.HttpRequest) (resp response.HttpResponse, err error) {
 			securityPrincipal := auth.GetSecurityPrincipalFromContext(ctx)
 			if securityPrincipal == nil {
@@ -33,7 +33,7 @@ func AuthorizeAll(permissions ...auth.Permission) Middleware {
 // An errors.ErrUnauthorized error is returned if not at least one permission is allowed to be executed
 // by the current auth.SecurityPrincipal
 func AuthorizeAny(permissions ...auth.Permission) Middleware {
-	return func(handler router.Handler) router.Handler {
+	return func(handler handler.Handler) handler.Handler {
 		return func(ctx context.Context, req *request.HttpRequest) (resp response.HttpResponse, err error) {
 			securityPrincipal := auth.GetSecurityPrincipalFromContext(ctx)
 			if securityPrincipal == nil {

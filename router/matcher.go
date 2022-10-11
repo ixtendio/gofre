@@ -2,7 +2,8 @@ package router
 
 import (
 	"fmt"
-	"github.com/ixtendio/gow/internal/path"
+	handler2 "github.com/ixtendio/gofre/handler"
+	"github.com/ixtendio/gofre/internal/path"
 	"sort"
 	"strings"
 )
@@ -12,7 +13,7 @@ type trieNode struct {
 	children        []*trieNode
 	pathElement     *path.Element
 	captureVarNames []string
-	handler         Handler
+	handler         handler2.Handler
 }
 
 func (n *trieNode) addCaptureVarNameIfNotExists(varName string) {
@@ -95,7 +96,7 @@ func (n *trieNode) addChild(newPathElement *path.Element) (*trieNode, error) {
 	return child, nil
 }
 
-func (n *trieNode) addLeaf(data Handler) error {
+func (n *trieNode) addLeaf(data handler2.Handler) error {
 	if n.isLeaf() {
 		return fmt.Errorf("a trie leaf can not have children (leaf)")
 	}
@@ -116,7 +117,7 @@ type matcher struct {
 	trieRoots map[string]*trieNode
 }
 
-func (m *matcher) addEndpoint(method string, pathPattern string, caseInsensitivePathMatch bool, handler Handler) error {
+func (m *matcher) addEndpoint(method string, pathPattern string, caseInsensitivePathMatch bool, handler handler2.Handler) error {
 	pathElementsRoot, err := path.ParsePattern(pathPattern, caseInsensitivePathMatch)
 	if err != nil {
 		return fmt.Errorf("failed parsing pathPattern: %s, err: %writer", pathPattern, err)
@@ -139,7 +140,7 @@ func (m *matcher) addEndpoint(method string, pathPattern string, caseInsensitive
 	return rootNode.addLeaf(handler)
 }
 
-func (m *matcher) match(method string, mc *path.MatchingContext) (Handler, map[string]string) {
+func (m *matcher) match(method string, mc *path.MatchingContext) (handler2.Handler, map[string]string) {
 	allCapturedVars := make(map[string]string)
 	method = strings.ToUpper(method)
 	pathLen := len(mc.PathElements)
