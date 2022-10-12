@@ -36,7 +36,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to create gow handler, err: %v", err)
 	}
-	gowMux.RegisterCommonMiddlewares(middleware.Panic())
+	gowMux.CommonPreMiddlewares(middleware.Panic(), middleware.ErrJsonResponse())
 
 	// template example
 	gowMux.HandleGet("/", func(ctx context.Context, r *request.HttpRequest) (response.HttpResponse, error) {
@@ -68,6 +68,14 @@ func main() {
 			"accessToken":       accessToken,
 			"authenticatedUser": securityPrincipal,
 		}), nil
+	})
+
+	// TEXT plain response
+	gowMux.HandleGet("/text/{plain}", func(ctx context.Context, r *request.HttpRequest) (response.HttpResponse, error) {
+		return response.PlainTextHttpResponseOK("Text plain response"), nil
+	})
+	gowMux.HandleGet("/text/*", func(ctx context.Context, r *request.HttpRequest) (response.HttpResponse, error) {
+		return response.PlainTextHttpResponseOK("Text plain response"), nil
 	})
 
 	// TEXT plain response
@@ -132,24 +140,23 @@ func main() {
 	// Authorization example
 	gowMux.HandleGet("/security/authorize/{permission}", func(ctx context.Context, r *request.HttpRequest) (response.HttpResponse, error) {
 		return response.JsonHttpResponseOK(map[string]string{"authorized": "true"}), nil
-	}, middleware.ErrJsonResponse(),
-		func(handler handler.Handler) handler.Handler {
-			// authentication provider
-			return func(ctx context.Context, req *request.HttpRequest) (resp response.HttpResponse, err error) {
-				permission, err := auth.ParsePermission("domain/subdomain/resource:" + req.UriVars["permission"])
-				if err != nil {
-					return nil, err
-				}
-				ctx = context.WithValue(ctx, auth.KeyValues, auth.User{
-					Groups: []auth.Group{{
-						Roles: []auth.Role{{
-							AllowedPermissions: []auth.Permission{permission},
-						}},
-					}},
-				})
-				return handler(ctx, req)
+	}, func(handler handler.Handler) handler.Handler {
+		// authentication provider
+		return func(ctx context.Context, req *request.HttpRequest) (resp response.HttpResponse, err error) {
+			permission, err := auth.ParsePermission("domain/subdomain/resource:" + req.UriVars["permission"])
+			if err != nil {
+				return nil, err
 			}
-		}, middleware.AuthorizeAll(auth.Permission{Scope: "domain/subdomain/resource", Access: auth.AccessDelete}))
+			ctx = context.WithValue(ctx, auth.KeyValues, auth.User{
+				Groups: []auth.Group{{
+					Roles: []auth.Role{{
+						AllowedPermissions: []auth.Permission{permission},
+					}},
+				}},
+			})
+			return handler(ctx, req)
+		}
+	}, middleware.AuthorizeAll(auth.Permission{Scope: "domain/subdomain/resource", Access: auth.AccessDelete}))
 
 	httpServer := http.Server{
 		Addr:              ":8080",

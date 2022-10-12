@@ -30,15 +30,15 @@ func Test_endpointMatcher_addEndpoint(t *testing.T) {
 		handler                  handler2.Handler
 	}
 	tests := []struct {
-		name            string
-		endpointMatcher *matcher
-		args            *args
-		expected        []string
-		wantErr         bool
+		name                    string
+		existingEndpointMatcher *matcher
+		args                    *args
+		expected                []string
+		wantErr                 bool
 	}{
 		{
-			name:            "usecase_01",
-			endpointMatcher: newMatcher(),
+			name:                    "usecase_01",
+			existingEndpointMatcher: newMatcher(),
 			args: &args{
 				method:      "GET",
 				pathPattern: "/",
@@ -48,8 +48,8 @@ func Test_endpointMatcher_addEndpoint(t *testing.T) {
 			wantErr:  false,
 		},
 		{
-			name:            "usecase_02",
-			endpointMatcher: newEndpointMatcherWithPatternsT(t, "GET:/a/b"),
+			name:                    "usecase_02",
+			existingEndpointMatcher: newEndpointMatcherWithPatternsT(t, "GET:/a/b"),
 			args: &args{
 				method:      "GET",
 				pathPattern: "/a/{b}",
@@ -59,8 +59,8 @@ func Test_endpointMatcher_addEndpoint(t *testing.T) {
 			wantErr:  false,
 		},
 		{
-			name:            "usecase_03",
-			endpointMatcher: newEndpointMatcherWithPatternsT(t, "GET:/a/b", "GET:/a/{b}", "GET:/a/{b}/c"),
+			name:                    "usecase_03",
+			existingEndpointMatcher: newEndpointMatcherWithPatternsT(t, "GET:/a/b", "GET:/a/{b}", "GET:/a/{b}/c"),
 			args: &args{
 				method:      "GET",
 				pathPattern: "/a/{b}/{c}",
@@ -70,8 +70,8 @@ func Test_endpointMatcher_addEndpoint(t *testing.T) {
 			wantErr:  false,
 		},
 		{
-			name:            "usecase_04",
-			endpointMatcher: newEndpointMatcherWithPatternsT(t, "GET:/a/b", "GET:/a/{b}", "GET:/a/{b}/c", "GET:/a/{b}/{c}"),
+			name:                    "usecase_04",
+			existingEndpointMatcher: newEndpointMatcherWithPatternsT(t, "GET:/a/b", "GET:/a/{b}", "GET:/a/{b}/c", "GET:/a/{b}/{c}"),
 			args: &args{
 				method:      "GET",
 				pathPattern: "/a/{b}/{d}",
@@ -80,8 +80,8 @@ func Test_endpointMatcher_addEndpoint(t *testing.T) {
 			wantErr: true,
 		},
 		{
-			name:            "usecase_05",
-			endpointMatcher: newEndpointMatcherWithPatternsT(t, "GET:/a/b", "GET:/a/{b}", "GET:/a/{b}/c", "GET:/a/{b}/{c}"),
+			name:                    "usecase_05",
+			existingEndpointMatcher: newEndpointMatcherWithPatternsT(t, "GET:/a/b", "GET:/a/{b}", "GET:/a/{b}/c", "GET:/a/{b}/{c}"),
 			args: &args{
 				method:      "GET",
 				pathPattern: "/b/a/{b}/{c}",
@@ -91,8 +91,8 @@ func Test_endpointMatcher_addEndpoint(t *testing.T) {
 			wantErr:  false,
 		},
 		{
-			name:            "usecase_06",
-			endpointMatcher: newEndpointMatcherWithPatternsT(t, "GET:/a/b", "GET:/a/{b}", "GET:/a/{b:\\d}"),
+			name:                    "usecase_06",
+			existingEndpointMatcher: newEndpointMatcherWithPatternsT(t, "GET:/a/b", "GET:/a/{b}", "GET:/a/{b:\\d}"),
 			args: &args{
 				method:      "GET",
 				pathPattern: "/a/*",
@@ -102,8 +102,8 @@ func Test_endpointMatcher_addEndpoint(t *testing.T) {
 			wantErr:  false,
 		},
 		{
-			name:            "usecase_07",
-			endpointMatcher: newEndpointMatcherWithPatternsT(t, "GET:/a/b"),
+			name:                    "usecase_07",
+			existingEndpointMatcher: newEndpointMatcherWithPatternsT(t, "GET:/a/b"),
 			args: &args{
 				method:      "POST",
 				pathPattern: "/a/b",
@@ -113,8 +113,8 @@ func Test_endpointMatcher_addEndpoint(t *testing.T) {
 			wantErr:  false,
 		},
 		{
-			name:            "usecase_08",
-			endpointMatcher: newEndpointMatcherWithPatternsT(t, "GET:/a/b", "POST:/a/b"),
+			name:                    "usecase_08",
+			existingEndpointMatcher: newEndpointMatcherWithPatternsT(t, "GET:/a/b", "POST:/a/b"),
 			args: &args{
 				method:      "DELETE",
 				pathPattern: "/a/b",
@@ -124,8 +124,8 @@ func Test_endpointMatcher_addEndpoint(t *testing.T) {
 			wantErr:  false,
 		},
 		{
-			name:            "usecase_09",
-			endpointMatcher: newEndpointMatcherWithPatternsT(t, "GET:/a/b", "GET:/a/{b}", "GET:/a/{b:\\d}", "GET:/a/*"),
+			name:                    "usecase_09",
+			existingEndpointMatcher: newEndpointMatcherWithPatternsT(t, "GET:/a/b", "GET:/a/{b}", "GET:/a/{b:\\d}", "GET:/a/*"),
 			args: &args{
 				method:      "GET",
 				pathPattern: "/a/**",
@@ -135,8 +135,8 @@ func Test_endpointMatcher_addEndpoint(t *testing.T) {
 			wantErr:  false,
 		},
 		{
-			name:            "usecase_10",
-			endpointMatcher: newEndpointMatcherWithPatternsT(t, "GET:/a"),
+			name:                    "usecase_10",
+			existingEndpointMatcher: newEndpointMatcherWithPatternsT(t, "GET:/a"),
 			args: &args{
 				method:      "GET",
 				pathPattern: "/a/",
@@ -148,11 +148,11 @@ func Test_endpointMatcher_addEndpoint(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := tt.endpointMatcher.addEndpoint(tt.args.method, tt.args.pathPattern, tt.args.caseInsensitivePathMatch, tt.args.handler); (err != nil) != tt.wantErr {
+			if err := tt.existingEndpointMatcher.addEndpoint(tt.args.method, tt.args.pathPattern, tt.args.caseInsensitivePathMatch, tt.args.handler); (err != nil) != tt.wantErr {
 				t.Errorf("addEndpoint() error = %v, wantErr %v", err, tt.wantErr)
 			}
 			if !tt.wantErr {
-				got := trieToString(tt.endpointMatcher.trieRoots)
+				got := trieToString(tt.existingEndpointMatcher.trieRoots)
 				if !reflect.DeepEqual(tt.expected, got) {
 					t.Errorf("addEndpoint() got = '%v', want = '%v'", got, tt.expected)
 				}

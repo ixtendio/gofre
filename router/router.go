@@ -9,7 +9,6 @@ import (
 	"log"
 	"math/rand"
 	"net/http"
-	"os"
 	"time"
 )
 
@@ -36,8 +35,7 @@ func NewRouter(caseInsensitivePathMatch bool, errLogFunc func(err error)) *Route
 
 func (r *Router) Handle(method string, pathPattern string, handler handler.Handler) *Router {
 	if err := r.endpointMatcher.addEndpoint(method, pathPattern, r.caseInsensitivePathMatch, handler); err != nil {
-		r.errLogFunc(fmt.Errorf("failed registring the path pattern: %s, err: %w", pathPattern, err))
-		os.Exit(1)
+		panic(fmt.Errorf("failed to register the path pattern: %s, err: %w", pathPattern, err))
 	}
 	return r
 }
@@ -46,8 +44,8 @@ func (r *Router) Handle(method string, pathPattern string, handler handler.Handl
 // It's the entry point for all http traffic
 func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	mc := path.ParseURL(req.URL)
-	handler, capturedVars := r.endpointMatcher.match(req.Method, mc)
-	if handler == nil {
+	matchedHandler, capturedVars := r.endpointMatcher.match(req.Method, mc)
+	if matchedHandler == nil {
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
@@ -67,7 +65,7 @@ func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	}
 
 	// Call the wrapped handler functions.
-	resp, err := handler(ctx, &httpRequest)
+	resp, err := matchedHandler(ctx, &httpRequest)
 	if err != nil {
 		r.errLogFunc(fmt.Errorf("uncaught error, err: %w", err))
 		w.WriteHeader(http.StatusInternalServerError)

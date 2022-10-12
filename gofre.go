@@ -80,9 +80,10 @@ func (c *Config) setDefaults() error {
 }
 
 type MuxHandler struct {
-	router            *router.Router
-	commonMiddlewares []middleware.Middleware
-	webConfig         *Config
+	router                *router.Router
+	commonPreMiddlewares  []middleware.Middleware
+	commonPostMiddlewares []middleware.Middleware
+	webConfig             *Config
 }
 
 // NewMuxHandler creates a new MuxHandler instance
@@ -106,11 +107,14 @@ func NewMuxHandler(config *Config) (*MuxHandler, error) {
 	}, nil
 }
 
-// RegisterCommonMiddlewares registers middlewares that will be applied for all handlers
-func (m *MuxHandler) RegisterCommonMiddlewares(middlewares ...middleware.Middleware) {
-	for _, mid := range middlewares {
-		m.commonMiddlewares = append(m.commonMiddlewares, mid)
-	}
+// CommonPreMiddlewares registers middlewares that will be applied for all handlers, before custom handlers middlewares
+func (m *MuxHandler) CommonPreMiddlewares(middlewares ...middleware.Middleware) {
+	m.commonPreMiddlewares = append(m.commonPreMiddlewares, middlewares...)
+}
+
+// CommonPostMiddlewares registers middlewares that will be applied for all handlers, after custom handlers middlewares
+func (m *MuxHandler) CommonPostMiddlewares(middlewares ...middleware.Middleware) {
+	m.commonPostMiddlewares = append(m.commonPostMiddlewares, middlewares...)
 }
 
 // HandleOAUTH2 registers the necessary handlers to initiate and complete the OAUTH2 flow
@@ -227,21 +231,7 @@ func (m *MuxHandler) HandleDelete(path string, handler handler.Handler, middlewa
 // HandleRequest registers a handler with middlewares for the specified HTTP method
 // The middlewares will be applied only for this handler
 func (m *MuxHandler) HandleRequest(httpMethod string, path string, h handler.Handler, middlewares ...middleware.Middleware) {
-	h = wrapMiddleware(wrapMiddleware(h, middlewares...), m.commonMiddlewares...)
-	var tmpl *template.Template
-	if m.webConfig.ResourcesConfig != nil {
-		tmpl = m.webConfig.ResourcesConfig.Template
-	}
-	//expose contextPath and template on request context
-	h = wrapMiddleware(h, func(h handler.Handler) handler.Handler {
-		return func(ctx context.Context, r *request.HttpRequest) (response.HttpResponse, error) {
-			ctx = context.WithValue(ctx, KeyValues, &CtxValues{
-				ContextPath: m.webConfig.ContextPath,
-				Template:    tmpl,
-			})
-			return h(ctx, r)
-		}
-	})
+	h = wrapMiddleware(wrapMiddleware(wrapMiddleware(h, m.commonPostMiddlewares...), middlewares...), m.commonPreMiddlewares...)
 	m.router.Handle(httpMethod, path, h)
 }
 
@@ -263,6 +253,9 @@ func (m MuxHandler) EnableDebugEndpoints() {
 }
 
 func wrapMiddleware(handler handler.Handler, middlewares ...middleware.Middleware) handler.Handler {
+	if len(middlewares) == 0 {
+		return handler
+	}
 	wrappedHandlers := handler
 	for i := len(middlewares) - 1; i >= 0; i-- {
 		mid := middlewares[i]
