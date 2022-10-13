@@ -1,4 +1,4 @@
-package gow
+package gofre
 
 import (
 	"context"
@@ -32,7 +32,7 @@ type ResourcesConfig struct {
 	//the dir path to the static resources (HTML pages, JS pages, Images, etc). Default: "./resources/assets"
 	AssetsDirPath string
 	//the web path to server the static resources. Default: "assets"
-	AssetsPath string
+	AssetsMappingPath string
 	//the Go templates. Default: template.HTML
 	Template *template.Template
 }
@@ -65,8 +65,8 @@ func (c *Config) setDefaults() error {
 		if c.ResourcesConfig.AssetsDirPath == "" {
 			c.ResourcesConfig.AssetsDirPath = "./resources/assets"
 		}
-		if c.ResourcesConfig.AssetsPath == "" {
-			c.ResourcesConfig.AssetsPath = "assets"
+		if c.ResourcesConfig.AssetsMappingPath == "" {
+			c.ResourcesConfig.AssetsMappingPath = "assets"
 		}
 		if c.ResourcesConfig.Template == nil {
 			tmpl, err := defaultTemplateFunc(c.ResourcesConfig.TemplatesPathPattern)
@@ -86,6 +86,10 @@ type MuxHandler struct {
 	webConfig             *Config
 }
 
+func NewMuxHandlerWithDefaultConfig() (*MuxHandler, error) {
+	return NewMuxHandler(&Config{})
+}
+
 // NewMuxHandler creates a new MuxHandler instance
 func NewMuxHandler(config *Config) (*MuxHandler, error) {
 	if err := config.setDefaults(); err != nil {
@@ -97,7 +101,7 @@ func NewMuxHandler(config *Config) (*MuxHandler, error) {
 		if contextPath == "/" {
 			contextPath = ""
 		}
-		assetsPath := config.ResourcesConfig.AssetsPath
+		assetsPath := config.ResourcesConfig.AssetsMappingPath
 		assetsDirPath := config.ResourcesConfig.AssetsDirPath
 		r.Handle(http.MethodGet, fmt.Sprintf("%s/%s/*", contextPath, assetsPath), handler.Handler2Handler(http.StripPrefix(fmt.Sprintf("%s/%s/", contextPath, assetsPath), http.FileServer(http.Dir(assetsDirPath)))))
 	}

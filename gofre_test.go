@@ -1,4 +1,4 @@
-package gow
+package gofre
 
 import (
 	"html/template"
@@ -58,8 +58,8 @@ func TestConfig_setDefaults(t *testing.T) {
 				if c.ResourcesConfig.AssetsDirPath != "./resources/assets" {
 					t.Errorf("ResourcesConfig.AssetsDirPath = %s, want = ./resources/assets", c.ResourcesConfig.AssetsDirPath)
 				}
-				if c.ResourcesConfig.AssetsPath != "assets" {
-					t.Errorf("ResourcesConfig.AssetsPath = %s, want = assets", c.ResourcesConfig.AssetsPath)
+				if c.ResourcesConfig.AssetsMappingPath != "assets" {
+					t.Errorf("ResourcesConfig.AssetsMappingPath = %s, want = assets", c.ResourcesConfig.AssetsMappingPath)
 				}
 				if c.ResourcesConfig.Template == nil {
 					t.Errorf("ResourcesConfig.Template is nil, want not nil")
@@ -73,7 +73,7 @@ func TestConfig_setDefaults(t *testing.T) {
 				TemplateConfig: &ResourcesConfig{
 					TemplatesPathPattern: "pattern",
 					AssetsDirPath:        "dir_path",
-					AssetsPath:           "assets_path",
+					AssetsMappingPath:    "assets_path",
 					Template:             tmpl,
 				},
 				ErrLogFunc: errLogFunc,
@@ -92,8 +92,8 @@ func TestConfig_setDefaults(t *testing.T) {
 				if c.ResourcesConfig.AssetsDirPath != "dir_path" {
 					t.Errorf("ResourcesConfig.AssetsDirPath = %s, want = dir_path", c.ResourcesConfig.AssetsDirPath)
 				}
-				if c.ResourcesConfig.AssetsPath != "assets_path" {
-					t.Errorf("ResourcesConfig.AssetsPath = %s, want = assets_path", c.ResourcesConfig.AssetsPath)
+				if c.ResourcesConfig.AssetsMappingPath != "assets_path" {
+					t.Errorf("ResourcesConfig.AssetsMappingPath = %s, want = assets_path", c.ResourcesConfig.AssetsMappingPath)
 				}
 				if c.ResourcesConfig.Template != tmpl {
 					t.Errorf("ResourcesConfig.Template = %v, want = %v", c.ResourcesConfig.Template, tmpl)
