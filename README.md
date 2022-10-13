@@ -7,13 +7,46 @@
 _GOFree[^1]_ if a web framework for Go, without third-party party dependencies, that makes the development of the web applications a joy.  _GOFre_ integrates with `http.Server` and supports the standard Go HTTP handlers: `http.Handler` and `http.HandlerFunc`. 
 
 This framework was developed around simplicity of usage and extensibility and offers the following features: 
-* **Middleware**
-* **Path pattern matching** - including path variable extraction and validation
+* **Path pattern matching** - including regex, path variable extraction and validation
+* **Middleware** - pre and post request interceptors
 * **Templating** - including static resources
 * **Authentication** - OAUTH2 flow included for GitHub and Google
 * **Authorization** - RBAC implementation
 * **SSE (Server Sent-Events)**
 * **Security** - CSRF Middleware protection
+
+## Installation
+
+You can install this repo with `go get`:
+```sh
+go get github.com/ixtendio/gofre
+```
+
+## Usage
+
+```go
+gofreMux, err := gofre.NewMuxHandlerWithDefaultConfig()
+if err != nil {
+	log.Fatalf("Failed to create GOFre mux handler, err: %v", err)
+}
+
+// JSON with vars path
+gofreMux.HandleGet("/hello/{firstName}/{lastName}", func(ctx context.Context, r *request.HttpRequest) (response.HttpResponse, error) {
+	return response.JsonHttpResponseOK(r.UriVars), nil
+})
+
+httpServer := http.Server{
+	Addr:              ":8080",
+	Handler:           gofreMux,
+}
+if err := httpServer.ListenAndServe(); err != nil {
+	log.Fatalf("Failed starting the HTTP server, err: %v", err)
+}
+```
+To see the response, execute:
+```shell
+curl -vvv "https://localhost:8080/hello/John/Doe"
+```
 
 ## Architecture Overview
 
@@ -111,7 +144,7 @@ There are two ways to register the middlewares:
 Example:
 
 ```go 
-gowMux.CommonPreMiddlewares(func(handler handler.Handler) handler.Handler {
+gofreMux.CommonPreMiddlewares(func(handler handler.Handler) handler.Handler {
   return func(ctx context.Context, r *request.HttpRequest) (response.HttpResponse, error) {
       log.Println("Common pre middleware 1 - before processing the request")
       resp, err := handler(ctx, r)
@@ -127,7 +160,7 @@ gowMux.CommonPreMiddlewares(func(handler handler.Handler) handler.Handler {
   }
 })
 
-gowMux.CommonPostMiddlewares(func(handler handler.Handler) handler.Handler {
+gofreMux.CommonPostMiddlewares(func(handler handler.Handler) handler.Handler {
   return func(ctx context.Context, r *request.HttpRequest) (response.HttpResponse, error) {
       log.Println("Common post middleware 1 - before processing the request")
       resp, err := handler(ctx, r)
@@ -143,7 +176,7 @@ gowMux.CommonPostMiddlewares(func(handler handler.Handler) handler.Handler {
   }
 })
 
-gowMux.HandleGet("/handlers", func(ctx context.Context, r *request.HttpRequest) (response.HttpResponse, error) {
+gofreMux.HandleGet("/handlers", func(ctx context.Context, r *request.HttpRequest) (response.HttpResponse, error) {
   log.Println("Request handling")
   return response.PlainTextHttpResponseOK("ok"), nil
 }, func(handler handler.Handler) handler.Handler {
@@ -181,7 +214,7 @@ Common pre middleware 2 - after processing the request
 Common pre middleware 1 - after processing the request
 ```
 
-The _middleware_ package includes the following middlewares:
+The _middleware_ package includes the following implementations:
 
 * **Panic** - handles the panic and converts them to an error
 * **ErrResponse** - converts an error to an HTTP answer
@@ -189,46 +222,154 @@ The _middleware_ package includes the following middlewares:
 * **Cors** - enable client-side cross-origin requests by implementing W3C's CORS
 * **Authorize** - provides basic RBAC authorization (authentication is required in this case)
 
+### Data Sharing
 
+A middleware can share data with the next one in the chain using the request **context.Context**. The context has two purposes:
+1. to notify when the client close the TCP connection, or when some request timeouts occurred
+2. to share key-value data
 
-## Installation
-
-You can install this repo with `go get`:
-```sh
-go get github.com/ixtendio/gofre
+Looking at this example:
+```go
+gofreMux.HandleGet("/security/authorize/{permission}", func(ctx context.Context, r *request.HttpRequest) (response.HttpResponse, error) {
+     return response.JsonHttpResponseOK(map[string]string{"authorized": "true"}), nil
+ }, func(handler handler.Handler) handler.Handler {
+     // authentication middleware
+     return func(ctx context.Context, req *request.HttpRequest) (resp response.HttpResponse, err error) {
+         permission, err := auth.ParsePermission("domain/subdomain/resource:" + req.UriVars["permission"])
+         if err != nil {
+             return nil, err
+         }
+         ctx = context.WithValue(ctx, auth.KeyValues, auth.User{
+             Groups: []auth.Group{{
+                 Roles: []auth.Role{{
+                     AllowedPermissions: []auth.Permission{permission},
+                 }},
+             }},
+         })
+         return handler(ctx, req)
+     }
+ }, middleware.AuthorizeAll(auth.Permission{Scope: "domain/subdomain/resource", Access: auth.AccessDelete}))
 ```
-## Usage
+
+we see how the authentication middleware wraps the authenticated user in the context, using `context.WithValue`, so that the next middleware, in our case **AuthorizeAll**, to use it.
+
+
+## Templating and Static Resources
+
+_GOFre_ can be configured to serve GO HTML templates and static resources. This can be done through a configuration object passed at instantiation:
 
 ```go
-gowConfig := &gofre.Config{
-	CaseInsensitivePathMatch: false,
-	ContextPath:              "",
-	ErrLogFunc: func(err error) {
-		log.Printf("An error occurred in the gofre framework: %v", err)
-	},
+gofreConfig := &gofre.Config{
+  CaseInsensitivePathMatch: false,
+  ContextPath:              "/",
+  ResourcesConfig: &gofre.ResourcesConfig{
+      TemplatesPathPattern: "examples/resources/templates/*.html",
+      AssetsDirPath:        "./examples/resources/assets",
+      AssetsMappingPath:    "assets",
+  },
+  ErrLogFunc: func(err error) {
+      log.Printf("An error occurred: %v", err)
+  },
 }
-gowMux, err := gofre.NewMuxHandler(gowConfig)
-if err != nil {
-	log.Fatalf("Failed to create gofre mux handler, err: %v", err)
-}
+```
 
-// JSON with vars path
-gowMux.HandleGet("/hello/{firstName}/{lastName}", func(ctx context.Context, r *request.HttpRequest) (response.HttpResponse, error) {
-	return response.JsonHttpResponseOK(r.UriVars), nil
+By default `ResourcesConfig` is nil, meaning that the framework doesn't support templating or static resources. 
+
+You can customize the template path pattern, the assets dir path and the assets mapping path if you want. If not, then the default values will be applied. For example:
+
+```go
+ResourcesConfig: &gofre.ResourcesConfig{}
+```
+is equivalent to:
+```go
+ResourcesConfig: &gofre.ResourcesConfig{
+   TemplatesPathPattern: "resources/templates/*.html",
+   AssetsDirPath:        "./resources/assets",
+   AssetsMappingPath:    "assets",
+   Template:             *template.Template
+}
+```
+
+An endpoint that returns an HTML template can be specified in this way:
+```go
+gofreMux.HandleGet("/", func(ctx context.Context, r *request.HttpRequest) (response.HttpResponse, error) {
+    templateData := struct{}{}
+    return response.TemplateHttpResponseOK(gofreConfig.ResourcesConfig.Template, "index.html", templateData), nil
 })
-
-httpServer := http.Server{
-	Addr:              ":8080",
-	Handler:           gowMux,
-}
-if err := httpServer.ListenAndServe(); err != nil {
-	log.Fatalf("Failed starting the HTTP server, err: %v", err)
-}
 ```
 
-```shell
-curl -vvv "https://localhost:8080/hello/John/Doe"
+## Authorization
+
+_GOFre_ provides a RBAC implementation for user authorization. The following objects are available:
+* **auth.SecurityPrincipal** - represents any managed identity that is requesting access to a resource (a user, a service principal, etc)
+* **auth.Permission** - a permission has:
+  * **Scope** - describes where an action can be performed. A scope might have maximum 3 levels, (domain, subdomain and resource) separated by separator (default `/`). The levels can be specific or generic: **&ast;**. Scopes should be structured in a parent-child relationship. Each level of hierarchy makes the scope more specific
+  * **Access** - specifies what actions can be applied to a resource like: view, create, update, delete, etc
+* **Role** - a collection of allowed and denied permissions. The denied permissions check has higher priority than allowed one
+* **User** - implements `auth.SecurityPrincipal` and represents an authenticated person
+
+For example a user with this permission: 
+```go
+auth.Permission{
+    Scope: "admin/timesheet/team1",
+    Access: auth.AccessCreate | auth.AccessApprove}
 ```
+will be allowed to create and approve any timesheet for team1 using the admin dashboard
+
+while this permission:
+```go
+auth.Permission{
+    Scope: "admin/timesheet/*",
+    Access: auth.AccessCreate | auth.AccessApprove}
+```
+gives access to create and approve any timesheet for any team using the admin dashboard
+
+The definition of the permissions scopes is application specific.
+
+## Authentication
+
+The authorization works as long as an **auth.SecurityPrincipal** exists on the request **context.Context**. 
+
+For user authentication, the framework provides the OAUTH2 flow integration with:
+* **GitHub**
+* **Google**
+
+The authenticated user roles are out of this scope. 
+
+The following code enables the OAUTH2 flow:
+```go
+// OAUTH2 flow with user details extraction
+gofreMux.HandleOAUTH2(oauth.Config{
+     WebsiteUrl:       "https://www.domain.com",
+     FetchUserDetails: true,
+     Providers: []oauth.Provider{
+         oauth.GitHubProvider{
+             ClientId:     os.Getenv("GITHUB_OAUTH_CLIENT_ID"),
+             ClientSecret: os.Getenv("GITHUB_OAUTH_CLIENT_SECRET"),
+         },
+         oauth.GoogleProvider{
+             ClientId:     os.Getenv("GOOGLE_OAUTH_CLIENT_ID"),
+             ClientSecret: os.Getenv("GOOGLE_OAUTH_CLIENT_SECRET"),
+             Scopes:       []string{"openid"},
+         }},
+     CacheConfig: oauth.CacheConfig{
+         Cache:             cache.NewInMemory(),
+         KeyExpirationTime: 1 * time.Minute,
+     },
+ }, func(ctx context.Context, r *request.HttpRequest) (response.HttpResponse, error) {
+     accessToken := oauth.GetAccessTokenFromContext(ctx)
+     securityPrincipal := auth.GetSecurityPrincipalFromContext(ctx)
+     //todo here you have to enrich the securityPrincipal with the roles from the database and to add it again on the context
+ })
+```
+
+> **Note**
+> This example uses a cache in memory, which work as long as you have a single server running, or if you use sticky session on your Load Balancer, in case of multiple running servers.
+
+## SSE (Server Sent-Events)
+
+TODO
+
 
 # Run the examples
 
