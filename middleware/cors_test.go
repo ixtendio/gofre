@@ -3,6 +3,7 @@ package middleware
 import (
 	"net/http"
 	"net/url"
+	"reflect"
 	"testing"
 )
 
@@ -234,6 +235,135 @@ func Test_getRequestType(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			if got := getRequestType(tt.args.r); got != tt.want {
 				t.Errorf("getRequestType() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func Test_isOriginAllowed(t *testing.T) {
+	type args struct {
+		originHeader string
+		config       CorsConfig
+	}
+	tests := []struct {
+		name string
+		args args
+		want bool
+	}{
+		{
+			name: "AnyOriginAllowed is true => true",
+			args: args{
+				originHeader: "",
+				config: CorsConfig{
+					AnyOriginAllowed: true,
+				},
+			},
+			want: true,
+		},
+		{
+			name: "AnyOriginAllowed is false => true",
+			args: args{
+				originHeader: "https://www.domain.com",
+				config: CorsConfig{
+					AnyOriginAllowed: false,
+					AllowedOrigins:   []string{"https://www.domain.com", "https://www.sub.domain.com"},
+				},
+			},
+			want: true,
+		},
+		{
+			name: "AnyOriginAllowed is false => false",
+			args: args{
+				originHeader: "https://sub.www.domain.com",
+				config: CorsConfig{
+					AnyOriginAllowed: false,
+					AllowedOrigins:   []string{"https://www.domain.com"},
+				},
+			},
+			want: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := isOriginAllowed(tt.args.originHeader, tt.args.config); got != tt.want {
+				t.Errorf("isOriginAllowed() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func Test_addVaryHeader(t *testing.T) {
+	type args struct {
+		responseHeaders http.Header
+		name            string
+	}
+	tests := []struct {
+		name string
+		args args
+		want http.Header
+	}{
+		{
+			name: "add *",
+			args: args{
+				responseHeaders: http.Header{},
+				name:            "*",
+			},
+			want: http.Header{"Vary": {"*"}},
+		},
+		{
+			name: "add when header not exists",
+			args: args{
+				responseHeaders: http.Header{},
+				name:            "val",
+			},
+			want: http.Header{"Vary": {"val"}},
+		},
+		{
+			name: "add when header has no value",
+			args: args{
+				responseHeaders: http.Header{"Vary": {}},
+				name:            "val",
+			},
+			want: http.Header{"Vary": {"val"}},
+		},
+		{
+			name: "should not add when header is *",
+			args: args{
+				responseHeaders: http.Header{"Vary": {"*"}},
+				name:            "val",
+			},
+			want: http.Header{"Vary": {"*"}},
+		},
+		{
+			name: "add * when vary exists",
+			args: args{
+				responseHeaders: http.Header{"Vary": {"val1, val2"}},
+				name:            "*",
+			},
+			want: http.Header{"Vary": {"*"}},
+		},
+		{
+			name: "set single * when vary * exists",
+			args: args{
+				responseHeaders: http.Header{"Vary": {"val1, val2, *"}},
+				name:            "val3",
+			},
+			want: http.Header{"Vary": {"*"}},
+		},
+		{
+			name: "add new value when vary exists",
+			args: args{
+				responseHeaders: http.Header{"Vary": {"val1, val2"}},
+				name:            "val3",
+			},
+			want: http.Header{"Vary": {"val1,val2,val3"}},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			addVaryHeader(tt.args.responseHeaders, tt.args.name)
+			if !reflect.DeepEqual(tt.want, tt.args.responseHeaders) {
+				t.Errorf("addVaryHeader() = %v, want %v", tt.args.responseHeaders, tt.want)
 			}
 		})
 	}

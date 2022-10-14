@@ -202,20 +202,28 @@ func addStandardCorsHeaders(r *http.Request, responseHeaders http.Header, config
 }
 
 func addVaryHeader(responseHeaders http.Header, name string) {
-	varyHeaders, found := responseHeaders[varyHeader]
-	if name == "*" || !found || len(varyHeaders) == 0 {
+	var varyHeaders []string
+	for _, vh := range responseHeaders.Values(varyHeader) {
+		if vh != "" {
+			for _, v := range strings.Split(vh, ",") {
+				varyHeaders = append(varyHeaders, strings.TrimSpace(v))
+			}
+		}
+	}
+	if name == "*" || len(varyHeaders) == 0 {
 		responseHeaders.Set(varyHeader, name)
 		return
 	}
 
 	if len(varyHeaders) == 1 && strings.TrimSpace(varyHeaders[0]) == "*" {
-		// No need to add an additional field
+		// No need to add any additional field
 		return
 	}
 
 	for _, vh := range varyHeaders {
 		if strings.TrimSpace(vh) == "*" {
-			responseHeaders.Set(varyHeader, name)
+			// '*' has been added without removing other values. Optimise.
+			responseHeaders.Set(varyHeader, "*")
 			return
 		}
 	}
