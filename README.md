@@ -364,18 +364,70 @@ gofreMux.HandleOAUTH2(oauth.Config{
 ```
 
 > **Note**
+> 
 > This example uses a cache in memory, which work as long as you have a single server running, or if you use sticky session on your Load Balancer, in case of multiple running servers.
 
 ## SSE (Server Sent-Events)
 
-TODO
+The [Server Sent-Events](https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events) is a web technology over HTTP2 (supported also by HTTP1 with limitations) that makes possible for a server to send new data to a web page at any time, by pushing messages. The difference between SSE and Web-Sockets are:
+* SSE is unidirectional (server to client) while web-sockets is bidirectional
+* SSE supports only text data while web-sockets supports binary data
+* all popular browsers supports natively SSE, including automatic reconnection when the connection is lost
 
+Example of pushing a new message per second to the client:
 
-# Run the examples
+```go
+gofreMux, _ := gofre.NewMuxHandlerWithDefaultConfig()
 
- 1. Execute the make file:
-    1. MacOS `make run-osx`
-    2. Linux `make run`
- 2. In the browser, open the following URL: `https://locahost:8080`  
+gofreMux.HandleGet("/sse", func(ctx context.Context, r *request.HttpRequest) (response.HttpResponse, error) {
+   return response.SSEHttpResponse(func(ctx context.Context, lastEventId string) <-chan response.ServerSentEvent {
+      ch := make(chan response.ServerSentEvent)
+      go func() {
+         ticker := time.NewTicker(1 * time.Second)
+         defer ticker.Stop()
+         defer close(ch)
+         var id int
+         for {
+             select {
+             case <-ctx.Done():
+                 return
+             case <-ticker.C:
+                 ch <- response.ServerSentEvent{
+                     Name:  "message",
+                     Id:    "msg_" + strconv.Itoa(id),
+                     Data:  []string{"message " + strconv.Itoa(id)},
+                     Retry: 0,
+                 }
+                 id++
+             }
+         }
+      }()
+      
+      return ch
+   }), nil
+})
+
+httpServer := http.Server{
+   Addr:              ":8080",
+   Handler:           gofreMux,
+   WriteTimeout:      5 * time.Minute, //this long timeout it's necessary for SSE
+ }
+
+if err := httpServer.ListenAndServeTLS("./examples/certs/key.crt", "./examples/certs/key.key"); err != nil {
+    log.Fatalf("Failed to start the server, err: %v", err)
+}
+```
+
+The HTTP server `WriteTimeout` should be big enough so that to avoid client reconnection. Anyway major popular browsers supports automatically reconnection.
+> **Note**
+> 
+> SSE works only over TLS
+
+# Run the Examples
+A list with all examples can be found in the **examples** folder. To start the local server execute the make file:
+ 1. For MacOS `make run-osx`
+ 2. For Linux `make run`
+
+In the browser, open the following URL: `https://locahost:8080`  
 
 [^1]: Gofri (singular **gofre**) are waffles in Italy and can be found in the Piedmontese cuisine: they are light and crispy in texture.
