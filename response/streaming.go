@@ -39,8 +39,8 @@ func StreamHttpResponse(reader io.Reader, contentType string) *HttpStreamRespons
 }
 
 // StreamHttpResponseWithHeaders creates a 200 success reader response with custom headers
-func StreamHttpResponseWithHeaders(statusCode int, reader io.Reader, contentType string, headers map[string][]string) *HttpStreamResponse {
-	headers["Content-Type"] = []string{contentType}
+func StreamHttpResponseWithHeaders(statusCode int, reader io.Reader, contentType string, headers http.Header) *HttpStreamResponse {
+	headers.Set("Content-Type", contentType)
 	return &HttpStreamResponse{
 		HttpHeadersResponse: HttpHeadersResponse{
 			HttpStatusCode: statusCode,
@@ -66,8 +66,8 @@ func StreamHttpResponseWithCookies(statusCode int, reader io.Reader, contentType
 }
 
 // StreamHttpResponseWithHeadersAndCookies creates a 200 success reader response with custom headers and cookies
-func StreamHttpResponseWithHeadersAndCookies(statusCode int, reader io.Reader, contentType string, headers map[string][]string, cookies []*http.Cookie) *HttpStreamResponse {
-	headers["Content-Type"] = []string{contentType}
+func StreamHttpResponseWithHeadersAndCookies(statusCode int, reader io.Reader, contentType string, headers http.Header, cookies []*http.Cookie) *HttpStreamResponse {
+	headers.Set("Content-Type", contentType)
 	return &HttpStreamResponse{
 		HttpHeadersResponse: HttpHeadersResponse{
 			HttpStatusCode: statusCode,

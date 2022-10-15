@@ -10,12 +10,15 @@ import (
 )
 
 const headerLastEventId = "Last-Event-Id"
+const eventStreamContentType = "text/event-stream"
 
 var errNotHttp2Request = errors.New("rejected, not a HTTP/2 request")
-var defaultSSEHeaders = map[string][]string{
-	"Connection":    {"keep-alive"},
-	"Cache-Control": {"no-cache"},
-	"Content-Type":  {"text/event-stream"},
+var defaultSSEHeaders = func() http.Header {
+	return http.Header{
+		"Connection":    {"keep-alive"},
+		"Cache-Control": {"no-cache"},
+		"Content-Type":  {eventStreamContentType},
+	}
 }
 
 // ServerSentEvent defines the server-sent event fields. More about server-sent events can be found here: https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events/Using_server-sent_events
@@ -108,17 +111,17 @@ func SSEHttpResponse(ew EventGenerator) *HttpSSEResponse {
 	return &HttpSSEResponse{
 		HttpHeadersResponse: HttpHeadersResponse{
 			//HttpStatusCode: http.StatusOK,
-			HttpHeaders: defaultSSEHeaders,
+			HttpHeaders: defaultSSEHeaders(),
 		},
 		EventGenerator: ew,
 	}
 }
 
 // SSEHttpResponseWithHeaders creates a SSE response with custom headers
-func SSEHttpResponseWithHeaders(ew EventGenerator, headers map[string][]string) *HttpSSEResponse {
-	headers["Cache-Control"] = defaultSSEHeaders["Cache-Control"]
-	headers["Content-Type"] = defaultSSEHeaders["Content-Type"]
-	headers["Connection"] = defaultSSEHeaders["Connection"]
+func SSEHttpResponseWithHeaders(ew EventGenerator, headers http.Header) *HttpSSEResponse {
+	headers.Set("Content-Type", eventStreamContentType)
+	headers.Set("Cache-Control", "no-cache")
+	headers.Set("Connection", "keep-alive")
 	return &HttpSSEResponse{
 		HttpHeadersResponse: HttpHeadersResponse{
 			HttpStatusCode: http.StatusOK,
@@ -129,10 +132,10 @@ func SSEHttpResponseWithHeaders(ew EventGenerator, headers map[string][]string) 
 }
 
 // SSEHttpResponseWithHeadersAndCookies creates a SSE response with custom headers and cookies
-func SSEHttpResponseWithHeadersAndCookies(ew EventGenerator, headers map[string][]string, cookies []*http.Cookie) *HttpSSEResponse {
-	headers["Cache-Control"] = defaultSSEHeaders["Cache-Control"]
-	headers["Content-Type"] = defaultSSEHeaders["Content-Type"]
-	headers["Connection"] = defaultSSEHeaders["Connection"]
+func SSEHttpResponseWithHeadersAndCookies(ew EventGenerator, headers http.Header, cookies []*http.Cookie) *HttpSSEResponse {
+	headers.Set("Content-Type", eventStreamContentType)
+	headers.Set("Cache-Control", "no-cache")
+	headers.Set("Connection", "keep-alive")
 	return &HttpSSEResponse{
 		HttpHeadersResponse: HttpHeadersResponse{
 			HttpStatusCode: http.StatusOK,

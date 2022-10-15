@@ -8,9 +8,12 @@ import (
 	"unicode"
 )
 
-var defaultJsonHeaders = map[string][]string{
-	"Content-Type": {"application/json"},
+const jsonContentType = "application/json"
+
+var defaultJsonHeaders = func() http.Header {
+	return http.Header{"Content-Type": {jsonContentType}}
 }
+
 var emptyJson = []byte("{}")
 
 type HttpJsonResponse struct {
@@ -47,7 +50,7 @@ func JsonHttpResponseOK(payload any) *HttpJsonResponse {
 	return &HttpJsonResponse{
 		HttpHeadersResponse: HttpHeadersResponse{
 			HttpStatusCode: http.StatusOK,
-			HttpHeaders:    defaultJsonHeaders,
+			HttpHeaders:    defaultJsonHeaders(),
 			HttpCookies:    nil,
 		},
 		Payload: payload,
@@ -59,7 +62,7 @@ func JsonHttpResponse(statusCode int, payload any) *HttpJsonResponse {
 	return &HttpJsonResponse{
 		HttpHeadersResponse: HttpHeadersResponse{
 			HttpStatusCode: statusCode,
-			HttpHeaders:    defaultJsonHeaders,
+			HttpHeaders:    defaultJsonHeaders(),
 			HttpCookies:    nil,
 		},
 		Payload: payload,
@@ -71,7 +74,7 @@ func JsonHttpResponseWithCookies(statusCode int, payload any, cookies []*http.Co
 	return &HttpJsonResponse{
 		HttpHeadersResponse: HttpHeadersResponse{
 			HttpStatusCode: statusCode,
-			HttpHeaders:    defaultJsonHeaders,
+			HttpHeaders:    defaultJsonHeaders(),
 			HttpCookies:    cookies,
 		},
 		Payload: payload,
@@ -79,8 +82,8 @@ func JsonHttpResponseWithCookies(statusCode int, payload any, cookies []*http.Co
 }
 
 // JsonHttpResponseWithHeaders creates a JSON response with a specific status code and headers
-func JsonHttpResponseWithHeaders(statusCode int, payload any, headers map[string][]string) *HttpJsonResponse {
-	headers["Content-Type"] = defaultJsonHeaders["Content-Type"]
+func JsonHttpResponseWithHeaders(statusCode int, payload any, headers http.Header) *HttpJsonResponse {
+	headers.Set("Content-Type", jsonContentType)
 	return &HttpJsonResponse{
 		HttpHeadersResponse: HttpHeadersResponse{
 			HttpStatusCode: statusCode,
@@ -92,8 +95,8 @@ func JsonHttpResponseWithHeaders(statusCode int, payload any, headers map[string
 }
 
 // JsonHttpResponseWithHeadersAndCookies creates a JSON response with a specific status code, custom headers and cookies
-func JsonHttpResponseWithHeadersAndCookies(statusCode int, payload any, headers map[string][]string, cookies []*http.Cookie) *HttpJsonResponse {
-	headers["Content-Type"] = defaultJsonHeaders["Content-Type"]
+func JsonHttpResponseWithHeadersAndCookies(statusCode int, payload any, headers http.Header, cookies []*http.Cookie) *HttpJsonResponse {
+	headers.Set("Content-Type", jsonContentType)
 	return &HttpJsonResponse{
 		HttpHeadersResponse: HttpHeadersResponse{
 			HttpStatusCode: statusCode,
@@ -109,7 +112,7 @@ func JsonErrorHttpResponse(statusCode int, err error) *HttpJsonResponse {
 	return &HttpJsonResponse{
 		HttpHeadersResponse: HttpHeadersResponse{
 			HttpStatusCode: statusCode,
-			HttpHeaders:    defaultJsonHeaders,
+			HttpHeaders:    defaultJsonHeaders(),
 			HttpCookies:    nil,
 		},
 		Payload: map[string]string{"error": errorToString(err)},
@@ -121,7 +124,7 @@ func JsonErrorHttpResponseWithCookies(statusCode int, err error, cookies []*http
 	return &HttpJsonResponse{
 		HttpHeadersResponse: HttpHeadersResponse{
 			HttpStatusCode: statusCode,
-			HttpHeaders:    defaultJsonHeaders,
+			HttpHeaders:    defaultJsonHeaders(),
 			HttpCookies:    cookies,
 		},
 		Payload: map[string]string{"error": errorToString(err)},
@@ -129,8 +132,8 @@ func JsonErrorHttpResponseWithCookies(statusCode int, err error, cookies []*http
 }
 
 // JsonErrorHttpResponseWithHeaders creates an error JSON response with custom headers
-func JsonErrorHttpResponseWithHeaders(statusCode int, err error, headers map[string][]string) *HttpJsonResponse {
-	headers["Content-Type"] = defaultJsonHeaders["Content-Type"]
+func JsonErrorHttpResponseWithHeaders(statusCode int, err error, headers http.Header) *HttpJsonResponse {
+	headers.Set("Content-Type", jsonContentType)
 	return &HttpJsonResponse{
 		HttpHeadersResponse: HttpHeadersResponse{
 			HttpStatusCode: statusCode,
@@ -142,8 +145,8 @@ func JsonErrorHttpResponseWithHeaders(statusCode int, err error, headers map[str
 }
 
 // JsonErrorHttpResponseWithHeadersAndCookies creates an error JSON response with custom headers and cookies
-func JsonErrorHttpResponseWithHeadersAndCookies(statusCode int, err error, headers map[string][]string, cookies []*http.Cookie) *HttpJsonResponse {
-	headers["Content-Type"] = defaultJsonHeaders["Content-Type"]
+func JsonErrorHttpResponseWithHeadersAndCookies(statusCode int, err error, headers http.Header, cookies []*http.Cookie) *HttpJsonResponse {
+	headers.Set("Content-Type", jsonContentType)
 	return &HttpJsonResponse{
 		HttpHeadersResponse: HttpHeadersResponse{
 			HttpStatusCode: statusCode,

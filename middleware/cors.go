@@ -26,7 +26,7 @@ const (
 	responseHeaderAccessControlMaxAge           = "Access-Control-Max-Age"
 	responseHeaderAccessControlAllowMethods     = "Access-Control-Allow-Methods"
 	responseHeaderAccessControlAllowHeaders     = "Access-Control-Allow-Headers"
-	varyHeader                                  = "vary"
+	varyHeader                                  = "Vary"
 )
 
 type CorsConfig struct {
@@ -48,7 +48,7 @@ type CorsConfig struct {
 
 func (c *CorsConfig) containsAllowedMethod(method string) bool {
 	for _, m := range c.AllowedHttpMethods {
-		if m == method {
+		if strings.EqualFold(m, method) {
 			return true
 		}
 	}
@@ -153,7 +153,7 @@ func addPreFlightCorsHeaders(r *http.Request, responseHeaders http.Header, confi
 	accessControlRequestHeadersHeader := strings.TrimSpace(r.Header.Get(requestHeaderAccessControlRequestHeaders))
 	for _, h := range strings.Split(accessControlRequestHeadersHeader, ",") {
 		h = strings.TrimSpace(h)
-		if !config.containsAllowedHeaderCaseInsensitive(strings.TrimSpace(h)) {
+		if h != "" && !config.containsAllowedHeaderCaseInsensitive(strings.TrimSpace(h)) {
 			return errors.ErrDenied
 		}
 	}
@@ -166,8 +166,6 @@ func addStandardCorsHeaders(r *http.Request, responseHeaders http.Header, config
 	method := r.Method
 	origin := r.Header.Get(requestHeaderOrigin)
 
-	// Local copy to avoid concurrency issues if isAnyOriginAllowed()
-	// is overridden.
 	if config.AnyOriginAllowed {
 		responseHeaders.Set(responseHeaderAccessControlAllowOrigin, "*")
 	} else {
@@ -290,7 +288,7 @@ func isValidOrigin(origin string) bool {
 		return true
 	}
 
-	parse, err := url.Parse(origin)
+	parse, err := url.ParseRequestURI(origin)
 	if err != nil {
 		return false
 	}

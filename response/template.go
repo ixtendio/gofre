@@ -7,8 +7,10 @@ import (
 	"net/http"
 )
 
-var defaultHtmlHeaders = map[string][]string{
-	"Content-Type": {"text/html; charset=utf-8"},
+const htmlContentType = "text/html; charset=utf-8"
+
+var defaultHtmlHeaders = func() http.Header {
+	return http.Header{"Content-Type": {htmlContentType}}
 }
 
 type HttpTemplateResponse struct {
@@ -35,7 +37,7 @@ func TemplateHttpResponseOK(template *template.Template, templateName string, te
 	return &HttpTemplateResponse{
 		HttpHeadersResponse: HttpHeadersResponse{
 			HttpStatusCode: http.StatusOK,
-			HttpHeaders:    defaultHtmlHeaders,
+			HttpHeaders:    defaultHtmlHeaders(),
 			HttpCookies:    nil,
 		},
 		Template: template,
@@ -49,7 +51,7 @@ func TemplateHttpResponseNotFound(template *template.Template, templateName stri
 	return &HttpTemplateResponse{
 		HttpHeadersResponse: HttpHeadersResponse{
 			HttpStatusCode: http.StatusNotFound,
-			HttpHeaders:    defaultHtmlHeaders,
+			HttpHeaders:    defaultHtmlHeaders(),
 			HttpCookies:    nil,
 		},
 		Template: template,
@@ -59,8 +61,8 @@ func TemplateHttpResponseNotFound(template *template.Template, templateName stri
 }
 
 // TemplateHttpResponseWithHeaders creates an HTML response with custom headers
-func TemplateHttpResponseWithHeaders(template *template.Template, statusCode int, templateName string, templateData any, headers map[string][]string) *HttpTemplateResponse {
-	headers["Content-Type"] = defaultHtmlHeaders["Content-Type"]
+func TemplateHttpResponseWithHeaders(template *template.Template, statusCode int, templateName string, templateData any, headers http.Header) *HttpTemplateResponse {
+	headers.Set("Content-Type", htmlContentType)
 	return &HttpTemplateResponse{
 		HttpHeadersResponse: HttpHeadersResponse{
 			HttpStatusCode: statusCode,
@@ -78,7 +80,7 @@ func TemplateHttpResponseWithCookies(template *template.Template, statusCode int
 	return &HttpTemplateResponse{
 		HttpHeadersResponse: HttpHeadersResponse{
 			HttpStatusCode: statusCode,
-			HttpHeaders:    defaultHtmlHeaders,
+			HttpHeaders:    defaultHtmlHeaders(),
 			HttpCookies:    cookies,
 		},
 		Template: template,
@@ -88,8 +90,8 @@ func TemplateHttpResponseWithCookies(template *template.Template, statusCode int
 }
 
 // TemplateHttpResponseWithHeadersAndCookies creates an HTML response with custom headers and cookies
-func TemplateHttpResponseWithHeadersAndCookies(template *template.Template, statusCode int, templateName string, templateData any, headers map[string][]string, cookies []*http.Cookie) *HttpTemplateResponse {
-	headers["Content-Type"] = defaultHtmlHeaders["Content-Type"]
+func TemplateHttpResponseWithHeadersAndCookies(template *template.Template, statusCode int, templateName string, templateData any, headers http.Header, cookies []*http.Cookie) *HttpTemplateResponse {
+	headers.Set("Content-Type", htmlContentType)
 	return &HttpTemplateResponse{
 		HttpHeadersResponse: HttpHeadersResponse{
 			HttpStatusCode: statusCode,
