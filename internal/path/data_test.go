@@ -81,13 +81,13 @@ func Test_nonCaptureVarElement(t *testing.T) {
 				return
 			}
 			if got.MatchType != tt.want.matchingType {
-				t.Errorf("nonCaptureVarElement() got MatchType = %v, want %v", got.MatchType, tt.want.matchingType)
+				t.Errorf("nonCaptureVarElement() got MatchType = %v, matchTypeWant %v", got.MatchType, tt.want.matchingType)
 			}
 			if got.MaxMatchElements != tt.want.maxMatchElements {
-				t.Errorf("nonCaptureVarElement() got MaxMatchElements = %v, want %v", got.MaxMatchElements, tt.want.maxMatchElements)
+				t.Errorf("nonCaptureVarElement() got MaxMatchElements = %v, matchTypeWant %v", got.MaxMatchElements, tt.want.maxMatchElements)
 			}
 			if got.RawVal != tt.want.value {
-				t.Errorf("nonCaptureVarElement() got RawVal = %v, want %v", got.RawVal, tt.want.value)
+				t.Errorf("nonCaptureVarElement() got RawVal = %v, matchTypeWant %v", got.RawVal, tt.want.value)
 			}
 		})
 	}
@@ -160,7 +160,7 @@ func Test_nonCaptureVarElement_matcherFunc(t *testing.T) {
 				expectedResult := tt.want[key]
 				gotResult, _ := got.MatchPathSegment(key)
 				if gotResult != expectedResult {
-					t.Errorf("nonCaptureVarElement().MatchPathSegment(%d, '%s') got = %v, want = %v", i, key, gotResult, expectedResult)
+					t.Errorf("nonCaptureVarElement().MatchPathSegment(%d, '%s') got = %v, matchTypeWant = %v", i, key, gotResult, expectedResult)
 				}
 			}
 		})
@@ -234,7 +234,7 @@ func Test_captureVarElement_matcherFunc(t *testing.T) {
 				expectedResult := tt.want[key]
 				gotResult, _ := got.MatchPathSegment(key)
 				if gotResult != expectedResult {
-					t.Errorf("captureVarElement().MatchPathSegment(%d, '%s') got = %v, want = %v", i, key, gotResult, expectedResult)
+					t.Errorf("captureVarElement().MatchPathSegment(%d, '%s') got = %v, matchTypeWant = %v", i, key, gotResult, expectedResult)
 				}
 			}
 		})

@@ -24,7 +24,7 @@ func BenchmarkTestParseRequestURL(b *testing.B) {
 	}
 }
 
-func TestParse(t *testing.T) {
+func Test_ParsePattern(t *testing.T) {
 	type args struct {
 		pathPattern     string
 		caseInsensitive bool
@@ -71,6 +71,35 @@ func TestParse(t *testing.T) {
 			want:    "[/][abc][/][cde][/]",
 			wantErr: false,
 		},
+		{
+			name:    "path with %2f",
+			args:    args{pathPattern: "/a%2fb"},
+			want:    "[/][a][/][b]",
+			wantErr: false,
+		},
+		{
+			name:    "path with %2F",
+			args:    args{pathPattern: "/a%2Fb"},
+			want:    "[/][a][/][b]",
+			wantErr: false,
+		},
+		{
+			name:    "wrong path pattern 1",
+			args:    args{pathPattern: "/a/{}"},
+			want:    "",
+			wantErr: true,
+		},
+		{
+			name:    "wrong path pattern 2",
+			args:    args{pathPattern: "/a/{}/"},
+			want:    "",
+			wantErr: true,
+		}, {
+			name:    "wrong path pattern 3",
+			args:    args{pathPattern: "/a/{}%2F"},
+			want:    "",
+			wantErr: true,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -81,13 +110,13 @@ func TestParse(t *testing.T) {
 			}
 			gotAsString := elementsToString(got)
 			if gotAsString != tt.want {
-				t.Errorf("ParsePattern() got = %v, want %v", gotAsString, tt.want)
+				t.Errorf("ParsePattern() got = %v, matchTypeWant %v", gotAsString, tt.want)
 			}
 		})
 	}
 }
 
-func TestParseRequestURL(t *testing.T) {
+func Test_ParseURL(t *testing.T) {
 	type args struct {
 		requestUrl *url.URL
 	}
@@ -96,6 +125,14 @@ func TestParseRequestURL(t *testing.T) {
 		args args
 		want *MatchingContext
 	}{
+		{
+			name: "parse empty",
+			args: args{requestUrl: mustParseURL("https://example.com")},
+			want: &MatchingContext{
+				OriginalPath: "",
+				PathElements: nil,
+			},
+		},
 		{
 			name: "/",
 			args: args{requestUrl: mustParseURL("https://example.com/?q=morefoo%25bar")},
@@ -204,11 +241,8 @@ func TestParseRequestURL(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got := ParseURL(tt.args.requestUrl)
-			if got.OriginalPath != tt.want.OriginalPath {
-				t.Errorf("ParseURL() OriginalPath = %v, want %v", got.OriginalPath, tt.want.OriginalPath)
-			}
-			if !reflect.DeepEqual(got.PathElements, tt.want.PathElements) {
-				t.Errorf("ParseURL() PathElements = %v, want %v", got.PathElements, tt.want.PathElements)
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("ParseURL() got = %#v, want = %#v", got, tt.want)
 			}
 		})
 	}
@@ -231,4 +265,154 @@ func mustParseURL(rawURL string) *url.URL {
 		log.Fatalf("Failed parsing the url: %s, err:%v", rawURL, err)
 	}
 	return u
+}
+
+func Test_addPathSegment(t *testing.T) {
+	type args struct {
+		elements []string
+		segment  string
+	}
+	tests := []struct {
+		name string
+		args args
+		want []string
+	}{
+		{
+			name: "empty segment",
+			args: args{
+				elements: []string{"/", "a", "/", "b"},
+				segment:  "",
+			},
+			want: []string{"/", "a", "/", "b"},
+		},
+		{
+			name: "valid segment",
+			args: args{
+				elements: []string{"/", "a", "/"},
+				segment:  "b",
+			},
+			want: []string{"/", "a", "/", "b"},
+		},
+		{
+			name: ".. when array has no elements",
+			args: args{
+				elements: []string{""},
+				segment:  "..",
+			},
+			want: []string{""},
+		},
+		{
+			name: ".. when array has 1 element",
+			args: args{
+				elements: []string{"/"},
+				segment:  "..",
+			},
+			want: []string{"/"},
+		},
+		{
+			name: ".. when array has 2 elements",
+			args: args{
+				elements: []string{"/", "a"},
+				segment:  "..",
+			},
+			want: []string{"/"},
+		},
+		{
+			name: ".. when array has 3 elements",
+			args: args{
+				elements: []string{"/", "a", "/"},
+				segment:  "..",
+			},
+			want: []string{"/"},
+		},
+		{
+			name: ".. when array has 4 elements",
+			args: args{
+				elements: []string{"/", "a", "/", "b"},
+				segment:  "..",
+			},
+			want: []string{"/", "a", "/"},
+		},
+		{
+			name: ".. when array has 5 elements",
+			args: args{
+				elements: []string{"/", "a", "/", "b", "/"},
+				segment:  "..",
+			},
+			want: []string{"/", "a", "/"},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := addPathSegment(tt.args.elements, tt.args.segment); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("addPathSegment() = %v, matchTypeWant %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func Test_parseElement(t *testing.T) {
+	type args struct {
+		pathPatternId   string
+		element         string
+		caseInsensitive bool
+	}
+	tests := []struct {
+		name          string
+		args          args
+		matchTypeWant int
+		wantErr       bool
+	}{
+		{
+			name: "element is empty",
+			args: args{
+				pathPatternId:   "{a}",
+				element:         "",
+				caseInsensitive: false,
+			},
+			matchTypeWant: 0,
+			wantErr:       false,
+		},
+		{
+			name: "element is {}",
+			args: args{
+				pathPatternId:   "123",
+				element:         "{}",
+				caseInsensitive: false,
+			},
+			matchTypeWant: 0,
+			wantErr:       true,
+		},
+		{
+			name: "element is {a}",
+			args: args{
+				pathPatternId:   "123",
+				element:         "{a}",
+				caseInsensitive: false,
+			},
+			matchTypeWant: MatchVarCaptureType,
+			wantErr:       false,
+		},
+		{
+			name: "element is a",
+			args: args{
+				pathPatternId:   "123",
+				element:         "a",
+				caseInsensitive: false,
+			},
+			matchTypeWant: MatchLiteralType,
+			wantErr:       false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := parseElement(tt.args.pathPatternId, tt.args.element, tt.args.caseInsensitive)
+			if tt.wantErr && err == nil {
+				t.Fatalf("parseElement() error = %v, wantErr %v", err, tt.wantErr)
+			}
+			if tt.matchTypeWant > 0 && got.MatchType != tt.matchTypeWant {
+				t.Fatalf("parseElement() got = %#v, matchTypeWant = %#v", got, tt.matchTypeWant)
+			}
+		})
+	}
 }

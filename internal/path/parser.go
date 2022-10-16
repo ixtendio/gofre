@@ -1,6 +1,7 @@
 package path
 
 import (
+	"errors"
 	"fmt"
 	"net/url"
 )
@@ -22,9 +23,7 @@ func ParseURL(requestUrl *url.URL) *MatchingContext {
 	}
 	if elementStartPos != -1 && elementStartPos < pathLen {
 		el := requestPath[elementStartPos:pathLen]
-		if el == Separator {
-			elements = addPathSeparator(elements)
-		} else if el != "" {
+		if el != "" {
 			elements = addPathSegment(elements, el)
 		}
 	}
@@ -97,7 +96,7 @@ func parseElement(pathPatternId string, element string, caseInsensitive bool) (*
 	}
 	if element[0] == '{' && element[elementLen-1] == '}' {
 		if elementLen == 2 {
-			return nil, nil
+			return nil, errors.New("empty capture var element: {} not allowed in the path pattern")
 		}
 		return captureVarElement(pathPatternId, element[0:elementLen], caseInsensitive)
 	}
