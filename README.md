@@ -424,10 +424,18 @@ The HTTP server `WriteTimeout` should be big enough to avoid client reconnection
 > SSE works only over TLS
 
 # Run the Examples
-A list with all examples can be found in the **examples** folder. To start the local server, execute the make file:
-1. For MacOS `make run-osx`
-2. For Linux `make run`
+A list with all examples can be found in the **examples** folder. To start the local server, execute:
+1. `cd examples`
+2. build and start the web server
+   1. For MacOS `make run-osx`
+   2. For Linux `make run`
 
 In the browser, open the following URL: `https://locahost:8080`
+
+> **Note**
+>
+> To run the OAUTH2 flows you need to create the OAUTH apps on **GitHub** & **Google** and to expose the _clientId_ and the _clientSecret_ as environment variables:
+> **GitHub**: `GITHUB_OAUTH_CLIENT_ID` and `GITHUB_OAUTH_CLIENT_SECRET`
+> **Google**: `GOOGLE_OAUTH_CLIENT_ID` and `GOOGLE_OAUTH_CLIENT_SECRET`
 
 [^1]: Gofri (singular: **gofre**) are waffles in Italy and can be found in the Piedmontese cuisine: they are light and crispy in texture.
