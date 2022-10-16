@@ -596,12 +596,12 @@ func TestGetSecurityPrincipalFromContext(t *testing.T) {
 		},
 		{
 			name: "context with User => user",
-			args: context.WithValue(context.Background(), KeyValues, user),
+			args: context.WithValue(context.Background(), SecurityPrincipalCtxKey, user),
 			want: user,
 		},
 		{
 			name: "context with wrong type => nil",
-			args: context.WithValue(context.Background(), KeyValues, "user"),
+			args: context.WithValue(context.Background(), SecurityPrincipalCtxKey, "user"),
 			want: nil,
 		},
 	}

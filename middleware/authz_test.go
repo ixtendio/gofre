@@ -23,14 +23,14 @@ func TestAuthorizeAll(t *testing.T) {
 			name: "user not authenticated",
 			args: args{
 				ctx:         context.Background(),
-				permissions: []auth.Permission{{"domain/subdomain/resource", auth.AccessRead}},
+				permissions: []auth.Permission{{Scope: "domain/subdomain/resource", Access: auth.AccessRead}},
 			},
 			want: errors.ErrUnauthorized,
 		},
 		{
 			name: "user has all permissions",
 			args: args{
-				ctx: context.WithValue(context.Background(), auth.KeyValues, auth.User{
+				ctx: context.WithValue(context.Background(), auth.SecurityPrincipalCtxKey, auth.User{
 					Groups: []auth.Group{{
 						Roles: []auth.Role{{
 							AllowedPermissions: []auth.Permission{{
@@ -41,15 +41,15 @@ func TestAuthorizeAll(t *testing.T) {
 					}},
 				}),
 				permissions: []auth.Permission{
-					{"domain/subdomain/resource1", auth.AccessRead},
-					{"domain/subdomain/resource2", auth.AccessRead}},
+					{Scope: "domain/subdomain/resource1", Access: auth.AccessRead},
+					{Scope: "domain/subdomain/resource2", Access: auth.AccessRead}},
 			},
 			want: nil,
 		},
 		{
 			name: "user has not all permissions",
 			args: args{
-				ctx: context.WithValue(context.Background(), auth.KeyValues, auth.User{
+				ctx: context.WithValue(context.Background(), auth.SecurityPrincipalCtxKey, auth.User{
 					Groups: []auth.Group{{
 						Roles: []auth.Role{{
 							AllowedPermissions: []auth.Permission{{
@@ -60,18 +60,18 @@ func TestAuthorizeAll(t *testing.T) {
 					}},
 				}),
 				permissions: []auth.Permission{
-					{"domain/subdomain/resource1", auth.AccessRead},
-					{"domain/subdomain/resource2", auth.AccessRead}},
+					{Scope: "domain/subdomain/resource1", Access: auth.AccessRead},
+					{Scope: "domain/subdomain/resource2", Access: auth.AccessRead}},
 			},
 			want: errors.ErrUnauthorized,
 		},
 		{
 			name: "user has no permissions",
 			args: args{
-				ctx: context.WithValue(context.Background(), auth.KeyValues, auth.User{}),
+				ctx: context.WithValue(context.Background(), auth.SecurityPrincipalCtxKey, auth.User{}),
 				permissions: []auth.Permission{
-					{"domain/subdomain/resource1", auth.AccessRead},
-					{"domain/subdomain/resource2", auth.AccessRead}},
+					{Scope: "domain/subdomain/resource1", Access: auth.AccessRead},
+					{Scope: "domain/subdomain/resource2", Access: auth.AccessRead}},
 			},
 			want: errors.ErrUnauthorized,
 		},
@@ -102,14 +102,14 @@ func TestAuthorizeAny(t *testing.T) {
 			name: "user not authenticated",
 			args: args{
 				ctx:         context.Background(),
-				permissions: []auth.Permission{{"domain/subdomain/resource", auth.AccessRead}},
+				permissions: []auth.Permission{{Scope: "domain/subdomain/resource", Access: auth.AccessRead}},
 			},
 			want: errors.ErrUnauthorized,
 		},
 		{
 			name: "user has all permissions",
 			args: args{
-				ctx: context.WithValue(context.Background(), auth.KeyValues, auth.User{
+				ctx: context.WithValue(context.Background(), auth.SecurityPrincipalCtxKey, auth.User{
 					Groups: []auth.Group{{
 						Roles: []auth.Role{{
 							AllowedPermissions: []auth.Permission{{
@@ -120,15 +120,15 @@ func TestAuthorizeAny(t *testing.T) {
 					}},
 				}),
 				permissions: []auth.Permission{
-					{"domain/subdomain/resource1", auth.AccessRead},
-					{"domain/subdomain/resource2", auth.AccessRead}},
+					{Scope: "domain/subdomain/resource1", Access: auth.AccessRead},
+					{Scope: "domain/subdomain/resource2", Access: auth.AccessRead}},
 			},
 			want: nil,
 		},
 		{
 			name: "user has only a subset of permissions",
 			args: args{
-				ctx: context.WithValue(context.Background(), auth.KeyValues, auth.User{
+				ctx: context.WithValue(context.Background(), auth.SecurityPrincipalCtxKey, auth.User{
 					Groups: []auth.Group{{
 						Roles: []auth.Role{{
 							AllowedPermissions: []auth.Permission{{
@@ -139,18 +139,18 @@ func TestAuthorizeAny(t *testing.T) {
 					}},
 				}),
 				permissions: []auth.Permission{
-					{"domain/subdomain/resource1", auth.AccessRead},
-					{"domain/subdomain/resource2", auth.AccessRead}},
+					{Scope: "domain/subdomain/resource1", Access: auth.AccessRead},
+					{Scope: "domain/subdomain/resource2", Access: auth.AccessRead}},
 			},
 			want: nil,
 		},
 		{
 			name: "user has no permissions",
 			args: args{
-				ctx: context.WithValue(context.Background(), auth.KeyValues, auth.User{}),
+				ctx: context.WithValue(context.Background(), auth.SecurityPrincipalCtxKey, auth.User{}),
 				permissions: []auth.Permission{
-					{"domain/subdomain/resource1", auth.AccessRead},
-					{"domain/subdomain/resource2", auth.AccessRead}},
+					{Scope: "domain/subdomain/resource1", Access: auth.AccessRead},
+					{Scope: "domain/subdomain/resource2", Access: auth.AccessRead}},
 			},
 			want: errors.ErrUnauthorized,
 		},

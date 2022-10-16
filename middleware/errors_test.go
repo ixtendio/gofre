@@ -83,10 +83,37 @@ func TestErrResponse(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			resp, err := ErrResponse(responseSupplier)(tt.args.handler)(context.Background(), nil)
 			if err != nil {
-				t.Errorf("ErrResponse() returned error: %v", err)
+				t.Fatalf("ErrResponse() returned error: %v", err)
 			}
 			if !reflect.DeepEqual(resp, tt.want) {
-				t.Errorf("ErrResponse() = %v, want %v", resp, tt.want)
+				t.Fatalf("ErrResponse() = %v, want %v", resp, tt.want)
+			}
+		})
+	}
+}
+
+func TestErrJsonResponse(t *testing.T) {
+	tests := []struct {
+		name string
+		want response.HttpResponse
+	}{
+		{
+			name: "check json",
+			want: response.JsonHttpResponse(http.StatusUnauthorized, map[string]string{
+				"error": "unauthorized request",
+			}),
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			resp, err := ErrJsonResponse()(func(ctx context.Context, r *request.HttpRequest) (response.HttpResponse, error) {
+				return nil, errors.ErrUnauthorized
+			})(context.Background(), nil)
+			if err != nil {
+				t.Fatalf("ErrJsonResponse() returned error: %v", err)
+			}
+			if !reflect.DeepEqual(resp, tt.want) {
+				t.Fatalf("ErrResponse() = %v, want %v", resp, tt.want)
 			}
 		})
 	}

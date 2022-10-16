@@ -16,7 +16,7 @@ const (
 	antiClickJackingHeaderName                       = "X-Frame-Options"
 	blockContentTypeSniffingHeaderName               = "X-Content-Type-Options"
 	blockContentTypeSniffingHeaderValue              = "nosniff"
-	xssProtectionHeaderName                          = "X-XSS-Protection"
+	xssProtectionHeaderName                          = "X-Xss-Protection"
 	xssProtectionHeaderValue                         = "1; mode=block"
 	XFrameOptionDeny                    XFrameOption = iota
 	XFrameOptionSameOrigin

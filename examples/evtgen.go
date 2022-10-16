@@ -39,7 +39,7 @@ func (l *EventGenerator) Rewind(index int) {
 
 func NewEventGenerator(ctx context.Context, cap int) *EventGenerator {
 	evtGen := &EventGenerator{
-		list: make([]response.ServerSentEvent, cap, cap),
+		list: make([]response.ServerSentEvent, cap),
 	}
 	go func() {
 		var msgIndex int64

@@ -18,9 +18,17 @@ type csrfCtxKey int
 
 var CSRFExpirationTime = 1 * time.Hour
 
-const CSRFNonceKey csrfCtxKey = 1
+const CSRFNonceCtxKey csrfCtxKey = 1
 const CSRFNonceRequestParamName = "_csrf"
-const CSRFRestNonceHeaderName = "X-CSRF-Token"
+const CSRFRestNonceHeaderName = "X-Csrf-Token"
+
+// GetCSRFNonceFromContext returns the CSRF nonce from the request context.Context
+func GetCSRFNonceFromContext(ctx context.Context) string {
+	if sp, ok := ctx.Value(CSRFNonceCtxKey).(string); ok {
+		return sp
+	}
+	return ""
+}
 
 // CSRFPrevention provides basic CSRF protection for a web application
 func CSRFPrevention(nonceCache cache.Cache) Middleware {
@@ -28,7 +36,7 @@ func CSRFPrevention(nonceCache cache.Cache) Middleware {
 }
 
 // CSRFPreventionWithCustomParamAndHeaderName provides basic CSRF protection for a web application using a custom form param name and header name
-func CSRFPreventionWithCustomParamAndHeaderName(nonceCache cache.Cache, csrfNonceRequestParamName string, csrfNonceRequestHeaderName string) Middleware {
+func CSRFPreventionWithCustomParamAndHeaderName(nonceCache cache.Cache, csrfNonceRequestParamName string, csrfRestNonceHeaderName string) Middleware {
 	return func(handler handler.Handler) handler.Handler {
 		return func(ctx context.Context, req *request.HttpRequest) (response.HttpResponse, error) {
 			skipNonceCheck := req.R.Method == http.MethodGet ||
@@ -36,7 +44,7 @@ func CSRFPreventionWithCustomParamAndHeaderName(nonceCache cache.Cache, csrfNonc
 				req.R.Method == http.MethodTrace ||
 				req.R.Method == http.MethodOptions
 			if !skipNonceCheck {
-				previousNonce := req.R.Header.Get(csrfNonceRequestHeaderName)
+				previousNonce := req.R.Header.Get(csrfRestNonceHeaderName)
 				if previousNonce == "" {
 					previousNonce = req.R.Form.Get(csrfNonceRequestParamName)
 				}
@@ -53,7 +61,7 @@ func CSRFPreventionWithCustomParamAndHeaderName(nonceCache cache.Cache, csrfNonc
 			if err := nonceCache.Add(newNonce, CSRFExpirationTime); err != nil {
 				return nil, err
 			}
-			ctx = context.WithValue(ctx, CSRFNonceKey, newNonce)
+			ctx = context.WithValue(ctx, CSRFNonceCtxKey, newNonce)
 			return handler(ctx, req)
 		}
 	}

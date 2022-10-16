@@ -9,12 +9,12 @@ import (
 
 type ctxKey int
 
-// KeyValues is used to pass the SecurityPrincipal to the request context.Context
-const KeyValues ctxKey = 1
+// SecurityPrincipalCtxKey is used to pass the SecurityPrincipal to the request context.Context
+const SecurityPrincipalCtxKey ctxKey = 1
 
 // GetSecurityPrincipalFromContext returns the SecurityPrincipal from the request context.Context
 func GetSecurityPrincipalFromContext(ctx context.Context) SecurityPrincipal {
-	if sp, ok := ctx.Value(KeyValues).(SecurityPrincipal); ok {
+	if sp, ok := ctx.Value(SecurityPrincipalCtxKey).(SecurityPrincipal); ok {
 		return sp
 	}
 	return nil

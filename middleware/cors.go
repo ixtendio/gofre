@@ -308,7 +308,7 @@ func isSameOrigin(reqUrl *url.URL, origin string) bool {
 
 	port := reqUrl.Port()
 	if port == "" {
-		if "https" == scheme || "wss" == scheme {
+		if scheme == "https" || scheme == "wss" {
 			port = "443"
 		} else {
 			port = "80"
@@ -316,8 +316,8 @@ func isSameOrigin(reqUrl *url.URL, origin string) bool {
 	}
 	if sb.Len() == len(origin) {
 		// origin and target can only be equal if both are using default ports
-		if (("http" == scheme || "ws" == scheme) && port != "80") ||
-			(("https" == scheme || "wss" == scheme) && port != "443") {
+		if ((scheme == "http" || scheme == "ws") && port != "80") ||
+			((scheme == "https" || scheme == "wss") && port != "443") {
 			return false
 		}
 	} else {

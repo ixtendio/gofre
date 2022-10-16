@@ -750,12 +750,12 @@ func TestCors(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			m := Cors(tt.args.config)
 			resp, err := m(tt.handler)(context.Background(), &request.HttpRequest{R: tt.args.req})
-			if tt.wantError != nil {
-				if err != tt.wantError {
-					t.Errorf("Cors() error = %v, want %v", err, tt.wantError)
-				}
-			} else if !reflect.DeepEqual(resp.Headers(), tt.wantResponseHeaders) {
-				t.Errorf("Cors() response headers = %v, want = %v", resp.Headers(), tt.wantResponseHeaders)
+			if err != tt.wantError {
+				t.Fatalf("Cors() error = %v, want %v", err, tt.wantError)
+			}
+
+			if tt.wantError == nil && !reflect.DeepEqual(resp.Headers(), tt.wantResponseHeaders) {
+				t.Fatalf("Cors() response headers = %v, want = %v", resp.Headers(), tt.wantResponseHeaders)
 			}
 		})
 	}

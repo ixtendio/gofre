@@ -25,8 +25,8 @@ func main() {
 		CaseInsensitivePathMatch: false,
 		ContextPath:              "",
 		ResourcesConfig: &gofre.ResourcesConfig{
-			TemplatesPathPattern: "examples/resources/templates/*.html",
-			AssetsDirPath:        "./examples/resources/assets",
+			TemplatesPathPattern: "resources/templates/*.html",
+			AssetsDirPath:        "./resources/assets",
 		},
 		ErrLogFunc: func(err error) {
 			log.Printf("An error occurred in the GOFre framework: %v", err)
@@ -96,7 +96,7 @@ func main() {
 
 	// document download example
 	gofreMux.HandleGet("/download", func(ctx context.Context, r *request.HttpRequest) (response.HttpResponse, error) {
-		f, err := os.Open("./examples/resources/assets/image.png")
+		f, err := os.Open("./resources/assets/image.png")
 		if err != nil {
 			return nil, err
 		}
@@ -148,7 +148,7 @@ func main() {
 			if err != nil {
 				return nil, err
 			}
-			ctx = context.WithValue(ctx, auth.KeyValues, auth.User{
+			ctx = context.WithValue(ctx, auth.SecurityPrincipalCtxKey, auth.User{
 				Groups: []auth.Group{{
 					Roles: []auth.Role{{
 						AllowedPermissions: []auth.Permission{permission},
@@ -173,7 +173,7 @@ func main() {
 		},
 	}
 	log.Printf("The server is up and running at address: https://localhost:8080")
-	if err := httpServer.ListenAndServeTLS("./examples/certs/key.crt", "./examples/certs/key.key"); err != nil {
+	if err := httpServer.ListenAndServeTLS("./certs/key.crt", "./certs/key.key"); err != nil {
 		log.Fatalf("Failed to start the server, err: %v", err)
 	}
 

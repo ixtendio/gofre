@@ -22,12 +22,12 @@ var HttpClient = &http.Client{
 
 type ctxKey int
 
-// KeyValues is used to pass the AccessToken to the request context.Context
-const KeyValues ctxKey = 1
+// AccessTokenCtxKey is used to pass the AccessToken to the request context.Context
+const AccessTokenCtxKey ctxKey = 1
 
 // GetAccessTokenFromContext returns the OAUTH2 AccessToken from the request context.Context
 func GetAccessTokenFromContext(ctx context.Context) AccessToken {
-	if at, ok := ctx.Value(KeyValues).(AccessToken); ok {
+	if at, ok := ctx.Value(AccessTokenCtxKey).(AccessToken); ok {
 		return at
 	}
 	return AccessToken{}

@@ -188,14 +188,14 @@ func (m *MuxHandler) HandleOAUTH2WithCustomPaths(initiatePath string, authorizeB
 		if err != nil {
 			return nil, err
 		}
-		ctx = context.WithValue(ctx, oauth.KeyValues, accessToken)
+		ctx = context.WithValue(ctx, oauth.AccessTokenCtxKey, accessToken)
 
 		if oauthConfig.FetchUserDetails {
 			user, err := provider.FetchAuthenticatedUser(ctx, accessToken)
 			if err != nil {
 				return nil, err
 			}
-			ctx = context.WithValue(ctx, auth.KeyValues, &user)
+			ctx = context.WithValue(ctx, auth.SecurityPrincipalCtxKey, &user)
 		}
 
 		return handler(ctx, r)
