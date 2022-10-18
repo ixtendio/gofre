@@ -177,6 +177,49 @@ func TestRouter_ServeHTTP(t *testing.T) {
 	}
 }
 
+func TestNewRouter(t *testing.T) {
+	errLog := func(err error) {
+	}
+	type args struct {
+		caseInsensitivePathMatch bool
+		errLogFunc               func(err error)
+	}
+	tests := []struct {
+		name                         string
+		args                         args
+		wantCaseInsensitivePathMatch bool
+	}{
+		{
+			name:                         "errLogFunc is nil",
+			args:                         args{},
+			wantCaseInsensitivePathMatch: false,
+		},
+		{
+			name: "errLogFunc is provided",
+			args: args{
+				caseInsensitivePathMatch: true,
+				errLogFunc:               errLog,
+			},
+			wantCaseInsensitivePathMatch: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := NewRouter(tt.args.caseInsensitivePathMatch, tt.args.errLogFunc)
+
+			if got.endpointMatcher == nil {
+				t.Fatal("NewRouter() got nil endpointMatcher")
+			}
+			if got.caseInsensitivePathMatch != tt.wantCaseInsensitivePathMatch {
+				t.Fatalf("NewRouter() got caseInsensitivePathMatch = %v, want caseInsensitivePathMatch = %v", got.caseInsensitivePathMatch, tt.wantCaseInsensitivePathMatch)
+			}
+			if got.errLogFunc == nil {
+				t.Errorf("NewRouter() got nil errLogFunc")
+			}
+		})
+	}
+}
+
 func mustParseURL(rawURL string) *url.URL {
 	u, err := url.Parse(rawURL)
 	if err != nil {

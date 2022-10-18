@@ -28,17 +28,22 @@ func (n *trieNode) addCaptureVarNameIfNotExists(varName string) {
 	n.captureVarNames = append(n.captureVarNames, varName)
 }
 
+// sortChildren sorts the children of a node respecting these 2 rules:
+// 1. the leafs should have the lowes priority
+// 2. the nodes with a MatchType should have a priority accordingly with their rank
 func (n *trieNode) sortChildren() {
 	sort.SliceStable(n.children, func(i, j int) bool {
 		ci := n.children[i]
 		cj := n.children[j]
-		if ci.isLeaf() {
-			return true
-		}
-		if cj.isLeaf() {
+		if ci.isLeaf() && cj.isLeaf() {
 			return false
+		} else if ci.isLeaf() {
+			return true
+		} else if cj.isLeaf() {
+			return false
+		} else {
+			return ci.pathElement.MatchType < cj.pathElement.MatchType
 		}
-		return ci.pathElement.MatchType < cj.pathElement.MatchType
 	})
 }
 

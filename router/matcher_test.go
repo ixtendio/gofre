@@ -363,6 +363,505 @@ func Test_matcher_match(t *testing.T) {
 	}
 }
 
+func Test_trieNode_addCaptureVarNameIfNotExists(t *testing.T) {
+	type fields struct {
+		captureVarNames []string
+	}
+	tests := []struct {
+		name   string
+		fields fields
+		args   string
+		want   []string
+	}{
+		{
+			name:   "captureVarNames is empty",
+			fields: fields{},
+			args:   "a",
+			want:   []string{"a"},
+		},
+		{
+			name:   "captureVarNames is not empty",
+			fields: fields{captureVarNames: []string{"a", "b"}},
+			args:   "c",
+			want:   []string{"a", "b", "c"},
+		},
+		{
+			name:   "var name is empty",
+			fields: fields{captureVarNames: []string{"a"}},
+			args:   "",
+			want:   []string{"a"},
+		},
+		{
+			name:   "var name already exists but is uppercase",
+			fields: fields{captureVarNames: []string{"A"}},
+			args:   "a",
+			want:   []string{"A", "a"},
+		},
+		{
+			name:   "var name already exists",
+			fields: fields{captureVarNames: []string{"a"}},
+			args:   "a",
+			want:   []string{"a"},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			n := &trieNode{
+				captureVarNames: tt.fields.captureVarNames,
+			}
+			n.addCaptureVarNameIfNotExists(tt.args)
+
+			if !reflect.DeepEqual(n.captureVarNames, tt.want) {
+				t.Errorf("addCaptureVarNameIfNotExists() got = '%v', want = '%v'", n.captureVarNames, tt.want)
+			}
+		})
+	}
+}
+
+func Test_trieNode_sortChildren(t *testing.T) {
+	nilHandler := func(ctx context.Context, r *request.HttpRequest) (response.HttpResponse, error) {
+		return nil, nil
+	}
+	type fields struct {
+		children []*trieNode
+	}
+	tests := []struct {
+		name   string
+		fields fields
+		want   []string
+	}{
+		{
+			name:   "empty children",
+			fields: fields{},
+			want:   nil,
+		},
+		{
+			name: "sort 2 leafs",
+			fields: fields{
+				children: []*trieNode{
+					{
+						pathElement: &path.Element{PathPatternId: "1"},
+						handler:     nilHandler,
+					}, {
+						pathElement: &path.Element{PathPatternId: "2"},
+						handler:     nilHandler,
+					}},
+			},
+			want: []string{"1", "2"},
+		},
+		{
+			name: "sort 1 leaf and a node - uc1",
+			fields: fields{
+				children: []*trieNode{
+					{
+						pathElement: &path.Element{PathPatternId: "1"},
+					}, {
+						pathElement: &path.Element{PathPatternId: "2"},
+						handler:     nilHandler,
+					}},
+			},
+			want: []string{"2", "1"},
+		},
+		{
+			name: "sort 1 leaf and a node - uc2",
+			fields: fields{
+				children: []*trieNode{
+					{
+						pathElement: &path.Element{PathPatternId: "1"},
+						handler:     nilHandler,
+					}, {
+						pathElement: &path.Element{PathPatternId: "2"},
+					}},
+			},
+			want: []string{"1", "2"},
+		},
+		{
+			name: "sort 2 leafs and a node",
+			fields: fields{
+				children: []*trieNode{
+					{
+						pathElement: &path.Element{PathPatternId: "1"},
+					},
+					{
+						pathElement: &path.Element{PathPatternId: "2"},
+						handler:     nilHandler,
+					},
+					{
+						pathElement: &path.Element{PathPatternId: "3"},
+						handler:     nilHandler,
+					}},
+			},
+			want: []string{"2", "3", "1"},
+		},
+		{
+			name: "sort 2 nodes with the same priority",
+			fields: fields{
+				children: []*trieNode{
+					{
+						pathElement: &path.Element{PathPatternId: "1", MatchType: path.MatchLiteralType},
+					},
+					{
+						pathElement: &path.Element{PathPatternId: "2", MatchType: path.MatchLiteralType},
+					}},
+			},
+			want: []string{"1", "2"},
+		},
+		{
+			name: "sort nodes with leaf leafs",
+			fields: fields{
+				children: []*trieNode{
+					{
+						pathElement: &path.Element{PathPatternId: "60", MatchType: path.MatchLiteralType},
+					},
+					{
+						pathElement: &path.Element{PathPatternId: "70", MatchType: path.MatchSeparatorType},
+					},
+					{
+						pathElement: &path.Element{PathPatternId: "50", MatchType: path.MatchMultiplePathsType},
+					},
+					{
+						pathElement: &path.Element{PathPatternId: "40", MatchType: path.MatchRegexType},
+					},
+					{
+						pathElement: &path.Element{PathPatternId: "20", MatchType: path.MatchVarCaptureWithConstraintType},
+					},
+					{
+						pathElement: &path.Element{PathPatternId: "10", MatchType: path.MatchVarCaptureType},
+					},
+					{
+						pathElement: &path.Element{PathPatternId: "30"},
+						handler:     nilHandler,
+					},
+				},
+			},
+			want: []string{"30", "70", "60", "20", "10", "40", "50"},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			n := &trieNode{
+				children: tt.fields.children,
+			}
+			n.sortChildren()
+			var got []string
+			for _, c := range n.children {
+				got = append(got, c.pathElement.PathPatternId)
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("addCaptureVarNameIfNotExists() got = '%v', want = '%v'", got, tt.want)
+			}
+		})
+	}
+}
+
+func Test_trieNode_addChild(t *testing.T) {
+	nilHandler := func(ctx context.Context, r *request.HttpRequest) (response.HttpResponse, error) {
+		return nil, nil
+	}
+	type parentNode struct {
+		children []*trieNode
+		handler  handler2.Handler
+	}
+	type want struct {
+		returnNodeId              string
+		returnNodeCaptureVarNames []string
+		parentChildrenId          []string
+	}
+	tests := []struct {
+		name       string
+		parentNode parentNode
+		args       *path.Element
+		want       *want
+		wantErr    bool
+	}{
+		{
+			name: "MatchVarCaptureWithConstraintType - add existing child with the same match pattern",
+			parentNode: parentNode{children: []*trieNode{{
+				captureVarNames: []string{"1/a"},
+				pathElement: &path.Element{
+					PathPatternId:  "1",
+					MatchType:      path.MatchVarCaptureWithConstraintType,
+					MatchPattern:   "a.*b",
+					CaptureVarName: "b",
+				}},
+			}},
+			args: &path.Element{
+				PathPatternId:  "2",
+				MatchType:      path.MatchVarCaptureWithConstraintType,
+				MatchPattern:   "a.*b",
+				CaptureVarName: "b",
+			},
+			want: &want{
+				returnNodeId:              "1",
+				parentChildrenId:          []string{"1"},
+				returnNodeCaptureVarNames: []string{"1/a", "2/b"},
+			},
+			wantErr: false,
+		},
+		{
+			name: "MatchVarCaptureWithConstraintType - add existing child with different match pattern",
+			parentNode: parentNode{children: []*trieNode{{
+				captureVarNames: []string{"1/a"},
+				pathElement: &path.Element{
+					PathPatternId:  "1",
+					MatchType:      path.MatchVarCaptureWithConstraintType,
+					MatchPattern:   "a.*b",
+					CaptureVarName: "b",
+				}},
+			}},
+			args: &path.Element{
+				PathPatternId:  "2",
+				MatchType:      path.MatchVarCaptureWithConstraintType,
+				MatchPattern:   "a.*c",
+				CaptureVarName: "b",
+			},
+			want: &want{
+				returnNodeId:              "2",
+				parentChildrenId:          []string{"1", "2"},
+				returnNodeCaptureVarNames: []string{"2/b"},
+			},
+			wantErr: false,
+		},
+		{
+			name: "MatchVarCaptureType - add existing child with the same capture var name",
+			parentNode: parentNode{children: []*trieNode{{
+				pathElement: &path.Element{
+					PathPatternId:  "1",
+					MatchType:      path.MatchVarCaptureType,
+					CaptureVarName: "b",
+				}},
+			}},
+			args: &path.Element{
+				PathPatternId:  "2",
+				MatchType:      path.MatchVarCaptureType,
+				CaptureVarName: "b",
+			},
+			want: &want{
+				returnNodeId:              "1",
+				parentChildrenId:          []string{"1"},
+				returnNodeCaptureVarNames: []string{"2/b"},
+			},
+			wantErr: false,
+		},
+		{
+			name: "MatchVarCaptureType - add existing child with the different capture var name",
+			parentNode: parentNode{children: []*trieNode{{
+				captureVarNames: []string{"1/a"},
+				pathElement: &path.Element{
+					PathPatternId:  "1",
+					MatchType:      path.MatchVarCaptureType,
+					CaptureVarName: "a",
+				}},
+			}},
+			args: &path.Element{
+				PathPatternId:  "2",
+				MatchType:      path.MatchVarCaptureType,
+				CaptureVarName: "b",
+			},
+			want: &want{
+				returnNodeId:              "1",
+				parentChildrenId:          []string{"1"},
+				returnNodeCaptureVarNames: []string{"1/a", "2/b"},
+			},
+			wantErr: false,
+		},
+		{
+			name: "MatchRegexType - add existing child with the same raw value",
+			parentNode: parentNode{children: []*trieNode{{
+				pathElement: &path.Element{
+					PathPatternId: "1",
+					MatchType:     path.MatchRegexType,
+					MatchPattern:  "a.*b",
+				}},
+			}},
+			args: &path.Element{
+				PathPatternId: "2",
+				MatchType:     path.MatchRegexType,
+				MatchPattern:  "a.*b",
+			},
+			want: &want{
+				returnNodeId:     "1",
+				parentChildrenId: []string{"1"},
+			},
+			wantErr: false,
+		},
+		{
+			name: "MatchRegexType - add existing child with different raw value",
+			parentNode: parentNode{children: []*trieNode{{
+				pathElement: &path.Element{
+					PathPatternId: "1",
+					MatchType:     path.MatchRegexType,
+					MatchPattern:  "a.*b",
+				}},
+			}},
+			args: &path.Element{
+				PathPatternId: "2",
+				MatchType:     path.MatchRegexType,
+				MatchPattern:  "a.*c",
+			},
+			want: &want{
+				returnNodeId:     "2",
+				parentChildrenId: []string{"1", "2"},
+			},
+			wantErr: false,
+		},
+		{
+			name: "MatchLiteralType - add existing child with the same raw value",
+			parentNode: parentNode{children: []*trieNode{{
+				pathElement: &path.Element{
+					PathPatternId: "1",
+					MatchType:     path.MatchLiteralType,
+					RawVal:        "a",
+				}},
+			}},
+			args: &path.Element{
+				PathPatternId: "2",
+				MatchType:     path.MatchLiteralType,
+				RawVal:        "a",
+			},
+			want: &want{
+				returnNodeId:     "1",
+				parentChildrenId: []string{"1"},
+			},
+			wantErr: false,
+		},
+		{
+			name: "MatchLiteralType - add existing child with different raw value",
+			parentNode: parentNode{children: []*trieNode{{
+				pathElement: &path.Element{
+					PathPatternId: "1",
+					MatchType:     path.MatchLiteralType,
+					RawVal:        "a",
+				}},
+			}},
+			args: &path.Element{
+				PathPatternId: "2",
+				MatchType:     path.MatchLiteralType,
+				RawVal:        "b",
+			},
+			want: &want{
+				returnNodeId:     "2",
+				parentChildrenId: []string{"1", "2"},
+			},
+			wantErr: false,
+		},
+		{
+			name: "MatchSeparatorType - add existing child",
+			parentNode: parentNode{children: []*trieNode{{
+				pathElement: &path.Element{
+					PathPatternId: "1",
+					MatchType:     path.MatchSeparatorType}},
+			}},
+			args: &path.Element{
+				PathPatternId: "2",
+				MatchType:     path.MatchSeparatorType},
+			want: &want{
+				returnNodeId:     "1",
+				parentChildrenId: []string{"1"},
+			},
+			wantErr: false,
+		},
+		{
+			name:       "add child to an empty list",
+			parentNode: parentNode{},
+			args: &path.Element{
+				PathPatternId: "1",
+				MatchType:     path.MatchSeparatorType},
+			want: &want{
+				returnNodeId:     "1",
+				parentChildrenId: []string{"1"},
+			},
+			wantErr: false,
+		},
+		{
+			name:       "add child to a leaf",
+			parentNode: parentNode{handler: nilHandler},
+			args:       &path.Element{},
+			want:       nil,
+			wantErr:    true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			parent := &trieNode{
+				children: tt.parentNode.children,
+				handler:  tt.parentNode.handler,
+			}
+			got, err := parent.addChild(tt.args)
+			if (err != nil) != tt.wantErr {
+				t.Fatalf("addChild() error = %v, wantErr %v", err, tt.wantErr)
+			}
+			if !tt.wantErr {
+				var gotChildren []string
+				for _, c := range parent.children {
+					gotChildren = append(gotChildren, c.pathElement.PathPatternId)
+				}
+				if !reflect.DeepEqual(gotChildren, tt.want.parentChildrenId) {
+					t.Fatalf("addChild() got children = '%v', want children = '%v'", gotChildren, tt.want.parentChildrenId)
+				}
+				if got.pathElement.PathPatternId != tt.want.returnNodeId {
+					t.Fatalf("addChild() got nodeId = '%s', want nodeId = '%s'", got.pathElement.PathPatternId, tt.want.returnNodeId)
+				}
+				if !reflect.DeepEqual(got.captureVarNames, tt.want.returnNodeCaptureVarNames) {
+					t.Fatalf("addChild() got captureVarNames = '%v', want captureVarNames = '%v'", got.captureVarNames, tt.want.returnNodeCaptureVarNames)
+				}
+			}
+		})
+	}
+}
+
+func Test_trieNode_addLeaf(t *testing.T) {
+	nilHandler := func(ctx context.Context, r *request.HttpRequest) (response.HttpResponse, error) {
+		return nil, nil
+	}
+	type parentNodeFields struct {
+		children []*trieNode
+		handler  handler2.Handler
+	}
+	tests := []struct {
+		name              string
+		parentNode        parentNodeFields
+		wantChildrenCount int
+		wantErr           bool
+	}{
+		{
+			name:              "add leaf when a leaf already exists",
+			parentNode:        parentNodeFields{children: []*trieNode{{handler: nilHandler}}},
+			wantChildrenCount: 1,
+			wantErr:           true,
+		},
+		{
+			name:              "add leaf to empty children",
+			parentNode:        parentNodeFields{},
+			wantChildrenCount: 1,
+			wantErr:           false,
+		},
+		{
+			name:              "add leaf to when parent is leaf",
+			parentNode:        parentNodeFields{handler: nilHandler},
+			wantChildrenCount: 0,
+			wantErr:           true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			parent := &trieNode{
+				pathElement: &path.Element{RawVal: "a"},
+				children:    tt.parentNode.children,
+				handler:     tt.parentNode.handler,
+			}
+
+			err := parent.addLeaf(nilHandler)
+			if (err != nil) != tt.wantErr {
+				t.Fatalf("addLeaf() error = %v, wantErr %v", err, tt.wantErr)
+			}
+			if len(parent.children) != tt.wantChildrenCount {
+				t.Fatalf("addLeaf() got children = '%v', want children = '%v'", len(parent.children), tt.wantChildrenCount)
+			}
+		})
+	}
+}
+
 func newMatchingContextB(t *testing.B, urlPath string) *path.MatchingContext {
 	mc, err := newMatchingContext(urlPath)
 	if err != nil {
