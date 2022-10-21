@@ -80,6 +80,7 @@ func (c *Config) setDefaults() error {
 }
 
 type MuxHandler struct {
+	pathPrefix            string
 	router                *router.Router
 	commonPreMiddlewares  []middleware.Middleware
 	commonPostMiddlewares []middleware.Middleware
@@ -109,6 +110,19 @@ func NewMuxHandler(config *Config) (*MuxHandler, error) {
 		router:    r,
 		webConfig: config,
 	}, nil
+}
+
+func (m *MuxHandler) RouteWithPathPrefix(pathPrefix string) *MuxHandler {
+	if len(pathPrefix) == 0 && len(m.pathPrefix) == 0 {
+		return m
+	}
+	return &MuxHandler{
+		pathPrefix:            pathPrefix,
+		router:                m.router,
+		commonPreMiddlewares:  m.commonPreMiddlewares,
+		commonPostMiddlewares: m.commonPostMiddlewares,
+		webConfig:             m.webConfig,
+	}
 }
 
 // CommonPreMiddlewares registers middlewares that will be applied for all handlers, before custom handlers middlewares
@@ -153,7 +167,7 @@ func (m *MuxHandler) HandleOAUTH2WithCustomPaths(initiatePath string, authorizeB
 		if provider == nil {
 			return nil, errors.NewErrInvalidRequestWithMessage("oauth provider not supported")
 		}
-		redirectUrl := oauthConfig.WebsiteUrl + authorizationFlowBasePath + "/" + provider.Name()
+		redirectUrl := oauthConfig.WebsiteUrl + m.resolvePath(authorizationFlowBasePath) + "/" + provider.Name()
 		state := generateUniqueId(12)
 		if cache != nil {
 			if err := cache.Add(state, oauthConfig.CacheConfig.KeyExpirationTime); err != nil {
@@ -172,7 +186,7 @@ func (m *MuxHandler) HandleOAUTH2WithCustomPaths(initiatePath string, authorizeB
 			return nil, errors.NewErrInvalidRequestWithMessage("oauth provider not supported")
 		}
 
-		redirectUrl := oauthConfig.WebsiteUrl + authorizationFlowBasePath + "/" + provider.Name()
+		redirectUrl := oauthConfig.WebsiteUrl + m.resolvePath(authorizationFlowBasePath) + "/" + provider.Name()
 		errCode := r.R.FormValue("error")
 		if errCode != "" {
 			return nil, errors.ErrUnauthorized
@@ -236,24 +250,39 @@ func (m *MuxHandler) HandleDelete(path string, handler handler.Handler, middlewa
 // The middlewares will be applied only for this handler
 func (m *MuxHandler) HandleRequest(httpMethod string, path string, h handler.Handler, middlewares ...middleware.Middleware) {
 	h = wrapMiddleware(wrapMiddleware(wrapMiddleware(h, m.commonPostMiddlewares...), middlewares...), m.commonPreMiddlewares...)
-	m.router.Handle(httpMethod, path, h)
+	m.router.Handle(httpMethod, m.resolvePath(path), h)
+}
+
+func (m *MuxHandler) resolvePath(path string) string {
+	pathPrefix := m.pathPrefix
+	if len(pathPrefix) == 0 {
+		return path
+	}
+
+	if pathPrefix[len(pathPrefix)-1] == '/' && path[0] == '/' {
+		return pathPrefix + path[1:]
+	} else if pathPrefix[len(pathPrefix)-1] != '/' && path[0] != '/' {
+		return pathPrefix + "/" + path
+	} else {
+		return pathPrefix + path
+	}
 }
 
 // EnableDebugEndpoints enable debug endpoints
 func (m MuxHandler) EnableDebugEndpoints() {
 	// Register all the standard library debug endpoints.
-	m.router.Handle(http.MethodGet, "/debug/pprof/", handler.HandlerFunc2Handler(pprof.Index))
-	m.router.Handle(http.MethodGet, "/debug/pprof/allocs", handler.HandlerFunc2Handler(pprof.Index))
-	m.router.Handle(http.MethodGet, "/debug/pprof/block", handler.HandlerFunc2Handler(pprof.Index))
-	m.router.Handle(http.MethodGet, "/debug/pprof/goroutine", handler.HandlerFunc2Handler(pprof.Index))
-	m.router.Handle(http.MethodGet, "/debug/pprof/heap", handler.HandlerFunc2Handler(pprof.Index))
-	m.router.Handle(http.MethodGet, "/debug/pprof/mutex", handler.HandlerFunc2Handler(pprof.Index))
-	m.router.Handle(http.MethodGet, "/debug/pprof/threadcreate", handler.HandlerFunc2Handler(pprof.Index))
-	m.router.Handle(http.MethodGet, "/debug/pprof/cmdline", handler.HandlerFunc2Handler(pprof.Cmdline))
-	m.router.Handle(http.MethodGet, "/debug/pprof/profile", handler.HandlerFunc2Handler(pprof.Profile))
-	m.router.Handle(http.MethodGet, "/debug/pprof/symbol", handler.HandlerFunc2Handler(pprof.Symbol))
-	m.router.Handle(http.MethodGet, "/debug/pprof/trace", handler.HandlerFunc2Handler(pprof.Trace))
-	m.router.Handle(http.MethodGet, "/debug/vars", handler.Handler2Handler(expvar.Handler()))
+	m.router.Handle(http.MethodGet, m.resolvePath("/debug/pprof/"), handler.HandlerFunc2Handler(pprof.Index))
+	m.router.Handle(http.MethodGet, m.resolvePath("/debug/pprof/allocs"), handler.HandlerFunc2Handler(pprof.Index))
+	m.router.Handle(http.MethodGet, m.resolvePath("/debug/pprof/block"), handler.HandlerFunc2Handler(pprof.Index))
+	m.router.Handle(http.MethodGet, m.resolvePath("/debug/pprof/goroutine"), handler.HandlerFunc2Handler(pprof.Index))
+	m.router.Handle(http.MethodGet, m.resolvePath("/debug/pprof/heap"), handler.HandlerFunc2Handler(pprof.Index))
+	m.router.Handle(http.MethodGet, m.resolvePath("/debug/pprof/mutex"), handler.HandlerFunc2Handler(pprof.Index))
+	m.router.Handle(http.MethodGet, m.resolvePath("/debug/pprof/threadcreate"), handler.HandlerFunc2Handler(pprof.Index))
+	m.router.Handle(http.MethodGet, m.resolvePath("/debug/pprof/cmdline"), handler.HandlerFunc2Handler(pprof.Cmdline))
+	m.router.Handle(http.MethodGet, m.resolvePath("/debug/pprof/profile"), handler.HandlerFunc2Handler(pprof.Profile))
+	m.router.Handle(http.MethodGet, m.resolvePath("/debug/pprof/symbol"), handler.HandlerFunc2Handler(pprof.Symbol))
+	m.router.Handle(http.MethodGet, m.resolvePath("/debug/pprof/trace"), handler.HandlerFunc2Handler(pprof.Trace))
+	m.router.Handle(http.MethodGet, m.resolvePath("/debug/vars"), handler.Handler2Handler(expvar.Handler()))
 }
 
 func wrapMiddleware(handler handler.Handler, middlewares ...middleware.Middleware) handler.Handler {

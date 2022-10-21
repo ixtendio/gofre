@@ -36,7 +36,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to create GOFre mux handler, err: %v", err)
 	}
-	gofreMux.CommonPreMiddlewares(middleware.Panic(), middleware.ErrJsonResponse())
+	gofreMux.CommonPreMiddlewares(middleware.PanicRecover(), middleware.ErrJsonResponse())
 
 	// template example
 	gofreMux.HandleGet("/", func(ctx context.Context, r *request.HttpRequest) (response.HttpResponse, error) {
@@ -72,20 +72,19 @@ func main() {
 	})
 
 	// TEXT plain response
-	gofreMux.HandleGet("/text/{plain}", func(ctx context.Context, r *request.HttpRequest) (response.HttpResponse, error) {
+	textRouter := gofreMux.RouteWithPathPrefix("/text")
+	textRouter.HandleGet("/{plain}", func(ctx context.Context, r *request.HttpRequest) (response.HttpResponse, error) {
 		return response.PlainTextHttpResponseOK("Text plain response"), nil
 	})
-	gofreMux.HandleGet("/text/*", func(ctx context.Context, r *request.HttpRequest) (response.HttpResponse, error) {
+	textRouter.HandleGet("/*", func(ctx context.Context, r *request.HttpRequest) (response.HttpResponse, error) {
 		return response.PlainTextHttpResponseOK("Text plain response"), nil
 	})
-
 	// TEXT plain response
-	gofreMux.HandleGet("/text/plain", func(ctx context.Context, r *request.HttpRequest) (response.HttpResponse, error) {
+	textRouter.HandleGet("/plain", func(ctx context.Context, r *request.HttpRequest) (response.HttpResponse, error) {
 		return response.PlainTextHttpResponseOK("Text plain response"), nil
 	})
-
 	// HTML response
-	gofreMux.HandleGet("/text/html", func(ctx context.Context, r *request.HttpRequest) (response.HttpResponse, error) {
+	textRouter.HandleGet("/html", func(ctx context.Context, r *request.HttpRequest) (response.HttpResponse, error) {
 		return response.HtmlHttpResponseOK("<!DOCTYPE html><html><body><h1>HTML example</h1></body></html>"), nil
 	})
 
