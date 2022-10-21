@@ -8,7 +8,7 @@ import (
 	"github.com/ixtendio/gofre/response"
 )
 
-func Panic() Middleware {
+func PanicRecover() Middleware {
 	return func(handler handler.Handler) handler.Handler {
 		return func(ctx context.Context, req *request.HttpRequest) (resp response.HttpResponse, err error) {
 			defer func() {

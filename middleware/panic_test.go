@@ -53,14 +53,14 @@ func TestPanicMiddleware(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			m := Panic()
+			m := PanicRecover()
 			resp, err := m(tt.handler)(context.Background(), nil)
 			if err != nil {
 				if err.Error() != tt.want.errMsg {
-					t.Errorf("Panic() = %v, want %v", err.Error(), tt.want.errMsg)
+					t.Errorf("PanicRecover() = %v, want %v", err.Error(), tt.want.errMsg)
 				}
 			} else if !reflect.DeepEqual(tt.want.resp, resp) {
-				t.Errorf("Panic() = %v, want %v", resp, tt.want.resp)
+				t.Errorf("PanicRecover() = %v, want %v", resp, tt.want.resp)
 			}
 		})
 	}
