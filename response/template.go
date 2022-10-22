@@ -38,7 +38,6 @@ func TemplateHttpResponseOK(template *template.Template, templateName string, te
 		HttpHeadersResponse: HttpHeadersResponse{
 			HttpStatusCode: http.StatusOK,
 			HttpHeaders:    defaultHtmlHeaders(),
-			HttpCookies:    nil,
 		},
 		Template: template,
 		Name:     templateName,
@@ -52,7 +51,6 @@ func TemplateHttpResponseNotFound(template *template.Template, templateName stri
 		HttpHeadersResponse: HttpHeadersResponse{
 			HttpStatusCode: http.StatusNotFound,
 			HttpHeaders:    defaultHtmlHeaders(),
-			HttpCookies:    nil,
 		},
 		Template: template,
 		Name:     templateName,
@@ -67,7 +65,6 @@ func TemplateHttpResponseWithHeaders(template *template.Template, statusCode int
 		HttpHeadersResponse: HttpHeadersResponse{
 			HttpStatusCode: statusCode,
 			HttpHeaders:    headers,
-			HttpCookies:    nil,
 		},
 		Template: template,
 		Name:     templateName,
@@ -76,12 +73,12 @@ func TemplateHttpResponseWithHeaders(template *template.Template, statusCode int
 }
 
 // TemplateHttpResponseWithCookies creates an HTML response with custom cookies
-func TemplateHttpResponseWithCookies(template *template.Template, statusCode int, templateName string, templateData any, cookies []*http.Cookie) *HttpTemplateResponse {
+func TemplateHttpResponseWithCookies(template *template.Template, statusCode int, templateName string, templateData any, cookies []http.Cookie) *HttpTemplateResponse {
 	return &HttpTemplateResponse{
 		HttpHeadersResponse: HttpHeadersResponse{
 			HttpStatusCode: statusCode,
 			HttpHeaders:    defaultHtmlHeaders(),
-			HttpCookies:    cookies,
+			HttpCookies:    NewHttpCookies(cookies),
 		},
 		Template: template,
 		Name:     templateName,
@@ -90,13 +87,13 @@ func TemplateHttpResponseWithCookies(template *template.Template, statusCode int
 }
 
 // TemplateHttpResponseWithHeadersAndCookies creates an HTML response with custom headers and cookies
-func TemplateHttpResponseWithHeadersAndCookies(template *template.Template, statusCode int, templateName string, templateData any, headers http.Header, cookies []*http.Cookie) *HttpTemplateResponse {
+func TemplateHttpResponseWithHeadersAndCookies(template *template.Template, statusCode int, templateName string, templateData any, headers http.Header, cookies []http.Cookie) *HttpTemplateResponse {
 	headers.Set("Content-Type", htmlContentType)
 	return &HttpTemplateResponse{
 		HttpHeadersResponse: HttpHeadersResponse{
 			HttpStatusCode: statusCode,
 			HttpHeaders:    headers,
-			HttpCookies:    cookies,
+			HttpCookies:    NewHttpCookies(cookies),
 		},
 		Template: template,
 		Name:     templateName,

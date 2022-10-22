@@ -6,8 +6,9 @@ import (
 )
 
 type HttpHandlerAdaptorResponse struct {
-	handler     http.Handler
-	handlerFunc http.HandlerFunc
+	headers http.Header
+	cookies HttpCookies
+	handler http.Handler
 }
 
 func (r *HttpHandlerAdaptorResponse) StatusCode() int {
@@ -15,26 +16,44 @@ func (r *HttpHandlerAdaptorResponse) StatusCode() int {
 }
 
 func (r *HttpHandlerAdaptorResponse) Headers() http.Header {
-	return nil
+	if r.headers == nil {
+		r.headers = http.Header{}
+	}
+	return r.headers
 }
 
-func (r *HttpHandlerAdaptorResponse) Cookies() []*http.Cookie {
-	return nil
+func (r *HttpHandlerAdaptorResponse) Cookies() HttpCookies {
+	if r.cookies == nil {
+		r.cookies = HttpCookies{}
+	}
+	return r.cookies
 }
 
 func (r *HttpHandlerAdaptorResponse) Write(w http.ResponseWriter, responseContext *request.HttpRequest) error {
-	if r.handler != nil {
-		r.handler.ServeHTTP(w, responseContext.R)
-	} else {
-		r.handlerFunc(w, responseContext.R)
+	// Write custom cookies
+	if r.cookies != nil {
+		for _, cookie := range r.cookies {
+			http.SetCookie(w, &cookie)
+		}
 	}
+
+	// Write custom headers
+	if r.headers != nil {
+		for k, v := range r.headers {
+			for _, e := range v {
+				w.Header().Add(k, e)
+			}
+		}
+	}
+
+	r.handler.ServeHTTP(w, responseContext.R)
 	return nil
 }
 
 // HandlerFuncAdaptor adapt a http.HandlerFunc to HttpResponse
 func HandlerFuncAdaptor(handlerFunc http.HandlerFunc) *HttpHandlerAdaptorResponse {
 	return &HttpHandlerAdaptorResponse{
-		handlerFunc: handlerFunc,
+		handler: handlerFunc,
 	}
 }
 

@@ -5,14 +5,10 @@ import (
 	"fmt"
 	"github.com/ixtendio/gofre/request"
 	"net/http"
-	"unicode"
+	"strings"
 )
 
 const jsonContentType = "application/json"
-
-var defaultJsonHeaders = func() http.Header {
-	return http.Header{"Content-Type": {jsonContentType}}
-}
 
 var emptyJson = []byte("{}")
 
@@ -47,61 +43,35 @@ func (r *HttpJsonResponse) Write(w http.ResponseWriter, req *request.HttpRequest
 
 // JsonHttpResponseOK creates a 200 success JSON response
 func JsonHttpResponseOK(payload any) *HttpJsonResponse {
-	return &HttpJsonResponse{
-		HttpHeadersResponse: HttpHeadersResponse{
-			HttpStatusCode: http.StatusOK,
-			HttpHeaders:    defaultJsonHeaders(),
-			HttpCookies:    nil,
-		},
-		Payload: payload,
-	}
+	return JsonHttpResponseWithHeadersAndCookies(http.StatusOK, payload, nil, nil)
 }
 
 // JsonHttpResponse creates a JSON response with a specific status code
 func JsonHttpResponse(statusCode int, payload any) *HttpJsonResponse {
-	return &HttpJsonResponse{
-		HttpHeadersResponse: HttpHeadersResponse{
-			HttpStatusCode: statusCode,
-			HttpHeaders:    defaultJsonHeaders(),
-			HttpCookies:    nil,
-		},
-		Payload: payload,
-	}
+	return JsonHttpResponseWithHeadersAndCookies(statusCode, payload, nil, nil)
 }
 
 // JsonHttpResponseWithCookies creates a JSON response with a specific status code and cookies
-func JsonHttpResponseWithCookies(statusCode int, payload any, cookies []*http.Cookie) *HttpJsonResponse {
-	return &HttpJsonResponse{
-		HttpHeadersResponse: HttpHeadersResponse{
-			HttpStatusCode: statusCode,
-			HttpHeaders:    defaultJsonHeaders(),
-			HttpCookies:    cookies,
-		},
-		Payload: payload,
-	}
+func JsonHttpResponseWithCookies(statusCode int, payload any, cookies []http.Cookie) *HttpJsonResponse {
+	return JsonHttpResponseWithHeadersAndCookies(statusCode, payload, nil, cookies)
 }
 
 // JsonHttpResponseWithHeaders creates a JSON response with a specific status code and headers
 func JsonHttpResponseWithHeaders(statusCode int, payload any, headers http.Header) *HttpJsonResponse {
-	headers.Set("Content-Type", jsonContentType)
-	return &HttpJsonResponse{
-		HttpHeadersResponse: HttpHeadersResponse{
-			HttpStatusCode: statusCode,
-			HttpHeaders:    headers,
-			HttpCookies:    nil,
-		},
-		Payload: payload,
-	}
+	return JsonHttpResponseWithHeadersAndCookies(statusCode, payload, headers, nil)
 }
 
 // JsonHttpResponseWithHeadersAndCookies creates a JSON response with a specific status code, custom headers and cookies
-func JsonHttpResponseWithHeadersAndCookies(statusCode int, payload any, headers http.Header, cookies []*http.Cookie) *HttpJsonResponse {
+func JsonHttpResponseWithHeadersAndCookies(statusCode int, payload any, headers http.Header, cookies []http.Cookie) *HttpJsonResponse {
+	if headers == nil {
+		headers = http.Header{}
+	}
 	headers.Set("Content-Type", jsonContentType)
 	return &HttpJsonResponse{
 		HttpHeadersResponse: HttpHeadersResponse{
 			HttpStatusCode: statusCode,
 			HttpHeaders:    headers,
-			HttpCookies:    cookies,
+			HttpCookies:    NewHttpCookies(cookies),
 		},
 		Payload: payload,
 	}
@@ -109,56 +79,39 @@ func JsonHttpResponseWithHeadersAndCookies(statusCode int, payload any, headers 
 
 // JsonErrorHttpResponse creates an error JSON response
 func JsonErrorHttpResponse(statusCode int, err error) *HttpJsonResponse {
-	return &HttpJsonResponse{
-		HttpHeadersResponse: HttpHeadersResponse{
-			HttpStatusCode: statusCode,
-			HttpHeaders:    defaultJsonHeaders(),
-			HttpCookies:    nil,
-		},
-		Payload: map[string]string{"error": errorToString(err)},
-	}
+	return JsonErrorHttpResponseWithHeadersAndCookies(statusCode, err, nil, nil)
 }
 
 // JsonErrorHttpResponseWithCookies creates an error JSON response with custom cookies
-func JsonErrorHttpResponseWithCookies(statusCode int, err error, cookies []*http.Cookie) *HttpJsonResponse {
-	return &HttpJsonResponse{
-		HttpHeadersResponse: HttpHeadersResponse{
-			HttpStatusCode: statusCode,
-			HttpHeaders:    defaultJsonHeaders(),
-			HttpCookies:    cookies,
-		},
-		Payload: map[string]string{"error": errorToString(err)},
-	}
+func JsonErrorHttpResponseWithCookies(statusCode int, err error, cookies []http.Cookie) *HttpJsonResponse {
+	return JsonErrorHttpResponseWithHeadersAndCookies(statusCode, err, nil, cookies)
 }
 
 // JsonErrorHttpResponseWithHeaders creates an error JSON response with custom headers
 func JsonErrorHttpResponseWithHeaders(statusCode int, err error, headers http.Header) *HttpJsonResponse {
-	headers.Set("Content-Type", jsonContentType)
-	return &HttpJsonResponse{
-		HttpHeadersResponse: HttpHeadersResponse{
-			HttpStatusCode: statusCode,
-			HttpHeaders:    headers,
-			HttpCookies:    nil,
-		},
-		Payload: map[string]string{"error": errorToString(err)},
-	}
+	return JsonErrorHttpResponseWithHeadersAndCookies(statusCode, err, headers, nil)
 }
 
 // JsonErrorHttpResponseWithHeadersAndCookies creates an error JSON response with custom headers and cookies
-func JsonErrorHttpResponseWithHeadersAndCookies(statusCode int, err error, headers http.Header, cookies []*http.Cookie) *HttpJsonResponse {
+func JsonErrorHttpResponseWithHeadersAndCookies(statusCode int, err error, headers http.Header, cookies []http.Cookie) *HttpJsonResponse {
+	if headers == nil {
+		headers = http.Header{}
+	}
 	headers.Set("Content-Type", jsonContentType)
 	return &HttpJsonResponse{
 		HttpHeadersResponse: HttpHeadersResponse{
 			HttpStatusCode: statusCode,
 			HttpHeaders:    headers,
-			HttpCookies:    cookies,
+			HttpCookies:    NewHttpCookies(cookies),
 		},
 		Payload: map[string]string{"error": errorToString(err)},
 	}
 }
 
 func errorToString(err error) string {
-	errorMsgRune := []rune(err.Error())
-	errorMsgRune[0] = unicode.ToUpper(errorMsgRune[0])
-	return string(errorMsgRune)
+	if err == nil || len(err.Error()) == 0 {
+		return ""
+	}
+	errMsg := err.Error()
+	return strings.ToUpper(errMsg[0:1]) + errMsg[1:]
 }

@@ -36,7 +36,6 @@ func PlainTextHttpResponseOK(payload string) *HttpTextResponse {
 		HttpHeadersResponse: HttpHeadersResponse{
 			HttpStatusCode: http.StatusOK,
 			HttpHeaders:    defaultPlainTextHeaders(),
-			HttpCookies:    nil,
 		},
 		Payload: payload,
 	}
@@ -48,7 +47,6 @@ func HtmlHttpResponseOK(payload string) *HttpTextResponse {
 		HttpHeadersResponse: HttpHeadersResponse{
 			HttpStatusCode: http.StatusOK,
 			HttpHeaders:    defaultHtmlHeaders(),
-			HttpCookies:    nil,
 		},
 		Payload: payload,
 	}
@@ -60,7 +58,6 @@ func PlainTextHttpResponse(statusCode int, payload string) *HttpTextResponse {
 		HttpHeadersResponse: HttpHeadersResponse{
 			HttpStatusCode: statusCode,
 			HttpHeaders:    defaultPlainTextHeaders(),
-			HttpCookies:    nil,
 		},
 		Payload: payload,
 	}
@@ -72,7 +69,6 @@ func HtmlHttpResponse(statusCode int, payload string) *HttpTextResponse {
 		HttpHeadersResponse: HttpHeadersResponse{
 			HttpStatusCode: statusCode,
 			HttpHeaders:    defaultHtmlHeaders(),
-			HttpCookies:    nil,
 		},
 		Payload: payload,
 	}
@@ -85,7 +81,6 @@ func PlainTextHttpResponseWithHeaders(statusCode int, payload string, headers ht
 		HttpHeadersResponse: HttpHeadersResponse{
 			HttpStatusCode: statusCode,
 			HttpHeaders:    headers,
-			HttpCookies:    nil,
 		},
 		Payload: payload,
 	}
@@ -98,33 +93,32 @@ func HtmlHttpResponseWithHeaders(statusCode int, payload string, headers http.He
 		HttpHeadersResponse: HttpHeadersResponse{
 			HttpStatusCode: statusCode,
 			HttpHeaders:    headers,
-			HttpCookies:    nil,
 		},
 		Payload: payload,
 	}
 }
 
 // PlainTextResponseWithHeadersAndCookies creates a plain text response with a specific status code, custom headers and cookies
-func PlainTextResponseWithHeadersAndCookies(statusCode int, payload string, headers http.Header, cookies []*http.Cookie) *HttpTextResponse {
+func PlainTextResponseWithHeadersAndCookies(statusCode int, payload string, headers http.Header, cookies []http.Cookie) *HttpTextResponse {
 	headers.Set("Content-Type", plainTextContentType)
 	return &HttpTextResponse{
 		HttpHeadersResponse: HttpHeadersResponse{
 			HttpStatusCode: statusCode,
 			HttpHeaders:    headers,
-			HttpCookies:    cookies,
+			HttpCookies:    NewHttpCookies(cookies),
 		},
 		Payload: payload,
 	}
 }
 
 // HtmlResponseWithHeadersAndCookies creates a plain text response with a specific status code, custom headers and cookies
-func HtmlResponseWithHeadersAndCookies(statusCode int, payload string, headers http.Header, cookies []*http.Cookie) *HttpTextResponse {
+func HtmlResponseWithHeadersAndCookies(statusCode int, payload string, headers http.Header, cookies []http.Cookie) *HttpTextResponse {
 	headers.Set("Content-Type", htmlContentType)
 	return &HttpTextResponse{
 		HttpHeadersResponse: HttpHeadersResponse{
 			HttpStatusCode: statusCode,
 			HttpHeaders:    headers,
-			HttpCookies:    cookies,
+			HttpCookies:    NewHttpCookies(cookies),
 		},
 		Payload: payload,
 	}

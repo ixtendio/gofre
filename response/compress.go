@@ -37,7 +37,7 @@ func (r *HttpCompressResponse) Headers() http.Header {
 	return r.httpResponse.Headers()
 }
 
-func (r *HttpCompressResponse) Cookies() []*http.Cookie {
+func (r *HttpCompressResponse) Cookies() HttpCookies {
 	return r.httpResponse.Cookies()
 }
 
