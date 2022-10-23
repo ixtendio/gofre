@@ -14,6 +14,11 @@ import (
 type mockTemplate struct {
 }
 
+func (t *mockTemplate) Execute(wr io.Writer, data any) error {
+	_, err := wr.Write([]byte(fmt.Sprintf("template: data: %v", data)))
+	return err
+}
+
 func (t *mockTemplate) ExecuteTemplate(wr io.Writer, name string, data any) error {
 	_, err := wr.Write([]byte(fmt.Sprintf("template: %s, data: %v", name, data)))
 	return err

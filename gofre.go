@@ -34,7 +34,7 @@ type ResourcesConfig struct {
 	//the web path to server the static resources. Default: "assets"
 	AssetsMappingPath string
 	//the Go templates. Default: template.HTML
-	Template *template.Template
+	Template response.ExecutableTemplate
 }
 
 // A Config is a type used to pass the configuration to the MuxHandler

@@ -12,6 +12,7 @@ const htmlContentType = "text/html; charset=utf-8"
 const plainTextContentType = "text/plain; charset=utf-8"
 
 type ExecutableTemplate interface {
+	Execute(wr io.Writer, data any) error
 	ExecuteTemplate(wr io.Writer, name string, data any) error
 }
 
