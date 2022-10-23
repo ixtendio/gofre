@@ -3,19 +3,21 @@ package response
 import (
 	"fmt"
 	"github.com/ixtendio/gofre/request"
-	"html/template"
+	html "html/template"
+	"io"
 	"net/http"
 )
 
 const htmlContentType = "text/html; charset=utf-8"
+const plainTextContentType = "text/plain; charset=utf-8"
 
-var defaultHtmlHeaders = func() http.Header {
-	return http.Header{"Content-Type": {htmlContentType}}
+type ExecutableTemplate interface {
+	ExecuteTemplate(wr io.Writer, name string, data any) error
 }
 
 type HttpTemplateResponse struct {
 	HttpHeadersResponse
-	Template *template.Template
+	Template ExecutableTemplate
 	Name     string
 	Data     any
 }
@@ -33,62 +35,37 @@ func (r *HttpTemplateResponse) Write(w http.ResponseWriter, req *request.HttpReq
 }
 
 // TemplateHttpResponseOK creates a 200 success HTML response
-func TemplateHttpResponseOK(template *template.Template, templateName string, templateData any) *HttpTemplateResponse {
-	return &HttpTemplateResponse{
-		HttpHeadersResponse: HttpHeadersResponse{
-			HttpStatusCode: http.StatusOK,
-			HttpHeaders:    defaultHtmlHeaders(),
-		},
-		Template: template,
-		Name:     templateName,
-		Data:     templateData,
-	}
+func TemplateHttpResponseOK(template ExecutableTemplate, templateName string, templateData any) *HttpTemplateResponse {
+	return TemplateHttpResponseWithHeadersAndCookies(template, http.StatusOK, templateName, templateData, nil, nil)
 }
 
 // TemplateHttpResponseNotFound creates a 404 HTML response
-func TemplateHttpResponseNotFound(template *template.Template, templateName string, templateData any) *HttpTemplateResponse {
-	return &HttpTemplateResponse{
-		HttpHeadersResponse: HttpHeadersResponse{
-			HttpStatusCode: http.StatusNotFound,
-			HttpHeaders:    defaultHtmlHeaders(),
-		},
-		Template: template,
-		Name:     templateName,
-		Data:     templateData,
-	}
+func TemplateHttpResponseNotFound(template ExecutableTemplate, templateName string, templateData any) *HttpTemplateResponse {
+	return TemplateHttpResponseWithHeadersAndCookies(template, http.StatusNotFound, templateName, templateData, nil, nil)
 }
 
 // TemplateHttpResponseWithHeaders creates an HTML response with custom headers
-func TemplateHttpResponseWithHeaders(template *template.Template, statusCode int, templateName string, templateData any, headers http.Header) *HttpTemplateResponse {
-	headers.Set("Content-Type", htmlContentType)
-	return &HttpTemplateResponse{
-		HttpHeadersResponse: HttpHeadersResponse{
-			HttpStatusCode: statusCode,
-			HttpHeaders:    headers,
-		},
-		Template: template,
-		Name:     templateName,
-		Data:     templateData,
-	}
+func TemplateHttpResponseWithHeaders(template ExecutableTemplate, statusCode int, templateName string, templateData any, headers http.Header) *HttpTemplateResponse {
+	return TemplateHttpResponseWithHeadersAndCookies(template, statusCode, templateName, templateData, headers, nil)
 }
 
 // TemplateHttpResponseWithCookies creates an HTML response with custom cookies
-func TemplateHttpResponseWithCookies(template *template.Template, statusCode int, templateName string, templateData any, cookies []http.Cookie) *HttpTemplateResponse {
-	return &HttpTemplateResponse{
-		HttpHeadersResponse: HttpHeadersResponse{
-			HttpStatusCode: statusCode,
-			HttpHeaders:    defaultHtmlHeaders(),
-			HttpCookies:    NewHttpCookies(cookies),
-		},
-		Template: template,
-		Name:     templateName,
-		Data:     templateData,
-	}
+func TemplateHttpResponseWithCookies(template ExecutableTemplate, statusCode int, templateName string, templateData any, cookies []http.Cookie) *HttpTemplateResponse {
+	return TemplateHttpResponseWithHeadersAndCookies(template, statusCode, templateName, templateData, nil, cookies)
 }
 
 // TemplateHttpResponseWithHeadersAndCookies creates an HTML response with custom headers and cookies
-func TemplateHttpResponseWithHeadersAndCookies(template *template.Template, statusCode int, templateName string, templateData any, headers http.Header, cookies []http.Cookie) *HttpTemplateResponse {
-	headers.Set("Content-Type", htmlContentType)
+func TemplateHttpResponseWithHeadersAndCookies(template ExecutableTemplate, statusCode int, templateName string, templateData any, headers http.Header, cookies []http.Cookie) *HttpTemplateResponse {
+	if headers == nil {
+		headers = http.Header{}
+	}
+	if len(headers.Get("Content-Type")) == 0 {
+		if _, ok := template.(*html.Template); ok {
+			headers.Set("Content-Type", htmlContentType)
+		} else {
+			headers.Set("Content-Type", plainTextContentType)
+		}
+	}
 	return &HttpTemplateResponse{
 		HttpHeadersResponse: HttpHeadersResponse{
 			HttpStatusCode: statusCode,
