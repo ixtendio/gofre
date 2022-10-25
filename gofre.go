@@ -80,11 +80,10 @@ func (c *Config) setDefaults() error {
 }
 
 type MuxHandler struct {
-	pathPrefix            string
-	router                *router.Router
-	commonPreMiddlewares  []middleware.Middleware
-	commonPostMiddlewares []middleware.Middleware
-	webConfig             *Config
+	pathPrefix        string
+	router            *router.Router
+	commonMiddlewares []middleware.Middleware
+	webConfig         *Config
 }
 
 func NewMuxHandlerWithDefaultConfig() (*MuxHandler, error) {
@@ -112,27 +111,25 @@ func NewMuxHandler(config *Config) (*MuxHandler, error) {
 	}, nil
 }
 
+// RouteWithPathPrefix creates a new MuxHandler with a custom path prefix.
+// The new mux handler will inherit the common middlewares from the parent, and the new common middlewares added
+// to it will not be reflected to the parent.
+// The new path prefix will equal with the parent path prefix + the new path prefix
 func (m *MuxHandler) RouteWithPathPrefix(pathPrefix string) *MuxHandler {
-	if len(pathPrefix) == 0 && len(m.pathPrefix) == 0 {
+	if len(pathPrefix) == 0 || pathPrefix == m.pathPrefix {
 		return m
 	}
 	return &MuxHandler{
-		pathPrefix:            pathPrefix,
-		router:                m.router,
-		commonPreMiddlewares:  m.commonPreMiddlewares,
-		commonPostMiddlewares: m.commonPostMiddlewares,
-		webConfig:             m.webConfig,
+		pathPrefix:        m.resolvePath(pathPrefix),
+		router:            m.router,
+		commonMiddlewares: m.commonMiddlewares,
+		webConfig:         m.webConfig,
 	}
 }
 
-// CommonPreMiddlewares registers middlewares that will be applied for all handlers, before custom handlers middlewares
-func (m *MuxHandler) CommonPreMiddlewares(middlewares ...middleware.Middleware) {
-	m.commonPreMiddlewares = append(m.commonPreMiddlewares, middlewares...)
-}
-
-// CommonPostMiddlewares registers middlewares that will be applied for all handlers, after custom handlers middlewares
-func (m *MuxHandler) CommonPostMiddlewares(middlewares ...middleware.Middleware) {
-	m.commonPostMiddlewares = append(m.commonPostMiddlewares, middlewares...)
+// CommonMiddlewares registers middlewares that will be applied for all handlers
+func (m *MuxHandler) CommonMiddlewares(middlewares ...middleware.Middleware) {
+	m.commonMiddlewares = append(m.commonMiddlewares, middlewares...)
 }
 
 // HandleOAUTH2 registers the necessary handlers to initiate and complete the OAUTH2 flow
@@ -249,7 +246,7 @@ func (m *MuxHandler) HandleDelete(path string, handler handler.Handler, middlewa
 // HandleRequest registers a handler with middlewares for the specified HTTP method
 // The middlewares will be applied only for this handler
 func (m *MuxHandler) HandleRequest(httpMethod string, path string, h handler.Handler, middlewares ...middleware.Middleware) {
-	h = wrapMiddleware(wrapMiddleware(wrapMiddleware(h, m.commonPostMiddlewares...), middlewares...), m.commonPreMiddlewares...)
+	h = wrapMiddleware(wrapMiddleware(h, middlewares...), m.commonMiddlewares...)
 	m.router.Handle(httpMethod, m.resolvePath(path), h)
 }
 
@@ -257,6 +254,9 @@ func (m *MuxHandler) resolvePath(path string) string {
 	pathPrefix := m.pathPrefix
 	if len(pathPrefix) == 0 {
 		return path
+	}
+	if len(path) == 0 {
+		return pathPrefix
 	}
 
 	if pathPrefix[len(pathPrefix)-1] == '/' && path[0] == '/' {
