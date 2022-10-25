@@ -136,42 +136,24 @@ Moreover, the following two patterns are accepted by the framework although the 
 A _middleware_ is a function that intercepts a request. The function receives a _Handler_ as an argument and returns another _Handler_.
 
 There are two ways to register the middlewares:
-* **common registration** - applied to all handlers. A common middleware can be:
-   * **pre registered** - executed before the custom handler middlewares
-   * **post registered** - executed after the custom handler middlewares
+* **common registration** - applied to all handlers
 * **per handler registration** - applied for a single handler only
 
 Example:
 
 ```go 
-gofreMux.CommonPreMiddlewares(func(handler handler.Handler) handler.Handler {
+gofreMux.CommonMiddlewares(func(handler handler.Handler) handler.Handler {
   return func(ctx context.Context, r *request.HttpRequest) (response.HttpResponse, error) {
-      log.Println("Common pre middleware 1 - before processing the request")
+      log.Println("Common middleware 1 - before processing the request")
       resp, err := handler(ctx, r)
-      log.Println("Common pre middleware 1 - after processing the request")
+      log.Println("Common middleware 1 - after processing the request")
       return resp, err
   }
 }, func(handler handler.Handler) handler.Handler {
   return func(ctx context.Context, r *request.HttpRequest) (response.HttpResponse, error) {
-      log.Println("Common pre middleware 2 - before processing the request")
+      log.Println("Common middleware 2 - before processing the request")
       resp, err := handler(ctx, r)
-      log.Println("Common pre middleware 2 - after processing the request")
-      return resp, err
-  }
-})
-
-gofreMux.CommonPostMiddlewares(func(handler handler.Handler) handler.Handler {
-  return func(ctx context.Context, r *request.HttpRequest) (response.HttpResponse, error) {
-      log.Println("Common post middleware 1 - before processing the request")
-      resp, err := handler(ctx, r)
-      log.Println("Common post middleware 1 - after processing the request")
-      return resp, err
-  }
-}, func(handler handler.Handler) handler.Handler {
-  return func(ctx context.Context, r *request.HttpRequest) (response.HttpResponse, error) {
-      log.Println("Common post middleware 2 - before processing the request")
-      resp, err := handler(ctx, r)
-      log.Println("Common post middleware 2 - after processing the request")
+      log.Println("Common middleware 2 - after processing the request")
       return resp, err
   }
 })
@@ -199,27 +181,24 @@ gofreMux.HandleGet("/handlers", func(ctx context.Context, r *request.HttpRequest
 If we execute `curl -vvv "https://localhost:8080/handlers"`, we should see the following lines in the console:
 
 ```text
-Common pre middleware 1 - before processing the request
-Common pre middleware 2 - before processing the request
+Common middleware 1 - before processing the request
+Common middleware 2 - before processing the request
 Custom middleware 1 - before processing the request
 Custom middleware 2 - before processing the request
-Common post middleware 1 - before processing the request
-Common post middleware 2 - before processing the request
 Request handling
-Common post middleware 2 - after processing the request
-Common post middleware 1 - after processing the request
 Custom middleware 2 - after processing the request
 Custom middleware 1 - after processing the request
-Common pre middleware 2 - after processing the request
-Common pre middleware 1 - after processing the request
+Common middleware 2 - after processing the request
+Common middleware 1 - after processing the request
 ```
 
 The _middleware_ package includes the following implementations:
 
-* **Panic** - handles the panic and converts them to an error
+* **PanicRecover** - handles the panic and convert it to an error
 * **ErrResponse** - converts an error to an HTTP answer
 * **CSRFPrevention** - provides basic CSRF protection for a web application
 * **Cors** - enable client-side cross-origin requests by implementing W3C's CORS
+* **CompressResponse** - enable compression for HTTP response as long as the client accept it
 * **Authorize** - provides basic RBAC authorization (authentication is required in this case)
 
 ### Data Sharing
