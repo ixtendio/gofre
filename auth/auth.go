@@ -70,6 +70,12 @@ type Permission struct {
 	Access Access
 }
 
+func AllPermissions() Permission {
+	return Permission{
+		Scope:  "*",
+		Access: AccessAll(),
+	}
+}
 func NewPermission(scope string, access Access) (Permission, error) {
 	var separatorsCount int
 	for _, c := range scope {

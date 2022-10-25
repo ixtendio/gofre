@@ -36,7 +36,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to create GOFre mux handler, err: %v", err)
 	}
-	gofreMux.CommonPreMiddlewares(middleware.PanicRecover(), middleware.ErrJsonResponse())
+	gofreMux.CommonMiddlewares(middleware.PanicRecover(), middleware.ErrJsonResponse())
 
 	// template example
 	gofreMux.HandleGet("/", func(ctx context.Context, r *request.HttpRequest) (response.HttpResponse, error) {

@@ -22,6 +22,9 @@ type Router struct {
 	errLogFunc               func(err error)
 }
 
+func NewRouterWithDefaultConfig() *Router {
+	return NewRouter(false, defaultErrLogFunc)
+}
 func NewRouter(caseInsensitivePathMatch bool, errLogFunc func(err error)) *Router {
 	if errLogFunc == nil {
 		errLogFunc = defaultErrLogFunc
@@ -33,6 +36,8 @@ func NewRouter(caseInsensitivePathMatch bool, errLogFunc func(err error)) *Route
 	}
 }
 
+// Handle register a new handler or panic if the handler can not be registered
+// This method returns the router so that chain handler registration to be possible
 func (r *Router) Handle(method string, pathPattern string, handler handler.Handler) *Router {
 	if err := r.endpointMatcher.addEndpoint(method, pathPattern, r.caseInsensitivePathMatch, handler); err != nil {
 		panic(fmt.Sprintf("failed to register the path pattern: %s, err: %v", pathPattern, err))
