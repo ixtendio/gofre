@@ -9,6 +9,7 @@ import (
 	"log"
 	"math/rand"
 	"net/http"
+	"net/url"
 	"time"
 )
 
@@ -45,11 +46,21 @@ func (r *Router) Handle(method string, pathPattern string, handler handler.Handl
 	return r
 }
 
+// MatchRequest returns the first handler that matches the request, together with the path variables if exists
+func (r *Router) MatchRequest(req *http.Request) (handler.Handler, map[string]string) {
+	return r.Match(req.Method, req.URL)
+}
+
+// Match returns the first handler that matches the http method and the url, together with the path variables if exists
+func (r *Router) Match(httpMethod string, url *url.URL) (handler.Handler, map[string]string) {
+	mc := path.ParseURL(url)
+	return r.endpointMatcher.match(httpMethod, mc)
+}
+
 // ServeHTTP implements the http.Handler interface.
 // It's the entry point for all http traffic
 func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
-	mc := path.ParseURL(req.URL)
-	matchedHandler, capturedVars := r.endpointMatcher.match(req.Method, mc)
+	matchedHandler, capturedVars := r.MatchRequest(req)
 	if matchedHandler == nil {
 		w.WriteHeader(http.StatusNotFound)
 		return
