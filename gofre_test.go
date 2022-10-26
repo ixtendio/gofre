@@ -3,6 +3,9 @@ package gofre
 import (
 	"context"
 	"fmt"
+	"github.com/ixtendio/gofre/auth"
+	"github.com/ixtendio/gofre/auth/oauth"
+	"github.com/ixtendio/gofre/cache"
 	"github.com/ixtendio/gofre/handler"
 	"github.com/ixtendio/gofre/middleware"
 	"github.com/ixtendio/gofre/request"
@@ -14,10 +17,34 @@ import (
 	"net/url"
 	"reflect"
 	"runtime"
+	"strconv"
 	"strings"
 	"testing"
 	text "text/template"
+	"time"
 )
+
+type captureOAUTHProvider struct {
+	name string
+}
+
+func (p captureOAUTHProvider) Name() string {
+	return p.name
+}
+
+func (p captureOAUTHProvider) InitiateUrl(redirectUri string, state string, includeUserInfoProfileScope bool) string {
+	return redirectUri + "?" + "state=" + state + "&profile=" + strconv.FormatBool(includeUserInfoProfileScope)
+}
+
+func (p captureOAUTHProvider) FetchAccessToken(ctx context.Context, redirectUri string, authCode string) (oauth.AccessToken, error) {
+	return oauth.AccessToken{
+		AccessToken: redirectUri + ":" + authCode,
+	}, nil
+}
+
+func (p captureOAUTHProvider) FetchAuthenticatedUser(ctx context.Context, accessToken oauth.AccessToken) (auth.User, error) {
+	return auth.User{Id: "user123"}, nil
+}
 
 func TestConfig_setDefaults(t *testing.T) {
 	tmpl := template.New("")
@@ -327,20 +354,6 @@ func TestMuxHandler_RouteWithPathPrefix(t *testing.T) {
 	}
 }
 
-func compareMiddlewares(m1 []middleware.Middleware, m2 []middleware.Middleware) error {
-	if len(m1) != len(m2) {
-		return fmt.Errorf("length => got: %v, want: %v", len(m1), len(m2))
-	}
-	for i := 0; i < len(m1); i++ {
-		m1FuncName := runtime.FuncForPC(reflect.ValueOf(m1[i]).Pointer()).Name()
-		m2FuncName := runtime.FuncForPC(reflect.ValueOf(m2[i]).Pointer()).Name()
-		if m1FuncName != m2FuncName {
-			return fmt.Errorf("istance => index: %v, got: %v, want: %v", i, m1FuncName, m2FuncName)
-		}
-	}
-	return nil
-}
-
 func TestMuxHandler_resolvePath(t *testing.T) {
 	type args struct {
 		currentPath string
@@ -491,10 +504,410 @@ func TestMuxHandler_HandleRequest(t *testing.T) {
 	}
 }
 
+func TestMuxHandler_HandleXXX(t *testing.T) {
+	var sb strings.Builder
+	type args struct {
+		httpMethod string
+		path       string
+	}
+	tests := []struct {
+		name             string
+		argsSupplierFunc func(m *MuxHandler) args
+		want             string
+	}{
+		{
+			name: "GET",
+			argsSupplierFunc: func(m *MuxHandler) args {
+				m.HandleGet("/get", func(ctx context.Context, r *request.HttpRequest) (response.HttpResponse, error) {
+					sb.WriteString("get_handler")
+					return response.PlainTextHttpResponseOK(""), nil
+				}, func(handler handler.Handler) handler.Handler {
+					return func(ctx context.Context, r *request.HttpRequest) (response.HttpResponse, error) {
+						sb.WriteString("get_middleware:")
+						return handler(ctx, r)
+					}
+				})
+				return args{
+					httpMethod: "GET",
+					path:       "/get",
+				}
+			},
+			want: "get_middleware:get_handler",
+		},
+		{
+			name: "POST",
+			argsSupplierFunc: func(m *MuxHandler) args {
+				m.HandlePost("/post", func(ctx context.Context, r *request.HttpRequest) (response.HttpResponse, error) {
+					sb.WriteString("post_handler")
+					return response.PlainTextHttpResponseOK(""), nil
+				}, func(handler handler.Handler) handler.Handler {
+					return func(ctx context.Context, r *request.HttpRequest) (response.HttpResponse, error) {
+						sb.WriteString("post_middleware:")
+						return handler(ctx, r)
+					}
+				})
+				return args{
+					httpMethod: "POST",
+					path:       "/post",
+				}
+			},
+			want: "post_middleware:post_handler",
+		},
+		{
+			name: "PUT",
+			argsSupplierFunc: func(m *MuxHandler) args {
+				m.HandlePut("/put", func(ctx context.Context, r *request.HttpRequest) (response.HttpResponse, error) {
+					sb.WriteString("put_handler")
+					return response.PlainTextHttpResponseOK(""), nil
+				}, func(handler handler.Handler) handler.Handler {
+					return func(ctx context.Context, r *request.HttpRequest) (response.HttpResponse, error) {
+						sb.WriteString("put_middleware:")
+						return handler(ctx, r)
+					}
+				})
+				return args{
+					httpMethod: "PUT",
+					path:       "/put",
+				}
+			},
+			want: "put_middleware:put_handler",
+		}, {
+			name: "PATCH",
+			argsSupplierFunc: func(m *MuxHandler) args {
+				m.HandlePatch("/patch", func(ctx context.Context, r *request.HttpRequest) (response.HttpResponse, error) {
+					sb.WriteString("patch_handler")
+					return response.PlainTextHttpResponseOK(""), nil
+				}, func(handler handler.Handler) handler.Handler {
+					return func(ctx context.Context, r *request.HttpRequest) (response.HttpResponse, error) {
+						sb.WriteString("patch_middleware:")
+						return handler(ctx, r)
+					}
+				})
+				return args{
+					httpMethod: "PATCH",
+					path:       "/patch",
+				}
+			},
+			want: "patch_middleware:patch_handler",
+		}, {
+			name: "DELETE",
+			argsSupplierFunc: func(m *MuxHandler) args {
+				m.HandleDelete("/delete", func(ctx context.Context, r *request.HttpRequest) (response.HttpResponse, error) {
+					sb.WriteString("delete_handler")
+					return response.PlainTextHttpResponseOK(""), nil
+				}, func(handler handler.Handler) handler.Handler {
+					return func(ctx context.Context, r *request.HttpRequest) (response.HttpResponse, error) {
+						sb.WriteString("delete_middleware:")
+						return handler(ctx, r)
+					}
+				})
+				return args{
+					httpMethod: "DELETE",
+					path:       "/delete",
+				}
+			},
+			want: "delete_middleware:delete_handler",
+		},
+	}
+	for _, tt := range tests {
+		sb.Reset()
+		responseRecorder := httptest.NewRecorder()
+		t.Run(tt.name, func(t *testing.T) {
+			m, _ := NewMuxHandlerWithDefaultConfig()
+			args := tt.argsSupplierFunc(m)
+
+			m.ServeHTTP(responseRecorder, &http.Request{Method: args.httpMethod, URL: mustParseURL("https://domain.com" + args.path)})
+			if responseRecorder.Code != 200 {
+				t.Errorf("HandleXXX() got responseCode: %v, want: 200", responseRecorder.Code)
+			}
+			if sb.String() != tt.want {
+				t.Errorf("HandleXXX() got: %v, want: %v", sb.String(), tt.want)
+			}
+		})
+	}
+}
+
+func TestMuxHandler_HandleOAUTH2(t *testing.T) {
+	var sb strings.Builder
+	uniqueIdFunc = func(length int) string {
+		return "123456"
+	}
+	type args struct {
+		providers        []oauth.Provider
+		websiteUrl       string
+		initiateURL      string
+		authorizeURL     string
+		fetchUserDetails bool
+	}
+	type want struct {
+		initiateResponse    string
+		authorizeResponse   string
+		initiateStatusCode  int
+		authorizeStatusCode int
+	}
+	tests := []struct {
+		name string
+		args args
+		want want
+	}{
+		{
+			name: "using a single provider and fetching user details",
+			args: args{
+				providers:        []oauth.Provider{captureOAUTHProvider{name: "ixtendio"}},
+				websiteUrl:       "https://www.domain.com",
+				initiateURL:      "https://www.domain.com/oauth/initiate",
+				authorizeURL:     "https://www.domain.com/oauth/authorize/ixtendio?state=123456&code=code123",
+				fetchUserDetails: true,
+			},
+			want: want{
+				initiateResponse:    `<a href="https://www.domain.com/oauth/authorize/ixtendio?state=123456&amp;profile=true">Found</a>`,
+				authorizeResponse:   "initiateOAUTHMiddleware|authorizeOAUTHMiddleware|at=https://www.domain.com/oauth/authorize/ixtendio:code123;sp=user123",
+				initiateStatusCode:  http.StatusFound,
+				authorizeStatusCode: 200,
+			},
+		},
+		{
+			name: "using 2 providers provider",
+			args: args{
+				providers:        []oauth.Provider{captureOAUTHProvider{name: "ixtendio"}, captureOAUTHProvider{name: "ixtendio1"}},
+				websiteUrl:       "https://www.domain.com",
+				initiateURL:      "https://www.domain.com/oauth/initiate?provider=ixtendio1",
+				authorizeURL:     "https://www.domain.com/oauth/authorize/ixtendio1?state=123456&code=code123",
+				fetchUserDetails: true,
+			},
+			want: want{
+				initiateResponse:    `<a href="https://www.domain.com/oauth/authorize/ixtendio1?state=123456&amp;profile=true">Found</a>`,
+				authorizeResponse:   "initiateOAUTHMiddleware|authorizeOAUTHMiddleware|at=https://www.domain.com/oauth/authorize/ixtendio1:code123;sp=user123",
+				initiateStatusCode:  http.StatusFound,
+				authorizeStatusCode: 200,
+			},
+		},
+		{
+			name: "without fetching user details",
+			args: args{
+				providers:        []oauth.Provider{captureOAUTHProvider{name: "ixtendio"}},
+				websiteUrl:       "https://www.domain.com",
+				initiateURL:      "https://www.domain.com/oauth/initiate",
+				authorizeURL:     "https://www.domain.com/oauth/authorize/ixtendio?state=123456&code=code123",
+				fetchUserDetails: false,
+			},
+			want: want{
+				initiateResponse:    `<a href="https://www.domain.com/oauth/authorize/ixtendio?state=123456&amp;profile=false">Found</a>`,
+				authorizeResponse:   "initiateOAUTHMiddleware|authorizeOAUTHMiddleware|at=https://www.domain.com/oauth/authorize/ixtendio:code123",
+				initiateStatusCode:  http.StatusFound,
+				authorizeStatusCode: 200,
+			},
+		},
+		{
+			name: "using 2 providers but not specify it in the url",
+			args: args{
+				providers:        []oauth.Provider{captureOAUTHProvider{name: "ixtendio"}, captureOAUTHProvider{name: "ixtendio1"}},
+				websiteUrl:       "https://www.domain.com",
+				initiateURL:      "https://www.domain.com/oauth/initiate?provider=ixtendio2",
+				authorizeURL:     "https://www.domain.com/oauth/authorize/ixtendio1?state=123456&code=code123",
+				fetchUserDetails: true,
+			},
+			want: want{
+				initiateStatusCode: 500,
+			},
+		},
+		{
+			name: "specify an unsupported provider",
+			args: args{
+				providers:        []oauth.Provider{captureOAUTHProvider{name: "ixtendio"}, captureOAUTHProvider{name: "ixtendio1"}},
+				websiteUrl:       "https://www.domain.com",
+				initiateURL:      "https://www.domain.com/oauth/initiate",
+				authorizeURL:     "https://www.domain.com/oauth/authorize/ixtendio1?state=123456&code=code123",
+				fetchUserDetails: true,
+			},
+			want: want{
+				initiateStatusCode: 500,
+			},
+		},
+		{
+			name: "OAUTH provider returns error",
+			args: args{
+				providers:        []oauth.Provider{captureOAUTHProvider{name: "ixtendio"}},
+				websiteUrl:       "https://www.domain.com",
+				initiateURL:      "https://www.domain.com/oauth/initiate",
+				authorizeURL:     "https://www.domain.com/oauth/authorize/ixtendio?error=anerror",
+				fetchUserDetails: true,
+			},
+			want: want{
+				initiateResponse:    `<a href="https://www.domain.com/oauth/authorize/ixtendio?state=123456&amp;profile=true">Found</a>`,
+				authorizeResponse:   "initiateOAUTHMiddleware|authorizeOAUTHMiddleware|",
+				initiateStatusCode:  http.StatusFound,
+				authorizeStatusCode: 500,
+			},
+		},
+		{
+			name: "OAUTH provider returns a wrong state value",
+			args: args{
+				providers:        []oauth.Provider{captureOAUTHProvider{name: "ixtendio"}},
+				websiteUrl:       "https://www.domain.com",
+				initiateURL:      "https://www.domain.com/oauth/initiate",
+				authorizeURL:     "https://www.domain.com/oauth/authorize/ixtendio?state=1234568&code=code123",
+				fetchUserDetails: true,
+			},
+			want: want{
+				initiateResponse:    `<a href="https://www.domain.com/oauth/authorize/ixtendio?state=123456&amp;profile=true">Found</a>`,
+				authorizeResponse:   "initiateOAUTHMiddleware|authorizeOAUTHMiddleware|",
+				initiateStatusCode:  http.StatusFound,
+				authorizeStatusCode: 500,
+			},
+		},
+		{
+			name: "using wrong OAUTH provider name in the authorizeURL",
+			args: args{
+				providers:        []oauth.Provider{captureOAUTHProvider{name: "ixtendio"}},
+				websiteUrl:       "https://www.domain.com",
+				initiateURL:      "https://www.domain.com/oauth/initiate",
+				authorizeURL:     "https://www.domain.com/oauth/authorize/ixtendio1?state=123456&code=code123",
+				fetchUserDetails: true,
+			},
+			want: want{
+				initiateResponse:    `<a href="https://www.domain.com/oauth/authorize/ixtendio?state=123456&amp;profile=true">Found</a>`,
+				authorizeResponse:   "initiateOAUTHMiddleware|authorizeOAUTHMiddleware|",
+				initiateStatusCode:  http.StatusFound,
+				authorizeStatusCode: 500,
+			},
+		},
+	}
+	for _, tt := range tests {
+		sb.Reset()
+		t.Run(tt.name, func(t *testing.T) {
+			m, _ := NewMuxHandlerWithDefaultConfig()
+			m.HandleOAUTH2(oauth.Config{
+				WebsiteUrl:       tt.args.websiteUrl,
+				FetchUserDetails: tt.args.fetchUserDetails,
+				Providers:        tt.args.providers,
+				CacheConfig: oauth.CacheConfig{
+					Cache:             cache.NewInMemory(),
+					KeyExpirationTime: 60 * time.Second,
+				},
+			}, func(ctx context.Context, r *request.HttpRequest) (response.HttpResponse, error) {
+				at := oauth.GetAccessTokenFromContext(ctx)
+				sb.WriteString("at=" + at.AccessToken)
+				if tt.args.fetchUserDetails {
+					usr := auth.GetSecurityPrincipalFromContext(ctx)
+					sb.WriteString(";sp=" + usr.Identity())
+				}
+				return response.PlainTextHttpResponseOK(""), nil
+			}, []middleware.Middleware{func(handler handler.Handler) handler.Handler {
+				return func(ctx context.Context, r *request.HttpRequest) (response.HttpResponse, error) {
+					sb.WriteString("initiateOAUTHMiddleware|")
+					return handler(ctx, r)
+				}
+			}}, []middleware.Middleware{func(handler handler.Handler) handler.Handler {
+				return func(ctx context.Context, r *request.HttpRequest) (response.HttpResponse, error) {
+					sb.WriteString("authorizeOAUTHMiddleware|")
+					return handler(ctx, r)
+				}
+			}})
+
+			initiateReq, err := http.NewRequest(http.MethodGet, tt.args.initiateURL, nil)
+			if err != nil {
+				t.Errorf("HandleOAUTH2() failed to create initiate request: %v", err)
+			}
+			initResponseRecorder := httptest.NewRecorder()
+			m.ServeHTTP(initResponseRecorder, initiateReq)
+			if initResponseRecorder.Code != tt.want.initiateStatusCode {
+				t.Fatalf("HandleOAUTH2() got initiate responseCode: %v, want: %v", initResponseRecorder.Code, tt.want.initiateStatusCode)
+			}
+			responseBody := initResponseRecorder.Body.String()
+			if !strings.Contains(responseBody, tt.want.initiateResponse) {
+				t.Fatalf("HandleOAUTH2() got initiate response: '%v', want: '%v'", responseBody, tt.want.initiateResponse)
+			}
+
+			if initResponseRecorder.Code == http.StatusFound {
+				authorizeResponseRecorder := httptest.NewRecorder()
+				authorizeReq, err := http.NewRequest(http.MethodGet, tt.args.authorizeURL, nil)
+				if err != nil {
+					t.Fatalf("HandleOAUTH2() failed to create authorize request: %v", err)
+				}
+				m.ServeHTTP(authorizeResponseRecorder, authorizeReq)
+				if authorizeResponseRecorder.Code != tt.want.authorizeStatusCode {
+					t.Fatalf("HandleOAUTH2() got authorize responseCode: %v, want: %v", authorizeResponseRecorder.Code, tt.want.authorizeStatusCode)
+				}
+				if sb.String() != tt.want.authorizeResponse {
+					t.Fatalf("HandleOAUTH2() got authorize response: %v, want: %v", sb.String(), tt.want.authorizeResponse)
+				}
+			}
+		})
+	}
+}
+
+func TestMuxHandler_EnableDebugEndpoints(t *testing.T) {
+	tests := []struct {
+		name string
+	}{
+		{name: "register debug endpoints"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			m, _ := NewMuxHandlerWithDefaultConfig()
+			m.EnableDebugEndpoints()
+
+			endpoints := []string{"/debug/pprof/", "/debug/pprof/allocs", "/debug/pprof/block",
+				"/debug/pprof/goroutine", "/debug/pprof/heap", "/debug/pprof/mutex",
+				"/debug/pprof/threadcreate", "/debug/pprof/cmdline", "/debug/pprof/profile",
+				"/debug/pprof/symbol", "/debug/pprof/trace", "/debug/vars"}
+			for _, ep := range endpoints {
+				req, _ := http.NewRequest(http.MethodGet, "https://www.domain.com"+ep, nil)
+				matchRequest, _ := m.router.MatchRequest(req)
+				if matchRequest == nil {
+					t.Errorf("EnableDebugEndpoints() the endpoint: %s was not found", ep)
+				}
+			}
+
+		})
+	}
+}
+
+func TestMuxHandler_GenerateUniqueId(t *testing.T) {
+	tests := []struct {
+		name string
+	}{
+		{name: "generate unique id"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			genCount := 1000
+			idLen := 13
+			m := make(map[string]bool)
+			for i := 0; i < genCount; i++ {
+				id := generateUniqueId(idLen)
+				if len(id) != idLen {
+					t.Errorf("GenerateUniqueId() the unique id lenght is: %v but want %v", len(id), idLen)
+				}
+				m[id] = true
+			}
+			if len(m) != genCount {
+				t.Errorf("GenerateUniqueId() collison id detected: got: %v, want: %v", len(m), genCount)
+			}
+
+		})
+	}
+}
+
 func mustParseURL(rawURL string) *url.URL {
 	u, err := url.Parse(rawURL)
 	if err != nil {
 		log.Fatalf("Failed parsing the url: %s, err:%v", rawURL, err)
 	}
 	return u
+}
+
+func compareMiddlewares(m1 []middleware.Middleware, m2 []middleware.Middleware) error {
+	if len(m1) != len(m2) {
+		return fmt.Errorf("length => got: %v, want: %v", len(m1), len(m2))
+	}
+	for i := 0; i < len(m1); i++ {
+		m1FuncName := runtime.FuncForPC(reflect.ValueOf(m1[i]).Pointer()).Name()
+		m2FuncName := runtime.FuncForPC(reflect.ValueOf(m2[i]).Pointer()).Name()
+		if m1FuncName != m2FuncName {
+			return fmt.Errorf("istance => index: %v, got: %v, want: %v", i, m1FuncName, m2FuncName)
+		}
+	}
+	return nil
 }

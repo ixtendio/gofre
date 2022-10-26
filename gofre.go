@@ -140,13 +140,17 @@ func (m *MuxHandler) CommonMiddlewares(middlewares ...middleware.Middleware) {
 //
 // If the OAUTH2 flow successfully completes, then the oauth.AccessToken will be passed to context.Context
 // to extract it, you have to use the method oauth.GetAccessTokenFromContext(context.Context)
-
-func (m *MuxHandler) HandleOAUTH2(oauthConfig oauth.Config, handler handler.Handler, middlewares ...middleware.Middleware) {
-	m.HandleOAUTH2WithCustomPaths("/oauth/initiate", "/oauth/authorize", oauthConfig, handler, middlewares...)
+func (m *MuxHandler) HandleOAUTH2(oauthConfig oauth.Config, handler handler.Handler, initiateMiddlewares []middleware.Middleware, authorizeMiddlewares []middleware.Middleware) {
+	m.HandleOAUTH2WithCustomPaths("/oauth/initiate", "/oauth/authorize", oauthConfig, handler, initiateMiddlewares, authorizeMiddlewares)
 }
 
 // HandleOAUTH2WithCustomPaths registers the necessary handlers to initiate and complete the OAUTH2 flow using custom paths
-func (m *MuxHandler) HandleOAUTH2WithCustomPaths(initiatePath string, authorizeBasePath string, oauthConfig oauth.Config, handler handler.Handler, middlewares ...middleware.Middleware) {
+func (m *MuxHandler) HandleOAUTH2WithCustomPaths(initiatePath string,
+	authorizeBasePath string,
+	oauthConfig oauth.Config,
+	handler handler.Handler,
+	initiateMiddlewares []middleware.Middleware,
+	authorizeMiddlewares []middleware.Middleware) {
 	cache := oauthConfig.CacheConfig.Cache
 	// initiate OAUTH flow handler
 	authorizationFlowBasePath := authorizeBasePath
@@ -165,7 +169,7 @@ func (m *MuxHandler) HandleOAUTH2WithCustomPaths(initiatePath string, authorizeB
 			return nil, errors.NewErrInvalidRequestWithMessage("oauth provider not supported")
 		}
 		redirectUrl := oauthConfig.WebsiteUrl + m.resolvePath(authorizationFlowBasePath) + "/" + provider.Name()
-		state := generateUniqueId(12)
+		state := uniqueIdFunc(12)
 		if cache != nil {
 			if err := cache.Add(state, oauthConfig.CacheConfig.KeyExpirationTime); err != nil {
 				return nil, fmt.Errorf("failed to save the OAUTH2 state random value, err: %w", err)
@@ -173,7 +177,7 @@ func (m *MuxHandler) HandleOAUTH2WithCustomPaths(initiatePath string, authorizeB
 		}
 
 		return response.RedirectHttpResponse(provider.InitiateUrl(redirectUrl, state, oauthConfig.FetchUserDetails)), nil
-	}, middlewares...)
+	}, initiateMiddlewares...)
 
 	// authorize OAUTH flow handler
 	m.HandleGet(authorizationFlowBasePath+"/{providerName}", func(ctx context.Context, r *request.HttpRequest) (response.HttpResponse, error) {
@@ -210,41 +214,35 @@ func (m *MuxHandler) HandleOAUTH2WithCustomPaths(initiatePath string, authorizeB
 		}
 
 		return handler(ctx, r)
-	}, middlewares...)
+	}, authorizeMiddlewares...)
 }
 
-// HandleGet registers a handler with middlewares for GET requests
-// The middlewares will be applied only for this handler
+// HandleGet registers a handler with custom middlewares for GET requests
 func (m *MuxHandler) HandleGet(path string, handler handler.Handler, middlewares ...middleware.Middleware) {
 	m.HandleRequest(http.MethodGet, path, handler, middlewares...)
 }
 
-// HandlePost registers a handler with middlewares for POST requests
-// The middlewares will be applied only for this handler
+// HandlePost registers a handler with custom middlewares for POST requests
 func (m *MuxHandler) HandlePost(path string, handler handler.Handler, middlewares ...middleware.Middleware) {
 	m.HandleRequest(http.MethodPost, path, handler, middlewares...)
 }
 
-// HandlePut registers a handler with middlewares for PUT requests
-// The middlewares will be applied only for this handler
+// HandlePut registers a handler with custom middlewares for PUT requests
 func (m *MuxHandler) HandlePut(path string, handler handler.Handler, middlewares ...middleware.Middleware) {
 	m.HandleRequest(http.MethodPut, path, handler, middlewares...)
 }
 
-// HandlePath registers a handler with middlewares for PATCH requests
-// The middlewares will be applied only for this handler
-func (m *MuxHandler) HandlePath(path string, handler handler.Handler, middlewares ...middleware.Middleware) {
+// HandlePatch registers a handler with custom middlewares for PATCH requests
+func (m *MuxHandler) HandlePatch(path string, handler handler.Handler, middlewares ...middleware.Middleware) {
 	m.HandleRequest(http.MethodPatch, path, handler, middlewares...)
 }
 
-// HandleDelete registers a handler with middlewares for DELETE requests
-// The middlewares will be applied only for this handler
+// HandleDelete registers a handler with custom middlewares for DELETE requests
 func (m *MuxHandler) HandleDelete(path string, handler handler.Handler, middlewares ...middleware.Middleware) {
 	m.HandleRequest(http.MethodDelete, path, handler, middlewares...)
 }
 
-// HandleRequest registers a handler with middlewares for the specified HTTP method
-// The middlewares will be applied only for this handler
+// HandleRequest registers a handler with custom middlewares for the specified HTTP method
 func (m *MuxHandler) HandleRequest(httpMethod string, path string, h handler.Handler, middlewares ...middleware.Middleware) {
 	h = wrapMiddleware(wrapMiddleware(h, middlewares...), m.commonMiddlewares...)
 	m.router.Handle(httpMethod, m.resolvePath(path), h)
@@ -285,6 +283,10 @@ func (m MuxHandler) EnableDebugEndpoints() {
 	m.router.Handle(http.MethodGet, m.resolvePath("/debug/vars"), handler.Handler2Handler(expvar.Handler()))
 }
 
+func (m *MuxHandler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
+	m.router.ServeHTTP(w, req)
+}
+
 func wrapMiddleware(handler handler.Handler, middlewares ...middleware.Middleware) handler.Handler {
 	if len(middlewares) == 0 {
 		return handler
@@ -301,14 +303,12 @@ func wrapMiddleware(handler handler.Handler, middlewares ...middleware.Middlewar
 
 const randLetters = "abcdefghijklmnopqrstuvwxyz1234567890"
 
+var uniqueIdFunc = generateUniqueId
+
 func generateUniqueId(length int) string {
 	b := make([]byte, length)
 	for i := range b {
 		b[i] = randLetters[rand.Int63()%int64(len(randLetters))]
 	}
 	return *(*string)(unsafe.Pointer(&b))
-}
-
-func (m *MuxHandler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
-	m.router.ServeHTTP(w, req)
 }

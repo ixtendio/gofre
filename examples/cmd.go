@@ -69,7 +69,7 @@ func main() {
 			"accessToken":       accessToken,
 			"authenticatedUser": securityPrincipal,
 		}), nil
-	})
+	}, nil, nil)
 
 	// TEXT plain response
 	textRouter := gofreMux.RouteWithPathPrefix("/text")
