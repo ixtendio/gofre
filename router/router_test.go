@@ -220,6 +220,28 @@ func TestNewRouter(t *testing.T) {
 	}
 }
 
+func TestNewRouterWithDefaultConfig(t *testing.T) {
+	tests := []struct {
+		name string
+	}{
+		{name: "constructor"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := NewRouterWithDefaultConfig()
+			if got.endpointMatcher == nil {
+				t.Fatal("NewRouterWithDefaultConfig() got nil endpointMatcher")
+			}
+			if got.caseInsensitivePathMatch != false {
+				t.Fatalf("NewRouterWithDefaultConfig() got caseInsensitivePathMatch = %v, want caseInsensitivePathMatch = %v", got.caseInsensitivePathMatch, false)
+			}
+			if got.errLogFunc == nil {
+				t.Errorf("NewRouterWithDefaultConfig() got nil errLogFunc")
+			}
+		})
+	}
+}
+
 func mustParseURL(rawURL string) *url.URL {
 	u, err := url.Parse(rawURL)
 	if err != nil {
