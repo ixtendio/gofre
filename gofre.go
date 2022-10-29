@@ -86,6 +86,10 @@ type MuxHandler struct {
 	webConfig         *Config
 }
 
+func NewDefaultResourcesConfig() *ResourcesConfig {
+	return &ResourcesConfig{}
+}
+
 func NewMuxHandlerWithDefaultConfig() (*MuxHandler, error) {
 	return NewMuxHandler(&Config{})
 }
