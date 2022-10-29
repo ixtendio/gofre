@@ -115,6 +115,19 @@ func NewMuxHandler(config *Config) (*MuxHandler, error) {
 	}, nil
 }
 
+// Config returns a Config copy
+func (m *MuxHandler) Config() Config {
+	return *m.webConfig
+}
+
+// ExecutableTemplate returns the response.ExecutableTemplate from ResourcesConfig or nil
+func (m *MuxHandler) ExecutableTemplate() response.ExecutableTemplate {
+	if m.webConfig.ResourcesConfig == nil {
+		return nil
+	}
+	return m.webConfig.ResourcesConfig.Template
+}
+
 // RouteWithPathPrefix creates a new MuxHandler with a custom path prefix.
 // The new mux handler will inherit the common middlewares from the parent, and the new common middlewares added
 // to it will not be reflected to the parent.
