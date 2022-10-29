@@ -28,8 +28,8 @@ func TestNewErrInvalidRequestWithMessage(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := NewErrInvalidRequestWithMessage(tt.args.msg); got.Error() != tt.want {
-				t.Errorf("NewErrInvalidRequestWithMessage() = %v, want %v", got, tt.want)
+			if got := NewBadRequestWithMessage(tt.args.msg); got.Error() != tt.want {
+				t.Errorf("NewBadRequestWithMessage() = %v, want %v", got, tt.want)
 			}
 		})
 	}
@@ -52,8 +52,8 @@ func TestNewErrInvalidRequest(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := NewErrInvalidRequest(tt.args.err); got.Error() != tt.want {
-				t.Errorf("NewErrInvalidRequest() = %v, want %v", got, tt.want)
+			if got := NewBadRequest(tt.args.err); got.Error() != tt.want {
+				t.Errorf("NewBadRequest() = %v, want %v", got, tt.want)
 			}
 		})
 	}
@@ -81,8 +81,8 @@ func TestNewErrObjectNotFoundWithMessage(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := NewErrObjectNotFoundWithMessage(tt.args.msg); got.Error() != tt.want {
-				t.Errorf("NewErrObjectNotFoundWithMessage() = %v, want %v", got, tt.want)
+			if got := NewObjectNotFoundWithMessage(tt.args.msg); got.Error() != tt.want {
+				t.Errorf("NewObjectNotFoundWithMessage() = %v, want %v", got, tt.want)
 			}
 		})
 	}
@@ -101,8 +101,8 @@ func TestNewErrObjectNotFound(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := NewErrObjectNotFound(tt.args.err); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("NewErrObjectNotFound() = %v, want %v", got, tt.want)
+			if got := NewObjectNotFound(tt.args.err); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("NewObjectNotFound() = %v, want %v", got, tt.want)
 			}
 		})
 	}
@@ -125,8 +125,8 @@ func TestNewErrObjectNotFound1(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := NewErrObjectNotFound(tt.args.err); got.Error() != tt.want {
-				t.Errorf("NewErrObjectNotFound() = %v, want %v", got, tt.want)
+			if got := NewObjectNotFound(tt.args.err); got.Error() != tt.want {
+				t.Errorf("NewObjectNotFound() = %v, want %v", got, tt.want)
 			}
 		})
 	}

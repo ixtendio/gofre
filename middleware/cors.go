@@ -107,7 +107,7 @@ func Cors(config CorsConfig) Middleware {
 				addStandardCorsHeaders(req.R, httpResponse.Headers(), config)
 				return httpResponse, nil
 			default:
-				return nil, errors.ErrDenied
+				return nil, errors.ErrAccessDenied
 			}
 		}
 	}
@@ -119,11 +119,11 @@ func addSimpleCorsHeaders(r *http.Request, responseHeaders http.Header, config C
 
 	// Section 6.1.2
 	if !isOriginAllowed(origin, config) {
-		return errors.ErrDenied
+		return errors.ErrAccessDenied
 	}
 
 	if !config.containsAllowedMethod(method) {
-		return errors.ErrDenied
+		return errors.ErrAccessDenied
 	}
 
 	addStandardCorsHeaders(r, responseHeaders, config)
@@ -135,18 +135,18 @@ func addPreFlightCorsHeaders(r *http.Request, responseHeaders http.Header, confi
 
 	// Section 6.2.2
 	if !isOriginAllowed(origin, config) {
-		return errors.ErrDenied
+		return errors.ErrAccessDenied
 	}
 
 	// Section 6.2.3
 	if _, found := r.Header[requestHeaderAccessControlRequestMethod]; !found {
-		return errors.ErrDenied
+		return errors.ErrAccessDenied
 	}
 
 	// Section 6.2.5
 	accessControlRequestMethod := strings.TrimSpace(r.Header.Get(requestHeaderAccessControlRequestMethod))
 	if !config.containsAllowedMethod(accessControlRequestMethod) {
-		return errors.ErrDenied
+		return errors.ErrAccessDenied
 	}
 
 	// Section 6.2.4
@@ -154,7 +154,7 @@ func addPreFlightCorsHeaders(r *http.Request, responseHeaders http.Header, confi
 	for _, h := range strings.Split(accessControlRequestHeadersHeader, ",") {
 		h = strings.TrimSpace(h)
 		if h != "" && !config.containsAllowedHeaderCaseInsensitive(strings.TrimSpace(h)) {
-			return errors.ErrDenied
+			return errors.ErrAccessDenied
 		}
 	}
 

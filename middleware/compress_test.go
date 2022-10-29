@@ -32,7 +32,7 @@ func TestCompressResponse(t *testing.T) {
 			name: "the handler error should be returned",
 			args: args{
 				handler: func(ctx context.Context, r *request.HttpRequest) (response.HttpResponse, error) {
-					return nil, errors.ErrUnauthorized
+					return nil, errors.ErrUnauthorizedRequest
 				},
 			},
 			wantErr: true,

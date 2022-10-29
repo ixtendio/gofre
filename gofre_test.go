@@ -198,6 +198,92 @@ func TestNewMuxHandlerWithDefaultConfig(t *testing.T) {
 	}
 }
 
+func TestNewMuxHandlerWithDefaultConfigAndTemplateSupport(t *testing.T) {
+	defaultTemplateFunc = func(templatesPathPattern string) (*template.Template, error) {
+		return &template.Template{}, nil
+	}
+	tests := []struct {
+		name    string
+		want    *MuxHandler
+		wantErr bool
+	}{
+		{
+			name:    "constructor",
+			wantErr: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := NewMuxHandlerWithDefaultConfigAndTemplateSupport()
+			if (err != nil) != tt.wantErr {
+				t.Errorf("NewMuxHandlerWithDefaultConfigAndTemplateSupport() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if got.pathPrefix != "" {
+				t.Fatalf("NewMuxHandlerWithDefaultConfigAndTemplateSupport().pathPrefix got: %v, want empty string", got.pathPrefix)
+			}
+			if got.router == nil {
+				t.Fatalf("NewMuxHandlerWithDefaultConfigAndTemplateSupport().router is nil")
+			}
+			if got.commonMiddlewares != nil {
+				t.Fatalf("NewMuxHandlerWithDefaultConfigAndTemplateSupport().commonMiddlewares got: %v, want nil", got.commonMiddlewares)
+			}
+			if got.webConfig == nil {
+				t.Fatalf("NewMuxHandlerWithDefaultConfigAndTemplateSupport().webConfig is nil")
+			}
+			if got.webConfig.ContextPath != "/" {
+				t.Fatalf("NewMuxHandlerWithDefaultConfigAndTemplateSupport().webConfig.ContextPath got: %v, want /", got.webConfig.ContextPath)
+			}
+			if got.webConfig.ErrLogFunc == nil {
+				t.Fatalf("NewMuxHandlerWithDefaultConfigAndTemplateSupport().webConfig.ErrLogFunc is nil")
+			}
+			if got.webConfig.ResourcesConfig == nil {
+				t.Fatalf("NewMuxHandlerWithDefaultConfigAndTemplateSupport().webConfig.ResourcesConfig is nil")
+			}
+			if got.webConfig.ResourcesConfig.TemplatesPathPattern != "resources/templates/*.html" {
+				t.Fatalf("NewMuxHandlerWithDefaultConfig().webConfig.ResourcesConfig.TemplatesPathPattern got: %v, want: %v", got.webConfig.ResourcesConfig.TemplatesPathPattern, "resources/templates/*.html")
+			}
+			if got.webConfig.ResourcesConfig.AssetsDirPath != "./resources/assets" {
+				t.Fatalf("NewMuxHandlerWithDefaultConfig().webConfig.ResourcesConfig.AssetsDirPath got: %v, want: %v", got.webConfig.ResourcesConfig.AssetsDirPath, "./resources/assets")
+			}
+			if got.webConfig.ResourcesConfig.AssetsMappingPath != "assets" {
+				t.Fatalf("NewMuxHandlerWithDefaultConfig().webConfig.ResourcesConfig.AssetsMappingPath got: %v, want: %v", got.webConfig.ResourcesConfig.AssetsMappingPath, "assets")
+			}
+			if got.webConfig.ResourcesConfig.Template == nil {
+				t.Fatalf("NewMuxHandlerWithDefaultConfig().webConfig.ResourcesConfig.Template got: nil, want: not nil")
+			}
+		})
+	}
+}
+
+func TestNewDefaultResourcesConfig(t *testing.T) {
+	defaultTemplateFunc = func(templatesPathPattern string) (*template.Template, error) {
+		return &template.Template{}, nil
+	}
+	tests := []struct {
+		name string
+	}{
+		{name: "constructor"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := NewDefaultResourcesConfig()
+			if got.TemplatesPathPattern != "resources/templates/*.html" {
+				t.Fatalf("NewDefaultResourcesConfig().TemplatesPathPattern got: %v, want: %v", got.TemplatesPathPattern, "resources/templates/*.html")
+			}
+			if got.AssetsDirPath != "./resources/assets" {
+				t.Fatalf("NewDefaultResourcesConfig().AssetsDirPath got: %v, want: %v", got.AssetsDirPath, "./resources/assets")
+			}
+			if got.AssetsMappingPath != "assets" {
+				t.Fatalf("NewDefaultResourcesConfig().AssetsMappingPath got: %v, want: %v", got.AssetsMappingPath, "assets")
+			}
+			if got.Template == nil {
+				t.Fatalf("NewDefaultResourcesConfig().Template got: nil, want: not nil")
+			}
+		})
+	}
+}
+
 func TestNewMuxHandler(t *testing.T) {
 	type args struct {
 		config *Config
@@ -288,6 +374,79 @@ func TestNewMuxHandler(t *testing.T) {
 				}
 				if _, ok := got.webConfig.ResourcesConfig.Template.(*template.Template); (tt.want.htmlTemplate && !ok) || (!tt.want.htmlTemplate && ok) {
 					t.Fatalf("NewMuxHandlerWithDefaultConfig().webConfig.ResourcesConfig.Template got: %T, want html temlate: %v", got.webConfig.ResourcesConfig.Template, tt.want.htmlTemplate)
+				}
+			}
+		})
+	}
+}
+
+func TestMuxHandler_Config(t *testing.T) {
+	tests := []struct {
+		name string
+	}{
+		{name: "function call"},
+	}
+
+	checkConfig := func(t *testing.T, cfg Config) {
+		if cfg.ContextPath != "/" {
+			t.Fatalf("Config().ContextPath got: %v, want /", cfg.ContextPath)
+		}
+		if cfg.ErrLogFunc == nil {
+			t.Fatalf("Config().ErrLogFunc is nil")
+		}
+		if cfg.ResourcesConfig != nil {
+			t.Fatalf("Config().ResourcesConfig is not nil")
+		}
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			m, _ := NewMuxHandlerWithDefaultConfig()
+			got := m.Config()
+			checkConfig(t, got)
+
+			got.ContextPath = "/test"
+			got.ResourcesConfig = &ResourcesConfig{}
+
+			// check for mutations
+			checkConfig(t, m.Config())
+		})
+	}
+}
+
+func TestMuxHandler_ExecutableTemplate(t *testing.T) {
+	tmpl := &template.Template{}
+	defaultTemplateFunc = func(templatesPathPattern string) (*template.Template, error) {
+		return tmpl, nil
+	}
+	type args struct {
+		templateSupport bool
+	}
+	tests := []struct {
+		name string
+		args args
+	}{
+		{
+			name: "with template support",
+			args: args{templateSupport: true},
+		},
+		{
+			name: "without template support",
+			args: args{templateSupport: false},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if tt.args.templateSupport {
+				m, _ := NewMuxHandlerWithDefaultConfigAndTemplateSupport()
+				et := m.ExecutableTemplate()
+				if et != tmpl {
+					t.Fatalf("ExecutableTemplate() with template support got: %v, want: %v", et, tmpl)
+				}
+			} else {
+				m, _ := NewMuxHandlerWithDefaultConfig()
+				et := m.ExecutableTemplate()
+				if et != nil {
+					t.Fatalf("ExecutableTemplate() without template support got: %v, want nil", et)
 				}
 			}
 		})

@@ -19,29 +19,29 @@ func (r *HttpStreamResponse) Write(w http.ResponseWriter, req *request.HttpReque
 	}
 	if r.Reader != nil {
 		if _, err := io.Copy(w, r.Reader); err != nil {
-			return fmt.Errorf("failed transferig the input stream, err: %w", err)
+			return fmt.Errorf("failed to transfer the input stream, err: %w", err)
 		}
 	}
 	return nil
 }
 
 // StreamHttpResponse creates a 200 success reader response with a specific content type
-func StreamHttpResponse(reader io.Reader, contentType string) *HttpStreamResponse {
-	return StreamHttpResponseWithHeadersAndCookies(http.StatusOK, reader, contentType, nil, nil)
+func StreamHttpResponse(contentType string, reader io.Reader) *HttpStreamResponse {
+	return StreamHttpResponseWithHeadersAndCookies(http.StatusOK, contentType, nil, nil, reader)
 }
 
 // StreamHttpResponseWithHeaders creates a 200 success reader response with custom headers
-func StreamHttpResponseWithHeaders(statusCode int, reader io.Reader, contentType string, headers http.Header) *HttpStreamResponse {
-	return StreamHttpResponseWithHeadersAndCookies(statusCode, reader, contentType, headers, nil)
+func StreamHttpResponseWithHeaders(statusCode int, contentType string, headers http.Header, reader io.Reader) *HttpStreamResponse {
+	return StreamHttpResponseWithHeadersAndCookies(statusCode, contentType, headers, nil, reader)
 }
 
 // StreamHttpResponseWithCookies creates a 200 success reader response with custom cookies
-func StreamHttpResponseWithCookies(statusCode int, reader io.Reader, contentType string, cookies []http.Cookie) *HttpStreamResponse {
-	return StreamHttpResponseWithHeadersAndCookies(statusCode, reader, contentType, nil, cookies)
+func StreamHttpResponseWithCookies(statusCode int, contentType string, cookies []http.Cookie, reader io.Reader) *HttpStreamResponse {
+	return StreamHttpResponseWithHeadersAndCookies(statusCode, contentType, nil, cookies, reader)
 }
 
 // StreamHttpResponseWithHeadersAndCookies creates a 200 success reader response with custom headers and cookies
-func StreamHttpResponseWithHeadersAndCookies(statusCode int, reader io.Reader, contentType string, headers http.Header, cookies []http.Cookie) *HttpStreamResponse {
+func StreamHttpResponseWithHeadersAndCookies(statusCode int, contentType string, headers http.Header, cookies []http.Cookie, reader io.Reader) *HttpStreamResponse {
 	if headers == nil {
 		headers = http.Header{}
 	}

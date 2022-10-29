@@ -25,13 +25,13 @@ func TestErrResponse(t *testing.T) {
 		want response.HttpResponse
 	}{
 		{
-			name: "ErrDenied => StatusForbidden",
+			name: "ErrAccessDenied => StatusForbidden",
 			args: args{
 				handler: func(ctx context.Context, r *request.HttpRequest) (response.HttpResponse, error) {
-					return nil, errors.ErrDenied
+					return nil, errors.ErrAccessDenied
 				},
 			},
-			want: response.HtmlHttpResponse(http.StatusForbidden, errors.ErrDenied.Error()),
+			want: response.HtmlHttpResponse(http.StatusForbidden, errors.ErrAccessDenied.Error()),
 		},
 		{
 			name: "ErrWrongCredentials => StatusForbidden",
@@ -43,28 +43,28 @@ func TestErrResponse(t *testing.T) {
 			want: response.HtmlHttpResponse(http.StatusForbidden, errors.ErrWrongCredentials.Error()),
 		},
 		{
-			name: "ErrUnauthorized => StatusUnauthorized",
+			name: "ErrUnauthorizedRequest => StatusUnauthorized",
 			args: args{
 				handler: func(ctx context.Context, r *request.HttpRequest) (response.HttpResponse, error) {
-					return nil, errors.ErrUnauthorized
+					return nil, errors.ErrUnauthorizedRequest
 				},
 			},
-			want: response.HtmlHttpResponse(http.StatusUnauthorized, errors.ErrUnauthorized.Error()),
+			want: response.HtmlHttpResponse(http.StatusUnauthorized, errors.ErrUnauthorizedRequest.Error()),
 		},
 		{
 			name: "ErrObjectNotFound => StatusNotFound",
 			args: args{
 				handler: func(ctx context.Context, r *request.HttpRequest) (response.HttpResponse, error) {
-					return nil, errors.NewErrObjectNotFoundWithMessage("object not found")
+					return nil, errors.NewObjectNotFoundWithMessage("object not found")
 				},
 			},
 			want: response.HtmlHttpResponse(http.StatusNotFound, "object not found"),
 		},
 		{
-			name: "ErrInvalidRequest => StatusBadRequest",
+			name: "ErrBadRequest => StatusBadRequest",
 			args: args{
 				handler: func(ctx context.Context, r *request.HttpRequest) (response.HttpResponse, error) {
-					return nil, errors.NewErrInvalidRequestWithMessage("invalid request")
+					return nil, errors.NewBadRequestWithMessage("invalid request")
 				},
 			},
 			want: response.HtmlHttpResponse(http.StatusBadRequest, "invalid request"),
@@ -107,7 +107,7 @@ func TestErrJsonResponse(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			resp, err := ErrJsonResponse()(func(ctx context.Context, r *request.HttpRequest) (response.HttpResponse, error) {
-				return nil, errors.ErrUnauthorized
+				return nil, errors.ErrUnauthorizedRequest
 			})(context.Background(), nil)
 			if err != nil {
 				t.Fatalf("ErrJsonResponse() returned error: %v", err)

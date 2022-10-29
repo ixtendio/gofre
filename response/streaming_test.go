@@ -40,7 +40,7 @@ func TestStreamHttpResponse(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := StreamHttpResponse(tt.args.reader, tt.args.contentType); !reflect.DeepEqual(got, tt.want) {
+			if got := StreamHttpResponse(tt.args.contentType, tt.args.reader); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("StreamHttpResponse() = %v, want %v", got, tt.want)
 			}
 		})
@@ -79,7 +79,7 @@ func TestStreamHttpResponseWithHeaders(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := StreamHttpResponseWithHeaders(tt.args.statusCode, tt.args.reader, tt.args.contentType, tt.args.headers); !reflect.DeepEqual(got, tt.want) {
+			if got := StreamHttpResponseWithHeaders(tt.args.statusCode, tt.args.contentType, tt.args.headers, tt.args.reader); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("StreamHttpResponseWithHeaders() = %v, want %v", got, tt.want)
 			}
 		})
@@ -124,7 +124,7 @@ func TestStreamHttpResponseWithCookies(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := StreamHttpResponseWithCookies(tt.args.statusCode, tt.args.reader, tt.args.contentType, tt.args.cookies); !reflect.DeepEqual(got, tt.want) {
+			if got := StreamHttpResponseWithCookies(tt.args.statusCode, tt.args.contentType, tt.args.cookies, tt.args.reader); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("StreamHttpResponseWithCookies() = %v, want %v", got, tt.want)
 			}
 		})
@@ -171,7 +171,7 @@ func TestStreamHttpResponseWithHeadersAndCookies(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := StreamHttpResponseWithHeadersAndCookies(tt.args.statusCode, tt.args.reader, tt.args.contentType, tt.args.headers, tt.args.cookies); !reflect.DeepEqual(got, tt.want) {
+			if got := StreamHttpResponseWithHeadersAndCookies(tt.args.statusCode, tt.args.contentType, tt.args.headers, tt.args.cookies, tt.args.reader); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("StreamHttpResponseWithHeadersAndCookies() = %v, want %v", got, tt.want)
 			}
 		})

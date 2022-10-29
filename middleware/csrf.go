@@ -49,7 +49,7 @@ func CSRFPreventionWithCustomParamAndHeaderName(nonceCache cache.Cache, csrfNonc
 					previousNonce = req.R.Form.Get(csrfNonceRequestParamName)
 				}
 				if previousNonce == "" || !nonceCache.Contains(previousNonce) {
-					return nil, errors.ErrDenied
+					return nil, errors.ErrAccessDenied
 				}
 				nonceCache.Remove(previousNonce)
 			}

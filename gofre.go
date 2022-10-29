@@ -37,6 +37,26 @@ type ResourcesConfig struct {
 	Template response.ExecutableTemplate
 }
 
+func (c *ResourcesConfig) setDefaults() error {
+	if c.TemplatesPathPattern == "" {
+		c.TemplatesPathPattern = "resources/templates/*.html"
+	}
+	if c.AssetsDirPath == "" {
+		c.AssetsDirPath = "./resources/assets"
+	}
+	if c.AssetsMappingPath == "" {
+		c.AssetsMappingPath = "assets"
+	}
+	if c.Template == nil {
+		tmpl, err := defaultTemplateFunc(c.TemplatesPathPattern)
+		if err != nil {
+			return fmt.Errorf("failed parsing the templates, err: %w", err)
+		}
+		c.Template = tmpl
+	}
+	return nil
+}
+
 // A Config is a type used to pass the configuration to the MuxHandler
 type Config struct {
 	//if the path match should be case-sensitive or not. Default false
@@ -59,21 +79,8 @@ func (c *Config) setDefaults() error {
 		}
 	}
 	if c.ResourcesConfig != nil {
-		if c.ResourcesConfig.TemplatesPathPattern == "" {
-			c.ResourcesConfig.TemplatesPathPattern = "resources/templates/*.html"
-		}
-		if c.ResourcesConfig.AssetsDirPath == "" {
-			c.ResourcesConfig.AssetsDirPath = "./resources/assets"
-		}
-		if c.ResourcesConfig.AssetsMappingPath == "" {
-			c.ResourcesConfig.AssetsMappingPath = "assets"
-		}
-		if c.ResourcesConfig.Template == nil {
-			tmpl, err := defaultTemplateFunc(c.ResourcesConfig.TemplatesPathPattern)
-			if err != nil {
-				return fmt.Errorf("failed parsing the templates, err: %w", err)
-			}
-			c.ResourcesConfig.Template = tmpl
+		if err := c.ResourcesConfig.setDefaults(); err != nil {
+			return err
 		}
 	}
 	return nil
@@ -86,12 +93,23 @@ type MuxHandler struct {
 	webConfig         *Config
 }
 
-func NewDefaultResourcesConfig() *ResourcesConfig {
-	return &ResourcesConfig{}
-}
-
+// NewMuxHandlerWithDefaultConfig returns a new MuxHandler using default configuration
 func NewMuxHandlerWithDefaultConfig() (*MuxHandler, error) {
 	return NewMuxHandler(&Config{})
+}
+
+// NewMuxHandlerWithDefaultConfigAndTemplateSupport returns a new MuxHandler using default configuration, static resources and HTML templating support
+func NewMuxHandlerWithDefaultConfigAndTemplateSupport() (*MuxHandler, error) {
+	return NewMuxHandler(&Config{ResourcesConfig: NewDefaultResourcesConfig()})
+}
+
+// NewDefaultResourcesConfig returns a new ResourcesConfig with default configs
+func NewDefaultResourcesConfig() *ResourcesConfig {
+	rc := &ResourcesConfig{}
+	if err := rc.setDefaults(); err != nil {
+		log.Fatalf("failed to set the default values for ResourcesConfig, err: %v", err)
+	}
+	return rc
 }
 
 // NewMuxHandler creates a new MuxHandler instance
@@ -178,12 +196,12 @@ func (m *MuxHandler) HandleOAUTH2WithCustomPaths(initiatePath string,
 		} else {
 			providerName := r.R.FormValue("provider")
 			if providerName == "" {
-				return nil, errors.NewErrInvalidRequestWithMessage("oauth provider not specified")
+				return nil, errors.NewBadRequestWithMessage("oauth provider not specified")
 			}
 			provider = oauthConfig.GetProviderByName(providerName)
 		}
 		if provider == nil {
-			return nil, errors.NewErrInvalidRequestWithMessage("oauth provider not supported")
+			return nil, errors.NewBadRequestWithMessage("oauth provider not supported")
 		}
 		redirectUrl := oauthConfig.WebsiteUrl + m.resolvePath(authorizationFlowBasePath) + "/" + provider.Name()
 		state := uniqueIdFunc(12)
@@ -201,18 +219,18 @@ func (m *MuxHandler) HandleOAUTH2WithCustomPaths(initiatePath string,
 		providerName := r.UriVars["providerName"]
 		provider := oauthConfig.GetProviderByName(providerName)
 		if provider == nil {
-			return nil, errors.NewErrInvalidRequestWithMessage("oauth provider not supported")
+			return nil, errors.NewBadRequestWithMessage("oauth provider not supported")
 		}
 
 		redirectUrl := oauthConfig.WebsiteUrl + m.resolvePath(authorizationFlowBasePath) + "/" + provider.Name()
 		errCode := r.R.FormValue("error")
 		if errCode != "" {
-			return nil, errors.ErrUnauthorized
+			return nil, errors.ErrUnauthorizedRequest
 		}
 
 		state := r.R.FormValue("state")
 		if cache != nil && !cache.Contains(state) {
-			return nil, errors.ErrUnauthorized
+			return nil, errors.ErrUnauthorizedRequest
 
 		}
 		code := r.R.FormValue("code")

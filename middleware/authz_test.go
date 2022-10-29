@@ -25,7 +25,7 @@ func TestAuthorizeAll(t *testing.T) {
 				ctx:         context.Background(),
 				permissions: []auth.Permission{{Scope: "domain/subdomain/resource", Access: auth.AccessRead}},
 			},
-			want: errors.ErrUnauthorized,
+			want: errors.ErrUnauthorizedRequest,
 		},
 		{
 			name: "user has all permissions",
@@ -63,7 +63,7 @@ func TestAuthorizeAll(t *testing.T) {
 					{Scope: "domain/subdomain/resource1", Access: auth.AccessRead},
 					{Scope: "domain/subdomain/resource2", Access: auth.AccessRead}},
 			},
-			want: errors.ErrUnauthorized,
+			want: errors.ErrUnauthorizedRequest,
 		},
 		{
 			name: "user has no permissions",
@@ -73,7 +73,7 @@ func TestAuthorizeAll(t *testing.T) {
 					{Scope: "domain/subdomain/resource1", Access: auth.AccessRead},
 					{Scope: "domain/subdomain/resource2", Access: auth.AccessRead}},
 			},
-			want: errors.ErrUnauthorized,
+			want: errors.ErrUnauthorizedRequest,
 		},
 	}
 	for _, tt := range tests {
@@ -104,7 +104,7 @@ func TestAuthorizeAny(t *testing.T) {
 				ctx:         context.Background(),
 				permissions: []auth.Permission{{Scope: "domain/subdomain/resource", Access: auth.AccessRead}},
 			},
-			want: errors.ErrUnauthorized,
+			want: errors.ErrUnauthorizedRequest,
 		},
 		{
 			name: "user has all permissions",
@@ -152,7 +152,7 @@ func TestAuthorizeAny(t *testing.T) {
 					{Scope: "domain/subdomain/resource1", Access: auth.AccessRead},
 					{Scope: "domain/subdomain/resource2", Access: auth.AccessRead}},
 			},
-			want: errors.ErrUnauthorized,
+			want: errors.ErrUnauthorizedRequest,
 		},
 	}
 	for _, tt := range tests {

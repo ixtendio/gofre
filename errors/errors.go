@@ -2,26 +2,26 @@ package errors
 
 import "errors"
 
-var ErrDenied = errors.New("denied request")
-var ErrUnauthorized = errors.New("unauthorized request")
+var ErrAccessDenied = errors.New("access denied")
+var ErrUnauthorizedRequest = errors.New("unauthorized request")
 var ErrWrongCredentials = errors.New("wrong credentials")
 
-type ErrInvalidRequest struct {
+type ErrBadRequest struct {
 	err error
 }
 
-func (e ErrInvalidRequest) Error() string {
+func (e ErrBadRequest) Error() string {
 	return e.err.Error()
 }
 
-func NewErrInvalidRequestWithMessage(msg string) ErrInvalidRequest {
-	return ErrInvalidRequest{
+func NewBadRequestWithMessage(msg string) ErrBadRequest {
+	return ErrBadRequest{
 		err: errors.New(msg),
 	}
 }
 
-func NewErrInvalidRequest(err error) ErrInvalidRequest {
-	return ErrInvalidRequest{
+func NewBadRequest(err error) ErrBadRequest {
+	return ErrBadRequest{
 		err: err,
 	}
 }
@@ -34,13 +34,13 @@ func (e ErrObjectNotFound) Error() string {
 	return e.err.Error()
 }
 
-func NewErrObjectNotFoundWithMessage(msg string) ErrObjectNotFound {
+func NewObjectNotFoundWithMessage(msg string) ErrObjectNotFound {
 	return ErrObjectNotFound{
 		err: errors.New(msg),
 	}
 }
 
-func NewErrObjectNotFound(err error) ErrObjectNotFound {
+func NewObjectNotFound(err error) ErrObjectNotFound {
 	return ErrObjectNotFound{
 		err: err,
 	}

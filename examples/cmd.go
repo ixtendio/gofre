@@ -99,7 +99,7 @@ func main() {
 		if err != nil {
 			return nil, err
 		}
-		return response.StreamHttpResponse(f, "image/png"), nil
+		return response.StreamHttpResponse("image/png", f), nil
 	})
 
 	// template example

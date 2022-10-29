@@ -499,7 +499,7 @@ func Test_addPreFlightCorsHeaders(t *testing.T) {
 				responseHeaders: http.Header{},
 				config:          CorsConfig{},
 			},
-			wantErr: errors.ErrDenied,
+			wantErr: errors.ErrAccessDenied,
 		},
 		{
 			name: "Access-Control-Request-Method header not found",
@@ -508,7 +508,7 @@ func Test_addPreFlightCorsHeaders(t *testing.T) {
 				responseHeaders: http.Header{},
 				config:          CorsConfig{AllowedOrigins: []string{"orig"}},
 			},
-			wantErr: errors.ErrDenied,
+			wantErr: errors.ErrAccessDenied,
 		},
 		{
 			name: "Access-Control-Request-Method header not allowed",
@@ -517,7 +517,7 @@ func Test_addPreFlightCorsHeaders(t *testing.T) {
 				responseHeaders: http.Header{},
 				config:          CorsConfig{AllowedOrigins: []string{"orig"}},
 			},
-			wantErr: errors.ErrDenied,
+			wantErr: errors.ErrAccessDenied,
 		},
 		{
 			name: "Access-Control-Request-Headers header is empty",
@@ -542,7 +542,7 @@ func Test_addPreFlightCorsHeaders(t *testing.T) {
 					AllowedHttpMethods: []string{"post"},
 				},
 			},
-			wantErr: errors.ErrDenied,
+			wantErr: errors.ErrAccessDenied,
 		},
 		{
 			name: "Access-Control-Request-Headers header allowed",
@@ -589,7 +589,7 @@ func Test_addSimpleCorsHeaders(t *testing.T) {
 				responseHeaders: http.Header{},
 				config:          CorsConfig{},
 			},
-			wantErr: errors.ErrDenied,
+			wantErr: errors.ErrAccessDenied,
 		},
 		{
 			name: "HTTP method not allowed",
@@ -600,7 +600,7 @@ func Test_addSimpleCorsHeaders(t *testing.T) {
 					AllowedOrigins: []string{"origin"},
 				},
 			},
-			wantErr: errors.ErrDenied,
+			wantErr: errors.ErrAccessDenied,
 		},
 		{
 			name: "origin and HTTP method allowed",
@@ -742,7 +742,7 @@ func TestCors(t *testing.T) {
 			handler: func(ctx context.Context, r *request.HttpRequest) (response.HttpResponse, error) {
 				return response.PlainTextHttpResponseOK("ok"), nil
 			},
-			wantError:           errors.ErrDenied,
+			wantError:           errors.ErrAccessDenied,
 			wantResponseHeaders: nil,
 		},
 	}

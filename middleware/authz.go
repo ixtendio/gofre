@@ -10,18 +10,18 @@ import (
 )
 
 // AuthorizeAll checks if the authenticated auth.SecurityPrincipal has all the requested permissions
-// An errors.ErrUnauthorized error is returned if not all permissions are allowed to be executed
+// An errors.ErrUnauthorizedRequest error is returned if not all permissions are allowed to be executed
 // by the current auth.SecurityPrincipal
 func AuthorizeAll(permissions ...auth.Permission) Middleware {
 	return func(handler handler.Handler) handler.Handler {
 		return func(ctx context.Context, req *request.HttpRequest) (resp response.HttpResponse, err error) {
 			securityPrincipal := auth.GetSecurityPrincipalFromContext(ctx)
 			if securityPrincipal == nil {
-				return nil, errors.ErrUnauthorized
+				return nil, errors.ErrUnauthorizedRequest
 			}
 			for _, permission := range permissions {
 				if !securityPrincipal.HasPermission(permission) {
-					return nil, errors.ErrUnauthorized
+					return nil, errors.ErrUnauthorizedRequest
 				}
 			}
 			return handler(ctx, req)
@@ -30,21 +30,21 @@ func AuthorizeAll(permissions ...auth.Permission) Middleware {
 }
 
 // AuthorizeAny checks if the authenticated auth.SecurityPrincipal has at least one from the requested permissions
-// An errors.ErrUnauthorized error is returned if not at least one permission is allowed to be executed
+// An errors.ErrUnauthorizedRequest error is returned if not at least one permission is allowed to be executed
 // by the current auth.SecurityPrincipal
 func AuthorizeAny(permissions ...auth.Permission) Middleware {
 	return func(handler handler.Handler) handler.Handler {
 		return func(ctx context.Context, req *request.HttpRequest) (resp response.HttpResponse, err error) {
 			securityPrincipal := auth.GetSecurityPrincipalFromContext(ctx)
 			if securityPrincipal == nil {
-				return nil, errors.ErrUnauthorized
+				return nil, errors.ErrUnauthorizedRequest
 			}
 			for _, permission := range permissions {
 				if securityPrincipal.HasPermission(permission) {
 					return handler(ctx, req)
 				}
 			}
-			return nil, errors.ErrUnauthorized
+			return nil, errors.ErrUnauthorizedRequest
 		}
 	}
 }

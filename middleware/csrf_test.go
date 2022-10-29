@@ -46,7 +46,7 @@ func TestCSRFPrevention(t *testing.T) {
 		{
 			name:      "nonce check fails - header not present",
 			args:      args{req: &http.Request{Method: http.MethodPost}},
-			wantError: errors.ErrDenied,
+			wantError: errors.ErrAccessDenied,
 		},
 		{
 			name: "nonce check fails - wrong nonce in header",
@@ -54,7 +54,7 @@ func TestCSRFPrevention(t *testing.T) {
 				nonceInCache: "12345",
 				req:          &http.Request{Method: http.MethodPost, Header: http.Header{CSRFRestNonceHeaderName: {"123"}}},
 			},
-			wantError: errors.ErrDenied,
+			wantError: errors.ErrAccessDenied,
 		},
 		{
 			name: "nonce check pass",
