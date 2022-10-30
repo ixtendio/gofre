@@ -21,18 +21,7 @@ import (
 func main() {
 
 	ctx := context.Background()
-	gofreConfig := &gofre.Config{
-		CaseInsensitivePathMatch: false,
-		ContextPath:              "",
-		ResourcesConfig: &gofre.ResourcesConfig{
-			TemplatesPathPattern: "resources/templates/*.html",
-			AssetsDirPath:        "./resources/assets",
-		},
-		ErrLogFunc: func(err error) {
-			log.Printf("An error occurred in the GOFre framework: %v", err)
-		},
-	}
-	gofreMux, err := gofre.NewMuxHandler(gofreConfig)
+	gofreMux, err := gofre.NewMuxHandlerWithDefaultConfigAndTemplateSupport()
 	if err != nil {
 		log.Fatalf("Failed to create GOFre mux handler, err: %v", err)
 	}
@@ -41,7 +30,7 @@ func main() {
 	// template example
 	gofreMux.HandleGet("/", func(ctx context.Context, r *request.HttpRequest) (response.HttpResponse, error) {
 		templateData := struct{}{}
-		return response.TemplateHttpResponseOK(gofreConfig.ResourcesConfig.Template, "index.html", templateData), nil
+		return response.TemplateHttpResponseOK(gofreMux.ExecutableTemplate(), "index.html", templateData), nil
 	})
 
 	// OAUTH2 flow with user details extraction
@@ -105,7 +94,7 @@ func main() {
 	// template example
 	gofreMux.HandleGet("/tmpl/{tmplName}", func(ctx context.Context, r *request.HttpRequest) (response.HttpResponse, error) {
 		templateName := r.UriVars["tmplName"] + ".html"
-		return response.TemplateHttpResponseOK(gofreConfig.ResourcesConfig.Template, templateName, nil), nil
+		return response.TemplateHttpResponseOK(gofreMux.ExecutableTemplate(), templateName, nil), nil
 	})
 
 	// SSE example

@@ -125,7 +125,7 @@ func NewMuxHandler(config *Config) (*MuxHandler, error) {
 		}
 		assetsPath := config.ResourcesConfig.AssetsMappingPath
 		assetsDirPath := config.ResourcesConfig.AssetsDirPath
-		r.Handle(http.MethodGet, fmt.Sprintf("%s/%s/*", contextPath, assetsPath), handler.Handler2Handler(http.StripPrefix(fmt.Sprintf("%s/%s/", contextPath, assetsPath), http.FileServer(http.Dir(assetsDirPath)))))
+		r.Handle(http.MethodGet, contextPath+"/"+assetsPath+"/**", handler.Handler2Handler(http.StripPrefix(contextPath+"/"+assetsPath+"/", http.FileServer(http.Dir(assetsDirPath)))))
 	}
 	return &MuxHandler{
 		router:    r,
