@@ -1,16 +1,13 @@
 package router
 
 import (
-	"context"
 	"fmt"
 	"github.com/ixtendio/gofre/handler"
 	"github.com/ixtendio/gofre/internal/path"
 	"github.com/ixtendio/gofre/request"
 	"log"
-	"math/rand"
 	"net/http"
 	"net/url"
-	"time"
 )
 
 var defaultErrLogFunc = func(err error) {
@@ -66,29 +63,16 @@ func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	// Pull the context from the request and use it as a separate parameter.
-	ctx := req.Context()
-
-	// Set the context with the required values to process the request.
-	ctx = context.WithValue(ctx, KeyValues, &CtxValues{
-		CorrelationId: fmt.Sprintf("%d:%d", time.Now().UnixNano(), rand.Int()),
-		StartTime:     time.Now(),
-	})
-
-	httpRequest := request.HttpRequest{
-		R:       req,
-		UriVars: capturedVars,
-	}
-
+	httpRequest := request.NewHttpRequestWithPathVars(req, capturedVars)
 	// Call the wrapped handler functions.
-	resp, err := matchedHandler(ctx, &httpRequest)
+	resp, err := matchedHandler(req.Context(), httpRequest)
 	if err != nil {
-		r.errLogFunc(fmt.Errorf("uncaught error, err: %w", err))
+		r.errLogFunc(fmt.Errorf("uncaught error in GoFre framework, err: %w", err))
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
-	if err := resp.Write(w, &httpRequest); err != nil {
+	if err := resp.Write(w, httpRequest); err != nil {
 		r.errLogFunc(err)
 	}
 }

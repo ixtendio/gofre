@@ -6,7 +6,6 @@ import (
 	"github.com/ixtendio/gofre/auth"
 	"github.com/ixtendio/gofre/auth/oauth"
 	"github.com/ixtendio/gofre/cache"
-	"github.com/ixtendio/gofre/handler"
 	"github.com/ixtendio/gofre/middleware"
 	"github.com/ixtendio/gofre/request"
 	"github.com/ixtendio/gofre/response"
@@ -79,7 +78,10 @@ func main() {
 
 	// JSON with vars path
 	gofreMux.HandleGet("/json/{user}/{id}", func(ctx context.Context, r *request.HttpRequest) (response.HttpResponse, error) {
-		return response.JsonHttpResponseOK(r.UriVars), nil
+		return response.JsonHttpResponseOK(map[string]string{
+			"user": r.PathVar("user"),
+			"id":   r.PathVar("id"),
+		}), nil
 	})
 
 	// document download example
@@ -93,7 +95,7 @@ func main() {
 
 	// template example
 	gofreMux.HandleGet("/tmpl/{tmplName}", func(ctx context.Context, r *request.HttpRequest) (response.HttpResponse, error) {
-		templateName := r.UriVars["tmplName"] + ".html"
+		templateName := r.PathVar("tmplName") + ".html"
 		return response.TemplateHttpResponseOK(gofreMux.ExecutableTemplate(), templateName, nil), nil
 	})
 
@@ -129,23 +131,19 @@ func main() {
 	// Authorization example
 	gofreMux.HandleGet("/security/authorize/{permission}", func(ctx context.Context, r *request.HttpRequest) (response.HttpResponse, error) {
 		return response.JsonHttpResponseOK(map[string]string{"authorized": "true"}), nil
-	}, func(handler handler.Handler) handler.Handler {
-		// authentication provider
-		return func(ctx context.Context, req *request.HttpRequest) (resp response.HttpResponse, err error) {
-			permission, err := auth.ParsePermission("domain/subdomain/resource:" + req.UriVars["permission"])
-			if err != nil {
-				return nil, err
-			}
-			ctx = context.WithValue(ctx, auth.SecurityPrincipalCtxKey, auth.User{
-				Groups: []auth.Group{{
-					Roles: []auth.Role{{
-						AllowedPermissions: []auth.Permission{permission},
-					}},
-				}},
-			})
-			return handler(ctx, req)
+	}, middleware.SecurityPrincipalSupplier(func(ctx context.Context, r *request.HttpRequest) (auth.SecurityPrincipal, error) {
+		permission, err := auth.ParsePermission("domain/subdomain/resource:" + r.PathVar("permission"))
+		if err != nil {
+			return nil, err
 		}
-	}, middleware.AuthorizeAll(auth.Permission{Scope: "domain/subdomain/resource", Access: auth.AccessDelete}))
+		return auth.User{
+			Groups: []auth.Group{{
+				Roles: []auth.Role{{
+					AllowedPermissions: []auth.Permission{permission},
+				}},
+			}},
+		}, nil
+	}), middleware.AuthorizeAll(auth.Permission{Scope: "domain/subdomain/resource", Access: auth.AccessDelete}))
 
 	httpServer := http.Server{
 		Addr:              ":8080",

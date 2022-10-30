@@ -74,16 +74,12 @@ func TestHttpCompressResponse_Write(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		req := &request.HttpRequest{
-			R:       tt.args.req,
-			UriVars: map[string]string{},
-		}
 		t.Run(tt.name, func(t *testing.T) {
 			r := &HttpCompressResponse{
 				compressionLevel: gzip.DefaultCompression,
 				httpResponse:     PlainTextHttpResponseOK(bigText),
 			}
-			if err := r.Write(tt.args.w, req); err != nil {
+			if err := r.Write(tt.args.w, request.NewHttpRequest(tt.args.req)); err != nil {
 				t.Fatalf("Write() returned error: %v", err)
 			}
 			decompressedValue, err := decompress(tt.wantCompressionType, tt.args.w.Body)

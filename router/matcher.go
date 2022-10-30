@@ -2,7 +2,7 @@ package router
 
 import (
 	"fmt"
-	handler2 "github.com/ixtendio/gofre/handler"
+	"github.com/ixtendio/gofre/handler"
 	"github.com/ixtendio/gofre/internal/path"
 	"sort"
 	"strings"
@@ -13,7 +13,7 @@ type trieNode struct {
 	children        []*trieNode
 	pathElement     *path.Element
 	captureVarNames []string
-	handler         handler2.Handler
+	handler         handler.Handler
 }
 
 func (n *trieNode) addCaptureVarNameIfNotExists(varName string) {
@@ -101,7 +101,7 @@ func (n *trieNode) addChild(newPathElement *path.Element) (*trieNode, error) {
 	return child, nil
 }
 
-func (n *trieNode) addLeaf(data handler2.Handler) error {
+func (n *trieNode) addLeaf(data handler.Handler) error {
 	if n.isLeaf() {
 		return fmt.Errorf("a trie leaf can not have children (leaf)")
 	}
@@ -122,7 +122,7 @@ type matcher struct {
 	trieRoots map[string]*trieNode
 }
 
-func (m *matcher) addEndpoint(method string, pathPattern string, caseInsensitivePathMatch bool, handler handler2.Handler) error {
+func (m *matcher) addEndpoint(method string, pathPattern string, caseInsensitivePathMatch bool, handler handler.Handler) error {
 	pathElementsRoot, err := path.ParsePattern(pathPattern, caseInsensitivePathMatch)
 	if err != nil {
 		return fmt.Errorf("failed parsing pathPattern: %s, err: %writer", pathPattern, err)
@@ -145,8 +145,8 @@ func (m *matcher) addEndpoint(method string, pathPattern string, caseInsensitive
 	return rootNode.addLeaf(handler)
 }
 
-func (m *matcher) match(method string, mc *path.MatchingContext) (handler2.Handler, map[string]string) {
-	allCapturedVars := make(map[string]string)
+func (m *matcher) match(method string, mc *path.MatchingContext) (handler.Handler, map[string]string) {
+	var allCapturedVars map[string]string
 	method = strings.ToUpper(method)
 	pathLen := len(mc.PathElements)
 	var matcherFunc func(int, *trieNode) *trieNode
@@ -168,6 +168,9 @@ func (m *matcher) match(method string, mc *path.MatchingContext) (handler2.Handl
 		if matched {
 			if varValue != "" {
 				for _, captureVarName := range captureVarNames {
+					if allCapturedVars == nil {
+						allCapturedVars = make(map[string]string)
+					}
 					allCapturedVars[captureVarName] = varValue
 				}
 			}
@@ -193,6 +196,9 @@ func (m *matcher) match(method string, mc *path.MatchingContext) (handler2.Handl
 	leaf := matcherFunc(0, m.trieRoots[method])
 	if leaf == nil {
 		return nil, nil
+	}
+	if allCapturedVars == nil {
+		return leaf.handler, nil
 	}
 	capturedVars := make(map[string]string)
 	for node := leaf.parent.pathElement; node != nil; node = node.Previous {

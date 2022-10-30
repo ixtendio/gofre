@@ -233,7 +233,7 @@ func Test_matcher_match(t *testing.T) {
 			},
 			want: want{
 				endpoint:     "GET:/a/**/e",
-				capturedVars: map[string]string{},
+				capturedVars: nil,
 			},
 		},
 		{
@@ -245,7 +245,7 @@ func Test_matcher_match(t *testing.T) {
 			},
 			want: want{
 				endpoint:     "GET:/bla/**/**/bla",
-				capturedVars: map[string]string{},
+				capturedVars: nil,
 			},
 		},
 		{
@@ -257,7 +257,7 @@ func Test_matcher_match(t *testing.T) {
 			},
 			want: want{
 				endpoint:     "GET:/bla/**/bla",
-				capturedVars: map[string]string{},
+				capturedVars: nil,
 			},
 		},
 		{
@@ -269,7 +269,7 @@ func Test_matcher_match(t *testing.T) {
 			},
 			want: want{
 				endpoint:     "GET:/bla/**/**/bla",
-				capturedVars: map[string]string{},
+				capturedVars: nil,
 			},
 		},
 		{
@@ -281,7 +281,7 @@ func Test_matcher_match(t *testing.T) {
 			},
 			want: want{
 				endpoint:     "GET:/*bla*/**/bla/**",
-				capturedVars: map[string]string{},
+				capturedVars: nil,
 			},
 		},
 		{
@@ -293,7 +293,7 @@ func Test_matcher_match(t *testing.T) {
 			},
 			want: want{
 				endpoint:     "GET:/*bla*/**/bla/**",
-				capturedVars: map[string]string{},
+				capturedVars: nil,
 			},
 		},
 		{
@@ -305,7 +305,7 @@ func Test_matcher_match(t *testing.T) {
 			},
 			want: want{
 				endpoint:     "GET:/docs/**/**/**",
-				capturedVars: map[string]string{},
+				capturedVars: nil,
 			},
 		},
 		{

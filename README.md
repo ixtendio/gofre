@@ -32,7 +32,10 @@ if err != nil {
 
 // JSON with vars path
 gofreMux.HandleGet("/hello/{firstName}/{lastName}", func(ctx context.Context, r *request.HttpRequest) (response.HttpResponse, error) {
-	return response.JsonHttpResponseOK(r.UriVars), nil
+	return response.JsonHttpResponseOK(map[string]string{
+		"user": r.PathVar("user"),
+		"id":   r.PathVar("id"),
+	}), nil
 })
 
 httpServer := http.Server{
@@ -199,7 +202,8 @@ The _middleware_ package includes the following implementations:
 * **CSRFPrevention** - provides basic CSRF protection for a web application
 * **Cors** - enable client-side cross-origin requests by implementing W3C's CORS
 * **CompressResponse** - enable compression for HTTP response as long as the client accept it
-* **Authorize** - provides basic RBAC authorization (authentication is required in this case)
+* **AuthorizeAll**, **AuthorizeAny** - provides basic RBAC authorization (authentication is required in this case)
+* **SecurityPrincipalSupplier** - provides an `auth.SecurityPrincipal` supplier callback
 
 ### Data Sharing
 
@@ -214,7 +218,7 @@ gofreMux.HandleGet("/security/authorize/{permission}", func(ctx context.Context,
  }, func(handler handler.Handler) handler.Handler {
      // authentication middleware
      return func(ctx context.Context, req *request.HttpRequest) (resp response.HttpResponse, err error) {
-         permission, err := auth.ParsePermission("domain/subdomain/resource:" + req.UriVars["permission"])
+         permission, err := auth.ParsePermission("domain/subdomain/resource:" + req.PathVar("permission"))
          if err != nil {
              return nil, err
          }
@@ -257,7 +261,7 @@ By default `ResourcesConfig` is nil, meaning that the framework doesn't support 
 You can customize the template path pattern, the assets dir path and the assets mapping path if you want. If not, then the default values will be applied. For example:
 
 ```go
-ResourcesConfig: &gofre.ResourcesConfig{}
+ResourcesConfig: gofre.NewDefaultResourcesConfig()
 ```
 is equivalent to:
 ```go
@@ -273,7 +277,7 @@ An endpoint that returns an HTML template can be specified in this way:
 ```go
 gofreMux.HandleGet("/", func(ctx context.Context, r *request.HttpRequest) (response.HttpResponse, error) {
     templateData := struct{}{}
-    return response.TemplateHttpResponseOK(gofreConfig.ResourcesConfig.Template, "index.html", templateData), nil
+    return response.TemplateHttpResponseOK(gofreMux.ExecutableTemplate(), "index.html", templateData), nil
 })
 ```
 

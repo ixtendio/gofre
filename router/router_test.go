@@ -46,18 +46,18 @@ func TestRouter_ServeHTTP(t *testing.T) {
 	}
 	type want struct {
 		handlerInvoked  bool
-		uriVars         map[string]string
+		pathVars        map[string]string
 		responseCode    int
 		responseData    string
 		responseHeaders http.Header
 	}
-	var wantRequest *request.HttpRequest
+	var gotRequest *request.HttpRequest
 	okHandler := func(ctx context.Context, r *request.HttpRequest) (response.HttpResponse, error) {
-		wantRequest = r
+		gotRequest = r
 		return response.PlainTextHttpResponseOK("ok"), nil
 	}
 	errorHandler := func(ctx context.Context, r *request.HttpRequest) (response.HttpResponse, error) {
-		wantRequest = r
+		gotRequest = r
 		return nil, fmt.Errorf("a simple error")
 	}
 	tests := []struct {
@@ -77,7 +77,7 @@ func TestRouter_ServeHTTP(t *testing.T) {
 			},
 			want: want{
 				handlerInvoked: true,
-				uriVars:        map[string]string{},
+				pathVars:       nil,
 				responseCode:   200,
 				responseData:   "ok",
 				responseHeaders: map[string][]string{"Content-Type": {"text/plain; charset=utf-8"},
@@ -97,7 +97,7 @@ func TestRouter_ServeHTTP(t *testing.T) {
 			},
 			want: want{
 				handlerInvoked: true,
-				uriVars:        map[string]string{"userId": "batman"},
+				pathVars:       map[string]string{"userId": "batman"},
 				responseCode:   200,
 				responseData:   "ok",
 				responseHeaders: map[string][]string{"Content-Type": {"text/plain; charset=utf-8"},
@@ -118,7 +118,7 @@ func TestRouter_ServeHTTP(t *testing.T) {
 			},
 			want: want{
 				handlerInvoked:  true,
-				uriVars:         map[string]string{"userId": "batman"},
+				pathVars:        map[string]string{"userId": "batman"},
 				responseCode:    500,
 				responseData:    "",
 				responseHeaders: map[string][]string{},
@@ -138,7 +138,7 @@ func TestRouter_ServeHTTP(t *testing.T) {
 			},
 			want: want{
 				handlerInvoked:  false,
-				uriVars:         map[string]string{},
+				pathVars:        nil,
 				responseCode:    404,
 				responseData:    "",
 				responseHeaders: map[string][]string{},
@@ -149,18 +149,23 @@ func TestRouter_ServeHTTP(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		wantRequest = nil
+		gotRequest = nil
 		t.Run(tt.name, func(t *testing.T) {
 			tt.router.ServeHTTP(tt.args.writer, tt.args.req)
 			if tt.want.handlerInvoked {
-				if wantRequest == nil {
+				if gotRequest == nil {
 					t.Errorf("ServeHTTP() the request is null")
 				}
-				if !reflect.DeepEqual(wantRequest.UriVars, tt.want.uriVars) {
-					t.Errorf("ServeHTTP() UriVars = %v, want %v", wantRequest.UriVars, tt.want.uriVars)
+				if tt.want.pathVars != nil {
+					for k, v := range tt.want.pathVars {
+						if gotRequest.PathVar(k) != v {
+							t.Errorf("ServeHTTP() PathVar: %v=%v, want: %v=%v", k, gotRequest.PathVar(k), k, v)
+						}
+					}
 				}
+
 			} else {
-				if wantRequest != nil {
+				if gotRequest != nil {
 					t.Errorf("ServeHTTP() the request should be null")
 				}
 			}

@@ -216,7 +216,7 @@ func (m *MuxHandler) HandleOAUTH2WithCustomPaths(initiatePath string,
 
 	// authorize OAUTH flow handler
 	m.HandleGet(authorizationFlowBasePath+"/{providerName}", func(ctx context.Context, r *request.HttpRequest) (response.HttpResponse, error) {
-		providerName := r.UriVars["providerName"]
+		providerName := r.PathVar("providerName")
 		provider := oauthConfig.GetProviderByName(providerName)
 		if provider == nil {
 			return nil, errors.NewBadRequestWithMessage("oauth provider not supported")
