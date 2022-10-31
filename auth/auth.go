@@ -53,6 +53,8 @@ type SecurityPrincipal interface {
 	HasRole(roleName string) bool
 	// HasPermission returns true if the current SecurityPrincipal has the Permission
 	HasPermission(permission Permission) bool
+	// String returns a string representation of the SecurityPrincipal
+	String() string
 }
 
 // A Permission has a Scope and Access. A Scope describes where an action can be performed
@@ -76,6 +78,7 @@ func AllPermissions() Permission {
 		Access: AccessAll(),
 	}
 }
+
 func NewPermission(scope string, access Access) (Permission, error) {
 	var separatorsCount int
 	for _, c := range scope {
@@ -201,6 +204,10 @@ func (u User) HasPermission(permission Permission) bool {
 		}
 	}
 	return false
+}
+
+func (u User) String() string {
+	return u.Name
 }
 
 // ParsePermission parse a string into a Permission
