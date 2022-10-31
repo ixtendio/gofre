@@ -180,7 +180,7 @@ func TestNewMuxHandlerWithDefaultConfig(t *testing.T) {
 				t.Fatalf("NewMuxHandlerWithDefaultConfig().router is nil")
 			}
 			if got.commonMiddlewares != nil {
-				t.Fatalf("NewMuxHandlerWithDefaultConfig().commonMiddlewares got: %v, want nil", got.commonMiddlewares)
+				t.Fatalf("NewMuxHandlerWithDefaultConfig().childCommonMiddlewares got: %v, want nil", got.commonMiddlewares)
 			}
 			if got.webConfig == nil {
 				t.Fatalf("NewMuxHandlerWithDefaultConfig().webConfig is nil")
@@ -226,7 +226,7 @@ func TestNewMuxHandlerWithDefaultConfigAndTemplateSupport(t *testing.T) {
 				t.Fatalf("NewMuxHandlerWithDefaultConfigAndTemplateSupport().router is nil")
 			}
 			if got.commonMiddlewares != nil {
-				t.Fatalf("NewMuxHandlerWithDefaultConfigAndTemplateSupport().commonMiddlewares got: %v, want nil", got.commonMiddlewares)
+				t.Fatalf("NewMuxHandlerWithDefaultConfigAndTemplateSupport().childCommonMiddlewares got: %v, want nil", got.commonMiddlewares)
 			}
 			if got.webConfig == nil {
 				t.Fatalf("NewMuxHandlerWithDefaultConfigAndTemplateSupport().webConfig is nil")
@@ -351,7 +351,7 @@ func TestNewMuxHandler(t *testing.T) {
 				t.Fatalf("NewMuxHandlerWithDefaultConfig().router is nil")
 			}
 			if got.commonMiddlewares != nil {
-				t.Fatalf("NewMuxHandlerWithDefaultConfig().commonMiddlewares got: %v, want nil", got.commonMiddlewares)
+				t.Fatalf("NewMuxHandlerWithDefaultConfig().childCommonMiddlewares got: %v, want nil", got.commonMiddlewares)
 			}
 			if got.webConfig == nil {
 				t.Fatalf("NewMuxHandlerWithDefaultConfig().webConfig is nil")
@@ -453,6 +453,68 @@ func TestMuxHandler_ExecutableTemplate(t *testing.T) {
 	}
 }
 
+func TestMuxHandler_Clone(t *testing.T) {
+	m1 := middleware.PanicRecover()
+	m2 := middleware.ErrJsonResponse()
+	m3 := middleware.CompressResponse(0)
+
+	type args struct {
+		parentCommonMiddlewares []middleware.Middleware
+		childCommonMiddlewares  []middleware.Middleware
+	}
+	type want struct {
+		pathPrefix              string
+		parentCommonMiddlewares []middleware.Middleware
+		childCommonMiddlewares  []middleware.Middleware
+	}
+	tests := []struct {
+		name string
+		args args
+		want want
+	}{
+		{
+			name: "clone",
+			args: args{
+				parentCommonMiddlewares: []middleware.Middleware{m1},
+				childCommonMiddlewares:  []middleware.Middleware{m2, m3},
+			},
+			want: want{
+				parentCommonMiddlewares: []middleware.Middleware{m1},
+				childCommonMiddlewares:  []middleware.Middleware{m1, m2, m3},
+			},
+		},
+		{
+			name: "clone using nil common middlewares",
+			args: args{},
+			want: want{},
+		},
+	}
+	for _, tt := range tests {
+		parent, _ := NewMuxHandlerWithDefaultConfig()
+		parent.CommonMiddlewares(tt.args.parentCommonMiddlewares...)
+		t.Run(tt.name, func(t *testing.T) {
+			child := parent.Clone()
+			child.CommonMiddlewares(tt.args.childCommonMiddlewares...)
+
+			if err := compareMiddlewares(parent.commonMiddlewares, tt.want.parentCommonMiddlewares); err != nil {
+				t.Fatalf("Clone() parent.childCommonMiddlewares: %v", err)
+			}
+			if err := compareMiddlewares(child.commonMiddlewares, tt.want.childCommonMiddlewares); err != nil {
+				t.Fatalf("Clone() child.childCommonMiddlewares: %v", err)
+			}
+			if !reflect.DeepEqual(parent.pathPrefix, child.pathPrefix) {
+				t.Fatalf("Clone() parent.pathPrefix: %v child.pathPrefix: %v", parent.pathPrefix, child.pathPrefix)
+			}
+			if !reflect.DeepEqual(parent.router, child.router) {
+				t.Fatalf("Clone() parent.router: %v child.router: %v", parent.router, child.router)
+			}
+			if !reflect.DeepEqual(parent.webConfig, child.webConfig) {
+				t.Fatalf("Clone() parent.webConfig: %v child.webConfig: %v", parent.webConfig, child.webConfig)
+			}
+		})
+	}
+}
+
 func TestMuxHandler_RouteWithPathPrefix(t *testing.T) {
 	m1 := middleware.PanicRecover()
 	m2 := middleware.ErrJsonResponse()
@@ -478,7 +540,7 @@ func TestMuxHandler_RouteWithPathPrefix(t *testing.T) {
 				commonMiddlewares: []middleware.Middleware{m2},
 			},
 			want: want{
-				pathPrefix:              "/",
+				pathPrefix:              "",
 				parentCommonMiddlewares: []middleware.Middleware{m1, m2},
 				childCommonMiddlewares:  []middleware.Middleware{m1, m2},
 			},
@@ -500,14 +562,23 @@ func TestMuxHandler_RouteWithPathPrefix(t *testing.T) {
 		parent, _ := NewMuxHandlerWithDefaultConfig()
 		parent.CommonMiddlewares(m1)
 		t.Run(tt.name, func(t *testing.T) {
-			child := parent.RouteWithPathPrefix(tt.args.subRouterPath)
+			child := parent.RouteUsingPathPrefix(tt.args.subRouterPath)
 			child.CommonMiddlewares(tt.args.commonMiddlewares...)
 
 			if err := compareMiddlewares(parent.commonMiddlewares, tt.want.parentCommonMiddlewares); err != nil {
-				t.Fatalf("RouteWithPathPrefix() parent.commonMiddlewares: %v", err)
+				t.Fatalf("RouteUsingPathPrefix() parent.childCommonMiddlewares: %v", err)
 			}
 			if err := compareMiddlewares(child.commonMiddlewares, tt.want.childCommonMiddlewares); err != nil {
-				t.Fatalf("RouteWithPathPrefix() child.commonMiddlewares: %v", err)
+				t.Fatalf("RouteUsingPathPrefix() child.childCommonMiddlewares: %v", err)
+			}
+			if !reflect.DeepEqual(tt.want.pathPrefix, child.pathPrefix) {
+				t.Fatalf("RouteUsingPathPrefix() want.pathPrefix: %v child.pathPrefix: %v", tt.want.pathPrefix, child.pathPrefix)
+			}
+			if !reflect.DeepEqual(parent.router, child.router) {
+				t.Fatalf("RouteUsingPathPrefix() parent.router: %v child.router: %v", parent.router, child.router)
+			}
+			if !reflect.DeepEqual(parent.webConfig, child.webConfig) {
+				t.Fatalf("RouteUsingPathPrefix() parent.webConfig: %v child.webConfig: %v", parent.webConfig, child.webConfig)
 			}
 		})
 	}
@@ -606,7 +677,7 @@ func TestMuxHandler_HandleRequest(t *testing.T) {
 		want string
 	}{
 		{
-			name: "register commonMiddlewares and endpoint middlewares",
+			name: "register childCommonMiddlewares and endpoint middlewares",
 			args: args{
 				httpMethod: "GET",
 				path:       "/test",

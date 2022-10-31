@@ -385,3 +385,24 @@ func TestTemplateHttpResponseWithHeadersAndCookies(t *testing.T) {
 		})
 	}
 }
+
+func TestNilExecutableTemplate(t1 *testing.T) {
+	tests := []struct {
+		name string
+	}{
+		{name: "all methods should return nil"},
+	}
+	for _, tt := range tests {
+		t1.Run(tt.name, func(t1 *testing.T) {
+			t := &NilTemplate{}
+			if t.Execute(nil, nil) != nil {
+				t1.Errorf("Execute() returned non nil, want nil")
+				return
+			}
+			if t.ExecuteTemplate(nil, "", nil) != nil {
+				t1.Errorf("ExecuteTemplate() returned non nil, want nil")
+				return
+			}
+		})
+	}
+}

@@ -16,6 +16,17 @@ type ExecutableTemplate interface {
 	ExecuteTemplate(wr io.Writer, name string, data any) error
 }
 
+// NilTemplate implements ExecutableTemplate and can be used when you use static resources without templating
+type NilTemplate struct {
+}
+
+func (t NilTemplate) Execute(wr io.Writer, data any) error {
+	return nil
+}
+func (t NilTemplate) ExecuteTemplate(wr io.Writer, name string, data any) error {
+	return nil
+}
+
 type HttpTemplateResponse struct {
 	HttpHeadersResponse
 	Template ExecutableTemplate

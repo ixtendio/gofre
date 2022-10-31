@@ -146,25 +146,36 @@ func (m *MuxHandler) ExecutableTemplate() response.ExecutableTemplate {
 	return m.webConfig.ResourcesConfig.Template
 }
 
-// RouteWithPathPrefix creates a new MuxHandler with a custom path prefix.
-// The new mux handler will inherit the common middlewares from the parent, and the new common middlewares added
-// to it will not be reflected to the parent.
-// The new path prefix will equal with the parent path prefix + the new path prefix
-func (m *MuxHandler) RouteWithPathPrefix(pathPrefix string) *MuxHandler {
+// Clone creates a new MuxHandler that will inherit all the settings from the parent.
+// One important aspect to the new MuxHandler is that, the new added common middlewares will not be shared with the parent.
+func (m *MuxHandler) Clone() *MuxHandler {
+	return &MuxHandler{
+		pathPrefix:        m.pathPrefix,
+		router:            m.router,
+		commonMiddlewares: append([]middleware.Middleware(nil), m.commonMiddlewares...),
+		webConfig:         m.webConfig,
+	}
+}
+
+// RouteUsingPathPrefix creates a new MuxHandler that will inherit all the settings from the parent, excepting the path prefix which will be concatenated to the parent path prefix.
+// One important aspect to the new MuxHandler is that, the new added common middlewares will not be shared with the parent.
+func (m *MuxHandler) RouteUsingPathPrefix(pathPrefix string) *MuxHandler {
 	if len(pathPrefix) == 0 || pathPrefix == m.pathPrefix {
 		return m
 	}
 	return &MuxHandler{
 		pathPrefix:        m.resolvePath(pathPrefix),
 		router:            m.router,
-		commonMiddlewares: m.commonMiddlewares,
+		commonMiddlewares: append([]middleware.Middleware(nil), m.commonMiddlewares...),
 		webConfig:         m.webConfig,
 	}
 }
 
 // CommonMiddlewares registers middlewares that will be applied for all handlers
 func (m *MuxHandler) CommonMiddlewares(middlewares ...middleware.Middleware) {
-	m.commonMiddlewares = append(m.commonMiddlewares, middlewares...)
+	if len(middlewares) > 0 {
+		m.commonMiddlewares = append(m.commonMiddlewares, middlewares...)
+	}
 }
 
 // HandleOAUTH2 registers the necessary handlers to initiate and complete the OAUTH2 flow

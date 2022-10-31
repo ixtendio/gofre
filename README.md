@@ -204,8 +204,9 @@ The _middleware_ package includes the following implementations:
 * **CompressResponse** - enable compression for HTTP response as long as the client accept it
 * **AuthorizeAll**, **AuthorizeAny** - provides basic RBAC authorization (authentication is required in this case)
 * **SecurityPrincipalSupplier** - provides an `auth.SecurityPrincipal` supplier callback
+* **RequestDumper** - dumps the request (before processing) and the corresponding response in JSON format
 
-### Data Sharing
+### Data Sharing Between Middlewares
 
 A middleware can share data with the next one in the chain using the request **context.Context**. The context has two purposes:
 1. to notify when the client close the TCP connection or when some request timeouts occurred
@@ -237,6 +238,39 @@ gofreMux.HandleGet("/security/authorize/{permission}", func(ctx context.Context,
 we see how the authentication middleware wraps the authenticated user in the context using `context.WithValue` so that the next middleware, in our case **AuthorizeAll**, can use it.
 
 
+## Sub-Routing
+
+In some cases it might be necessary to create a shallow clone of a mux handler. To do this the following two methods can be used:
+ 1. `Clone` - creates a new MuxHandler that will inherit all the settings from the parent
+ 2. `RouteUsingPathPrefix` - creates a new MuxHandler that will inherit all the settings from the parent, excepting the path prefix which will be concatenated to the parent path prefix
+
+An important aspect to these methods is that, the new added middlewares to the new `MuxHandler` will not be shared with the parent.
+
+### Use-Cases for `Clone`
+
+```go
+gofreMux = gofre.NewMuxHandlerWithDefaultConfig()
+gofreMux.Clone().HandleGet("/health", healthHandler)
+// the common middlewares will not be applied to the /health endpoint
+gofreMux.CommonMiddlewares(...)
+gofreMux.HandleGet("/api1", api1Handler)
+gofreMux.HandleGet("/api2", api2Handler)
+```
+
+### Use-Cases for `RouteUsingPathPrefix`
+
+```go
+gofreMux = gofre.NewMuxHandlerWithDefaultConfig()
+gofreMux.CommonMiddlewares(...)
+
+// we create a usersMux that will handle all the request with path prefix /users (examples: GET:/users, GET:/users/{userId}, POST:/users/{userId})
+usersMux = gofreMux.RouteUsingPathPrefix("/users")
+usersMux.CommonMiddlewares(...)
+usersMux.HandlePost("/{userId}", createUserHandler)
+usersMux.HandleGet("/{userId}", getUserHandler)
+usersMux.HandleGet("", getAllUsersHandler)
+```
+
 ## Templating and Static Resources
 
 _GOFre_ can be configured to serve GO HTML templates and static resources. This can be done through a configuration object passed at instantiation:
@@ -256,16 +290,16 @@ gofreConfig := &gofre.Config{
 }
 ```
 
-By default `ResourcesConfig` is nil, meaning that the framework doesn't support templating or static resources.
+By default `ResourcesConfig` is nil, meaning that the framework will not support templating or static resources.
 
 You can customize the template path pattern, the assets dir path and the assets mapping path if you want. If not, then the default values will be applied. For example:
 
 ```go
-ResourcesConfig: gofre.NewDefaultResourcesConfig()
+resourcesConfig := gofre.NewDefaultResourcesConfig()
 ```
 is equivalent to:
 ```go
-ResourcesConfig: &gofre.ResourcesConfig{
+resourcesConfig := &gofre.ResourcesConfig{
    TemplatesPathPattern: "resources/templates/*.html",
    AssetsDirPath:        "./resources/assets",
    AssetsMappingPath:    "assets",
@@ -280,6 +314,16 @@ gofreMux.HandleGet("/", func(ctx context.Context, r *request.HttpRequest) (respo
     return response.TemplateHttpResponseOK(gofreMux.ExecutableTemplate(), "index.html", templateData), nil
 })
 ```
+
+In case you want to use only static resources, without templating then, you can use `response.NilTemplate` as follows:
+
+```go
+resourcesConfig := &gofre.ResourcesConfig{
+   Template: response.NilTemplate{}
+}
+```
+
+The rest of the config fields will be initialized with the default values at MuxHandler creation.
 
 ## Authorization
 
@@ -343,6 +387,17 @@ gofreMux.HandleOAUTH2(oauth.Config{
      accessToken := oauth.GetAccessTokenFromContext(ctx)
      securityPrincipal := auth.GetSecurityPrincipalFromContext(ctx)
      //todo here you have to enrich the securityPrincipal with the roles from the database and to add it again on the context
+ })
+```
+
+### Custom Authentication
+
+_GOFre_ provides a middleware: `middleware.SecurityPrincipalSupplier` that allows you to load a custom `auth.SecurityPrincipal`. The returned security principal will be added on the `context.Context` to be shared with the next middlewares.  
+
+```go
+middleware.SecurityPrincipalSupplier(func(ctx context.Context, r *request.HttpRequest) (auth.SecurityPrincipal, error) {
+     sp, err := //load the SecurityPrincipal from JWT token, Database, Cookies, etc
+     return sp, err
  })
 ```
 

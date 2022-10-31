@@ -60,7 +60,7 @@ func main() {
 	}, nil, nil)
 
 	// TEXT plain response
-	textRouter := gofreMux.RouteWithPathPrefix("/text")
+	textRouter := gofreMux.RouteUsingPathPrefix("/text")
 	textRouter.HandleGet("/{plain}", func(ctx context.Context, r *request.HttpRequest) (response.HttpResponse, error) {
 		return response.PlainTextHttpResponseOK("Text plain response"), nil
 	})
