@@ -244,7 +244,7 @@ In some cases it might be necessary to create a shallow clone of a mux handler. 
  1. `Clone` - creates a new MuxHandler that will inherit all the settings from the parent
  2. `RouteUsingPathPrefix` - creates a new MuxHandler that will inherit all the settings from the parent, excepting the path prefix which will be concatenated to the parent path prefix
 
-An important aspect to these methods is that, the new added middlewares to the new `MuxHandler` will not be shared with the parent.
+An important aspect to these methods is that, the new common middlewares added to the new `MuxHandler` will not be shared with the parent.
 
 ### Use-Cases for `Clone`
 
