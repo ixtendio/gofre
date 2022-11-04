@@ -33,8 +33,8 @@ if err != nil {
 // JSON with vars path
 gofreMux.HandleGet("/hello/{firstName}/{lastName}", func(ctx context.Context, r *request.HttpRequest) (response.HttpResponse, error) {
 	return response.JsonHttpResponseOK(map[string]string{
-		"user": r.PathVar("user"),
-		"id":   r.PathVar("id"),
+		"firstName": r.PathVar("firstName"),
+		"lastName": r.PathVar("lastName"),
 	}), nil
 })
 
