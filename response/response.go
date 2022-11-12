@@ -13,7 +13,10 @@ func (c HttpCookies) Add(cookie http.Cookie) {
 }
 
 func NewHttpCookies(cookiesArray []http.Cookie) HttpCookies {
-	cookies := HttpCookies{}
+	if len(cookiesArray) == 0 {
+		return nil
+	}
+	cookies := make(HttpCookies, len(cookiesArray))
 	for _, c := range cookiesArray {
 		cookies.Add(c)
 	}

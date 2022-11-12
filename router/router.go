@@ -29,7 +29,7 @@ func NewRouter(caseInsensitivePathMatch bool, errLogFunc func(err error)) *Route
 	}
 	return &Router{
 		caseInsensitivePathMatch: caseInsensitivePathMatch,
-		endpointMatcher:          newMatcher(),
+		endpointMatcher:          newMatcheri(),
 		errLogFunc:               errLogFunc,
 	}
 }
@@ -50,7 +50,7 @@ func (r *Router) MatchRequest(req *http.Request) (handler.Handler, map[string]st
 
 // Match returns the first handler that matches the http method and the url, together with the path variables if exists
 func (r *Router) Match(httpMethod string, url *url.URL) (handler.Handler, map[string]string) {
-	mc := path.ParseURL(url)
+	mc := path.ParseURLPath(url)
 	return r.endpointMatcher.match(httpMethod, mc)
 }
 

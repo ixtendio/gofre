@@ -96,14 +96,14 @@ func TestNewHttpCookies(t *testing.T) {
 		{
 			name: "construct with nil arg",
 			args: args{},
-			want: HttpCookies{},
+			want: nil,
 		},
 		{
 			name: "construct with empty array arg",
 			args: args{
 				cookiesArray: []http.Cookie{},
 			},
-			want: HttpCookies{},
+			want: nil,
 		},
 		{
 			name: "construct with array",

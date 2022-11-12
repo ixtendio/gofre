@@ -32,7 +32,7 @@ func TestStreamHttpResponse(t *testing.T) {
 				HttpHeadersResponse: HttpHeadersResponse{
 					HttpStatusCode: 200,
 					HttpHeaders:    http.Header{"Content-Type": {"bytes"}},
-					HttpCookies:    HttpCookies{},
+					HttpCookies:    nil,
 				},
 				Reader: testStreamReader,
 			},
@@ -71,7 +71,7 @@ func TestStreamHttpResponseWithHeaders(t *testing.T) {
 				HttpHeadersResponse: HttpHeadersResponse{
 					HttpStatusCode: 201,
 					HttpHeaders:    http.Header{"Content-Type": {"bytes"}, "h1": {"v1"}},
-					HttpCookies:    HttpCookies{},
+					HttpCookies:    nil,
 				},
 				Reader: testStreamReader,
 			},
