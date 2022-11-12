@@ -196,7 +196,7 @@ func TestRawWriterHttpResponseWithHeadersAndCookies(t *testing.T) {
 }
 
 func TestHttpRawResponse_Write(t *testing.T) {
-	req := &request.HttpRequest{R: &http.Request{}}
+	req := request.HttpRequest{R: &http.Request{}}
 	type args struct {
 		httpStatusCode int
 		httpHeaders    http.Header

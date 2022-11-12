@@ -179,7 +179,7 @@ func TestStreamHttpResponseWithHeadersAndCookies(t *testing.T) {
 }
 
 func TestHttpStreamResponse_Write(t *testing.T) {
-	req := &request.HttpRequest{R: &http.Request{}}
+	req := request.HttpRequest{R: &http.Request{}}
 	type args struct {
 		httpStatusCode int
 		httpHeaders    http.Header

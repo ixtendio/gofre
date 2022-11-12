@@ -649,7 +649,7 @@ func TestCors(t *testing.T) {
 					Header: http.Header{requestHeaderOrigin: {"https://domain.com"}},
 				},
 			},
-			handler: func(ctx context.Context, r *request.HttpRequest) (response.HttpResponse, error) {
+			handler: func(ctx context.Context, r request.HttpRequest) (response.HttpResponse, error) {
 				return response.PlainTextHttpResponseOK("ok"), nil
 			},
 			wantError: nil,
@@ -671,7 +671,7 @@ func TestCors(t *testing.T) {
 					Header: http.Header{requestHeaderOrigin: {"https://domain.com"}},
 				},
 			},
-			handler: func(ctx context.Context, r *request.HttpRequest) (response.HttpResponse, error) {
+			handler: func(ctx context.Context, r request.HttpRequest) (response.HttpResponse, error) {
 				return response.PlainTextHttpResponseOK("ok"), nil
 			},
 			wantError: nil,
@@ -694,7 +694,7 @@ func TestCors(t *testing.T) {
 					Header: http.Header{requestHeaderOrigin: {"https://domain.com"}, requestHeaderAccessControlRequestMethod: {"get"}},
 				},
 			},
-			handler: func(ctx context.Context, r *request.HttpRequest) (response.HttpResponse, error) {
+			handler: func(ctx context.Context, r request.HttpRequest) (response.HttpResponse, error) {
 				return response.PlainTextHttpResponseOK("ok"), nil
 			},
 			wantError: nil,
@@ -717,7 +717,7 @@ func TestCors(t *testing.T) {
 					Header: http.Header{requestHeaderOrigin: {"https://domain.com"}},
 				},
 			},
-			handler: func(ctx context.Context, r *request.HttpRequest) (response.HttpResponse, error) {
+			handler: func(ctx context.Context, r request.HttpRequest) (response.HttpResponse, error) {
 				return response.PlainTextHttpResponseOK("ok"), nil
 			},
 			wantError: nil,
@@ -739,7 +739,7 @@ func TestCors(t *testing.T) {
 					Header: http.Header{requestHeaderOrigin: {"https://domain.com"}, requestHeaderContentType: {""}},
 				},
 			},
-			handler: func(ctx context.Context, r *request.HttpRequest) (response.HttpResponse, error) {
+			handler: func(ctx context.Context, r request.HttpRequest) (response.HttpResponse, error) {
 				return response.PlainTextHttpResponseOK("ok"), nil
 			},
 			wantError:           errors.ErrAccessDenied,
@@ -749,7 +749,7 @@ func TestCors(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			m := Cors(tt.args.config)
-			resp, err := m(tt.handler)(context.Background(), &request.HttpRequest{R: tt.args.req})
+			resp, err := m(tt.handler)(context.Background(), request.HttpRequest{R: tt.args.req})
 			if err != tt.wantError {
 				t.Fatalf("Cors() error = %v, want %v", err, tt.wantError)
 			}

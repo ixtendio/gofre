@@ -16,14 +16,14 @@ func (r *HttpRequest) PathVar(varName string) string {
 	return ""
 }
 
-func NewHttpRequest(r *http.Request) *HttpRequest {
-	return &HttpRequest{
+func NewHttpRequest(r *http.Request) HttpRequest {
+	return HttpRequest{
 		R: r,
 	}
 }
 
-func NewHttpRequestWithPathVars(r *http.Request, uriVars map[string]string) *HttpRequest {
-	return &HttpRequest{
+func NewHttpRequestWithPathVars(r *http.Request, uriVars map[string]string) HttpRequest {
+	return HttpRequest{
 		R:        r,
 		pathVars: uriVars,
 	}

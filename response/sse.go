@@ -64,7 +64,7 @@ type HttpSSEResponse struct {
 	EventGenerator EventGenerator
 }
 
-func (r *HttpSSEResponse) Write(w http.ResponseWriter, req *request.HttpRequest) error {
+func (r *HttpSSEResponse) Write(w http.ResponseWriter, req request.HttpRequest) error {
 	if req.R.ProtoMajor != 2 {
 		w.WriteHeader(http.StatusInternalServerError)
 		return ErrNotHttp2Request

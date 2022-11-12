@@ -681,18 +681,18 @@ func TestMuxHandler_HandleRequest(t *testing.T) {
 			args: args{
 				httpMethod: "GET",
 				path:       "/test",
-				h: func(ctx context.Context, r *request.HttpRequest) (response.HttpResponse, error) {
+				h: func(ctx context.Context, r request.HttpRequest) (response.HttpResponse, error) {
 					sb.WriteString("handler")
 					return response.PlainTextHttpResponseOK(""), nil
 				},
 				commonMiddlewares: []middleware.Middleware{
 					func(handler handler.Handler) handler.Handler {
-						return func(ctx context.Context, r *request.HttpRequest) (response.HttpResponse, error) {
+						return func(ctx context.Context, r request.HttpRequest) (response.HttpResponse, error) {
 							sb.WriteString("com1:")
 							return handler(ctx, r)
 						}
 					}, func(handler handler.Handler) handler.Handler {
-						return func(ctx context.Context, r *request.HttpRequest) (response.HttpResponse, error) {
+						return func(ctx context.Context, r request.HttpRequest) (response.HttpResponse, error) {
 							sb.WriteString("com2:")
 							return handler(ctx, r)
 						}
@@ -700,12 +700,12 @@ func TestMuxHandler_HandleRequest(t *testing.T) {
 				},
 				endpointMiddlewares: []middleware.Middleware{
 					func(handler handler.Handler) handler.Handler {
-						return func(ctx context.Context, r *request.HttpRequest) (response.HttpResponse, error) {
+						return func(ctx context.Context, r request.HttpRequest) (response.HttpResponse, error) {
 							sb.WriteString("cust1:")
 							return handler(ctx, r)
 						}
 					}, func(handler handler.Handler) handler.Handler {
-						return func(ctx context.Context, r *request.HttpRequest) (response.HttpResponse, error) {
+						return func(ctx context.Context, r request.HttpRequest) (response.HttpResponse, error) {
 							sb.WriteString("cust2:")
 							return handler(ctx, r)
 						}
@@ -748,11 +748,11 @@ func TestMuxHandler_HandleXXX(t *testing.T) {
 		{
 			name: "GET",
 			argsSupplierFunc: func(m *MuxHandler) args {
-				m.HandleGet("/get", func(ctx context.Context, r *request.HttpRequest) (response.HttpResponse, error) {
+				m.HandleGet("/get", func(ctx context.Context, r request.HttpRequest) (response.HttpResponse, error) {
 					sb.WriteString("get_handler")
 					return response.PlainTextHttpResponseOK(""), nil
 				}, func(handler handler.Handler) handler.Handler {
-					return func(ctx context.Context, r *request.HttpRequest) (response.HttpResponse, error) {
+					return func(ctx context.Context, r request.HttpRequest) (response.HttpResponse, error) {
 						sb.WriteString("get_middleware:")
 						return handler(ctx, r)
 					}
@@ -767,11 +767,11 @@ func TestMuxHandler_HandleXXX(t *testing.T) {
 		{
 			name: "POST",
 			argsSupplierFunc: func(m *MuxHandler) args {
-				m.HandlePost("/post", func(ctx context.Context, r *request.HttpRequest) (response.HttpResponse, error) {
+				m.HandlePost("/post", func(ctx context.Context, r request.HttpRequest) (response.HttpResponse, error) {
 					sb.WriteString("post_handler")
 					return response.PlainTextHttpResponseOK(""), nil
 				}, func(handler handler.Handler) handler.Handler {
-					return func(ctx context.Context, r *request.HttpRequest) (response.HttpResponse, error) {
+					return func(ctx context.Context, r request.HttpRequest) (response.HttpResponse, error) {
 						sb.WriteString("post_middleware:")
 						return handler(ctx, r)
 					}
@@ -786,11 +786,11 @@ func TestMuxHandler_HandleXXX(t *testing.T) {
 		{
 			name: "PUT",
 			argsSupplierFunc: func(m *MuxHandler) args {
-				m.HandlePut("/put", func(ctx context.Context, r *request.HttpRequest) (response.HttpResponse, error) {
+				m.HandlePut("/put", func(ctx context.Context, r request.HttpRequest) (response.HttpResponse, error) {
 					sb.WriteString("put_handler")
 					return response.PlainTextHttpResponseOK(""), nil
 				}, func(handler handler.Handler) handler.Handler {
-					return func(ctx context.Context, r *request.HttpRequest) (response.HttpResponse, error) {
+					return func(ctx context.Context, r request.HttpRequest) (response.HttpResponse, error) {
 						sb.WriteString("put_middleware:")
 						return handler(ctx, r)
 					}
@@ -804,11 +804,11 @@ func TestMuxHandler_HandleXXX(t *testing.T) {
 		}, {
 			name: "PATCH",
 			argsSupplierFunc: func(m *MuxHandler) args {
-				m.HandlePatch("/patch", func(ctx context.Context, r *request.HttpRequest) (response.HttpResponse, error) {
+				m.HandlePatch("/patch", func(ctx context.Context, r request.HttpRequest) (response.HttpResponse, error) {
 					sb.WriteString("patch_handler")
 					return response.PlainTextHttpResponseOK(""), nil
 				}, func(handler handler.Handler) handler.Handler {
-					return func(ctx context.Context, r *request.HttpRequest) (response.HttpResponse, error) {
+					return func(ctx context.Context, r request.HttpRequest) (response.HttpResponse, error) {
 						sb.WriteString("patch_middleware:")
 						return handler(ctx, r)
 					}
@@ -822,11 +822,11 @@ func TestMuxHandler_HandleXXX(t *testing.T) {
 		}, {
 			name: "DELETE",
 			argsSupplierFunc: func(m *MuxHandler) args {
-				m.HandleDelete("/delete", func(ctx context.Context, r *request.HttpRequest) (response.HttpResponse, error) {
+				m.HandleDelete("/delete", func(ctx context.Context, r request.HttpRequest) (response.HttpResponse, error) {
 					sb.WriteString("delete_handler")
 					return response.PlainTextHttpResponseOK(""), nil
 				}, func(handler handler.Handler) handler.Handler {
-					return func(ctx context.Context, r *request.HttpRequest) (response.HttpResponse, error) {
+					return func(ctx context.Context, r request.HttpRequest) (response.HttpResponse, error) {
 						sb.WriteString("delete_middleware:")
 						return handler(ctx, r)
 					}
@@ -1015,7 +1015,7 @@ func TestMuxHandler_HandleOAUTH2(t *testing.T) {
 					Cache:             cache.NewInMemory(),
 					KeyExpirationTime: 60 * time.Second,
 				},
-			}, func(ctx context.Context, r *request.HttpRequest) (response.HttpResponse, error) {
+			}, func(ctx context.Context, r request.HttpRequest) (response.HttpResponse, error) {
 				at := oauth.GetAccessTokenFromContext(ctx)
 				sb.WriteString("at=" + at.AccessToken)
 				if tt.args.fetchUserDetails {
@@ -1024,12 +1024,12 @@ func TestMuxHandler_HandleOAUTH2(t *testing.T) {
 				}
 				return response.PlainTextHttpResponseOK(""), nil
 			}, []middleware.Middleware{func(handler handler.Handler) handler.Handler {
-				return func(ctx context.Context, r *request.HttpRequest) (response.HttpResponse, error) {
+				return func(ctx context.Context, r request.HttpRequest) (response.HttpResponse, error) {
 					sb.WriteString("initiateOAUTHMiddleware|")
 					return handler(ctx, r)
 				}
 			}}, []middleware.Middleware{func(handler handler.Handler) handler.Handler {
-				return func(ctx context.Context, r *request.HttpRequest) (response.HttpResponse, error) {
+				return func(ctx context.Context, r request.HttpRequest) (response.HttpResponse, error) {
 					sb.WriteString("authorizeOAUTHMiddleware|")
 					return handler(ctx, r)
 				}

@@ -87,7 +87,7 @@ const (
 // This function is a transcription of Java code org.apache.catalina.filters.CorsFilter
 func Cors(config CorsConfig) Middleware {
 	return func(handler handler.Handler) handler.Handler {
-		return func(ctx context.Context, req *request.HttpRequest) (response.HttpResponse, error) {
+		return func(ctx context.Context, req request.HttpRequest) (response.HttpResponse, error) {
 			httpResponse, err := handler(ctx, req)
 			if err != nil {
 				return nil, err

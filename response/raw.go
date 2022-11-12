@@ -14,7 +14,7 @@ type HttpRawResponse struct {
 	WriteFunc RawWriterFunc
 }
 
-func (r *HttpRawResponse) Write(w http.ResponseWriter, req *request.HttpRequest) error {
+func (r *HttpRawResponse) Write(w http.ResponseWriter, req request.HttpRequest) error {
 	// write the headers
 	if err := r.HttpHeadersResponse.Write(w, req); err != nil {
 		return err

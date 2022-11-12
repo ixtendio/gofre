@@ -9,7 +9,7 @@ import (
 )
 
 func TestHttpRedirectResponse_Write(t *testing.T) {
-	req := &request.HttpRequest{R: &http.Request{}}
+	req := request.HttpRequest{R: &http.Request{}}
 	type args struct {
 		url            string
 		httpStatusCode int

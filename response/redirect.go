@@ -10,7 +10,7 @@ type HttpRedirectResponse struct {
 	Url string
 }
 
-func (r *HttpRedirectResponse) Write(w http.ResponseWriter, req *request.HttpRequest) error {
+func (r *HttpRedirectResponse) Write(w http.ResponseWriter, req request.HttpRequest) error {
 	http.Redirect(w, req.R, r.Url, r.HttpStatusCode)
 	return nil
 }

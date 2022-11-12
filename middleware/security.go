@@ -80,7 +80,7 @@ type SecurityHeadersConfig struct {
 // SecurityHeaders provides some security HTTP headers to the response
 func SecurityHeaders(config SecurityHeadersConfig) Middleware {
 	return func(handler handler.Handler) handler.Handler {
-		return func(ctx context.Context, req *request.HttpRequest) (response.HttpResponse, error) {
+		return func(ctx context.Context, req request.HttpRequest) (response.HttpResponse, error) {
 			httpResponse, err := handler(ctx, req)
 			if err != nil {
 				return nil, err

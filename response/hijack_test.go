@@ -2,6 +2,7 @@ package response
 
 import (
 	"bufio"
+	"github.com/ixtendio/gofre/request"
 	"net"
 	"net/http"
 	"reflect"
@@ -82,7 +83,7 @@ func TestHttpHijackConnectionResponse_Write(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			r := NewHttpHijackConnectionResponse(tt.args.hjCallbackFunc)
-			if err := r.Write(tt.args.w, nil); err != nil {
+			if err := r.Write(tt.args.w, request.HttpRequest{}); err != nil {
 				t.Fatalf("Write() returned error: %v", err)
 			}
 			if r.StatusCode() != 0 {

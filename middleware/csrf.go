@@ -38,7 +38,7 @@ func CSRFPrevention(nonceCache cache.Cache) Middleware {
 // CSRFPreventionWithCustomParamAndHeaderName provides basic CSRF protection for a web application using a custom form param name and header name
 func CSRFPreventionWithCustomParamAndHeaderName(nonceCache cache.Cache, csrfNonceRequestParamName string, csrfRestNonceHeaderName string) Middleware {
 	return func(handler handler.Handler) handler.Handler {
-		return func(ctx context.Context, req *request.HttpRequest) (response.HttpResponse, error) {
+		return func(ctx context.Context, req request.HttpRequest) (response.HttpResponse, error) {
 			skipNonceCheck := req.R.Method == http.MethodGet ||
 				req.R.Method == http.MethodHead ||
 				req.R.Method == http.MethodTrace ||

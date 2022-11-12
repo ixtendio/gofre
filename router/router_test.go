@@ -51,12 +51,12 @@ func TestRouter_ServeHTTP(t *testing.T) {
 		responseData    string
 		responseHeaders http.Header
 	}
-	var gotRequest *request.HttpRequest
-	okHandler := func(ctx context.Context, r *request.HttpRequest) (response.HttpResponse, error) {
+	var gotRequest request.HttpRequest
+	okHandler := func(ctx context.Context, r request.HttpRequest) (response.HttpResponse, error) {
 		gotRequest = r
 		return response.PlainTextHttpResponseOK("ok"), nil
 	}
-	errorHandler := func(ctx context.Context, r *request.HttpRequest) (response.HttpResponse, error) {
+	errorHandler := func(ctx context.Context, r request.HttpRequest) (response.HttpResponse, error) {
 		gotRequest = r
 		return nil, fmt.Errorf("a simple error")
 	}
@@ -149,11 +149,11 @@ func TestRouter_ServeHTTP(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		gotRequest = nil
+		gotRequest = request.HttpRequest{}
 		t.Run(tt.name, func(t *testing.T) {
 			tt.router.ServeHTTP(tt.args.writer, tt.args.req)
 			if tt.want.handlerInvoked {
-				if gotRequest == nil {
+				if gotRequest.R == nil {
 					t.Errorf("ServeHTTP() the request is null")
 				}
 				if tt.want.pathVars != nil {
@@ -165,7 +165,7 @@ func TestRouter_ServeHTTP(t *testing.T) {
 				}
 
 			} else {
-				if gotRequest != nil {
+				if gotRequest.R != nil {
 					t.Errorf("ServeHTTP() the request should be null")
 				}
 			}

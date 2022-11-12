@@ -38,7 +38,7 @@ func TestAuthProvider(t *testing.T) {
 			name: "SecurityPrincipalSupplierFunc returns ok and overrides the existing one",
 			args: args{
 				ctx: context.WithValue(context.Background(), auth.SecurityPrincipalCtxKey, oldUsr),
-				sps: func(ctx context.Context, r *request.HttpRequest) (auth.SecurityPrincipal, error) {
+				sps: func(ctx context.Context, r request.HttpRequest) (auth.SecurityPrincipal, error) {
 					return usr, nil
 				},
 			},
@@ -49,7 +49,7 @@ func TestAuthProvider(t *testing.T) {
 			name: "SecurityPrincipalSupplierFunc returns ok",
 			args: args{
 				ctx: context.Background(),
-				sps: func(ctx context.Context, r *request.HttpRequest) (auth.SecurityPrincipal, error) {
+				sps: func(ctx context.Context, r request.HttpRequest) (auth.SecurityPrincipal, error) {
 					return usr, nil
 				},
 			},
@@ -60,7 +60,7 @@ func TestAuthProvider(t *testing.T) {
 			name: "SecurityPrincipalSupplierFunc returns error",
 			args: args{
 				ctx: context.Background(),
-				sps: func(ctx context.Context, r *request.HttpRequest) (auth.SecurityPrincipal, error) {
+				sps: func(ctx context.Context, r request.HttpRequest) (auth.SecurityPrincipal, error) {
 					return nil, errors.New("an error")
 				},
 			},
@@ -71,7 +71,7 @@ func TestAuthProvider(t *testing.T) {
 			name: "SecurityPrincipalSupplierFunc returns nil",
 			args: args{
 				ctx: context.Background(),
-				sps: func(ctx context.Context, r *request.HttpRequest) (auth.SecurityPrincipal, error) {
+				sps: func(ctx context.Context, r request.HttpRequest) (auth.SecurityPrincipal, error) {
 					return nil, nil
 				},
 			},
@@ -83,7 +83,7 @@ func TestAuthProvider(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			req, _ := http.NewRequestWithContext(tt.args.ctx, "GET", "https://www.domain.com", nil)
 			var gotSecurityPrincipal auth.SecurityPrincipal
-			_, err := SecurityPrincipalSupplier(tt.args.sps)(func(ctx context.Context, r *request.HttpRequest) (response.HttpResponse, error) {
+			_, err := SecurityPrincipalSupplier(tt.args.sps)(func(ctx context.Context, r request.HttpRequest) (response.HttpResponse, error) {
 				gotSecurityPrincipal = auth.GetSecurityPrincipalFromContext(ctx)
 				return response.PlainTextHttpResponseOK("ok"), nil
 			})(tt.args.ctx, request.NewHttpRequest(req))

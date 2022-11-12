@@ -29,7 +29,7 @@ func (r *HttpHandlerAdaptorResponse) Cookies() HttpCookies {
 	return r.cookies
 }
 
-func (r *HttpHandlerAdaptorResponse) Write(w http.ResponseWriter, responseContext *request.HttpRequest) error {
+func (r *HttpHandlerAdaptorResponse) Write(w http.ResponseWriter, responseContext request.HttpRequest) error {
 	// Write custom cookies
 	if r.cookies != nil {
 		for _, cookie := range r.cookies {

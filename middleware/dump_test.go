@@ -41,7 +41,7 @@ func TestRequestDumper(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, err := RequestDumper(tt.args.logger)(func(ctx context.Context, r *request.HttpRequest) (response.HttpResponse, error) {
+			_, err := RequestDumper(tt.args.logger)(func(ctx context.Context, r request.HttpRequest) (response.HttpResponse, error) {
 				return response.PlainTextHttpResponseOK(""), nil
 			})(context.Background(), request.NewHttpRequest(tt.args.req))
 			if err != nil {

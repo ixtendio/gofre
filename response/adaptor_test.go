@@ -17,7 +17,7 @@ func (f testHandlerFunc) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func TestHandlerAdaptor(t *testing.T) {
-	req := &request.HttpRequest{R: &http.Request{}}
+	req := request.HttpRequest{R: &http.Request{}}
 	type args struct {
 		handler     http.Handler
 		httpHeaders http.Header
@@ -92,7 +92,7 @@ func TestHandlerAdaptor(t *testing.T) {
 }
 
 func TestHandlerFuncAdaptor(t *testing.T) {
-	req := &request.HttpRequest{R: &http.Request{}}
+	req := request.HttpRequest{R: &http.Request{}}
 	type args struct {
 		handler     http.HandlerFunc
 		httpHeaders http.Header

@@ -11,7 +11,7 @@ type HttpTextResponse struct {
 	Payload string
 }
 
-func (r *HttpTextResponse) Write(w http.ResponseWriter, req *request.HttpRequest) error {
+func (r *HttpTextResponse) Write(w http.ResponseWriter, req request.HttpRequest) error {
 	// write the headers
 	if err := r.HttpHeadersResponse.Write(w, req); err != nil {
 		return err

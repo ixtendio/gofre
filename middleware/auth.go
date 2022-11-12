@@ -8,12 +8,12 @@ import (
 	"github.com/ixtendio/gofre/response"
 )
 
-type SecurityPrincipalSupplierFunc func(ctx context.Context, r *request.HttpRequest) (auth.SecurityPrincipal, error)
+type SecurityPrincipalSupplierFunc func(ctx context.Context, r request.HttpRequest) (auth.SecurityPrincipal, error)
 
 // SecurityPrincipalSupplier extracts the auth.SecurityPrincipal and propagate it to the context.Context
 func SecurityPrincipalSupplier(sps SecurityPrincipalSupplierFunc) Middleware {
 	return func(handler handler.Handler) handler.Handler {
-		return func(ctx context.Context, req *request.HttpRequest) (resp response.HttpResponse, err error) {
+		return func(ctx context.Context, req request.HttpRequest) (resp response.HttpResponse, err error) {
 			if securityPrincipal, err := sps(ctx, req); err != nil {
 				return nil, err
 			} else {

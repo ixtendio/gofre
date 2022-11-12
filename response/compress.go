@@ -41,7 +41,7 @@ func (r *HttpCompressResponse) Cookies() HttpCookies {
 	return r.httpResponse.Cookies()
 }
 
-func (r *HttpCompressResponse) Write(w http.ResponseWriter, req *request.HttpRequest) error {
+func (r *HttpCompressResponse) Write(w http.ResponseWriter, req request.HttpRequest) error {
 	// detect what compression algorithm to use
 	compressAlg := getCompressionAlgorithmFromHeaderValue(req.R.Header.Get(acceptEncodingHeaderName))
 

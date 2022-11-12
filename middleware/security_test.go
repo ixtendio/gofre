@@ -138,9 +138,9 @@ func TestSecurityHeaders(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			m := SecurityHeaders(tt.args.config)
-			resp, err := m(func(ctx context.Context, r *request.HttpRequest) (response.HttpResponse, error) {
+			resp, err := m(func(ctx context.Context, r request.HttpRequest) (response.HttpResponse, error) {
 				return response.PlainTextHttpResponseOK("ok"), nil
-			})(context.Background(), &request.HttpRequest{R: tt.args.req})
+			})(context.Background(), request.HttpRequest{R: tt.args.req})
 
 			if err != nil {
 				t.Fatalf("SecurityHeaders() returned error: %v", err)

@@ -30,7 +30,7 @@ func (r *HttpHijackConnectionResponse) Cookies() HttpCookies {
 	return nil
 }
 
-func (r *HttpHijackConnectionResponse) Write(w http.ResponseWriter, req *request.HttpRequest) error {
+func (r *HttpHijackConnectionResponse) Write(w http.ResponseWriter, req request.HttpRequest) error {
 	if hj, ok := w.(http.Hijacker); ok {
 		r.hjCallbackFunc(hj.Hijack())
 	} else {

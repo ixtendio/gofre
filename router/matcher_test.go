@@ -63,7 +63,7 @@ func Test_matcheri_addEndpoint(t *testing.T) {
 			for _, arg := range tt.args {
 				s := strings.SplitN(arg, ":", 2)
 				err := m.addEndpoint(s[0], s[1], false,
-					func(ctx context.Context, r *request.HttpRequest) (response.HttpResponse, error) {
+					func(ctx context.Context, r request.HttpRequest) (response.HttpResponse, error) {
 						return response.PlainTextHttpResponseOK("ok"), nil
 					})
 				if err != nil {

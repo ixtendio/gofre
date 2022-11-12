@@ -14,12 +14,12 @@ func TestNewHttpRequest(t *testing.T) {
 	tests := []struct {
 		name string
 		args args
-		want *HttpRequest
+		want HttpRequest
 	}{
 		{
 			name: "construct",
 			args: args{r: req},
-			want: &HttpRequest{
+			want: HttpRequest{
 				R:        req,
 				pathVars: nil,
 			},
@@ -44,12 +44,12 @@ func TestNewHttpRequestWithPathVars(t *testing.T) {
 	tests := []struct {
 		name string
 		args args
-		want *HttpRequest
+		want HttpRequest
 	}{
 		{
 			name: "construct",
 			args: args{r: req, pathVars: m},
-			want: &HttpRequest{
+			want: HttpRequest{
 				R:        req,
 				pathVars: m,
 			},

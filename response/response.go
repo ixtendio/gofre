@@ -27,5 +27,5 @@ type HttpResponse interface {
 	StatusCode() int
 	Headers() http.Header
 	Cookies() HttpCookies
-	Write(w http.ResponseWriter, reqContext *request.HttpRequest) error
+	Write(w http.ResponseWriter, reqContext request.HttpRequest) error
 }

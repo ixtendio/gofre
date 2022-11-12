@@ -34,7 +34,7 @@ type HttpTemplateResponse struct {
 	Data     any
 }
 
-func (r *HttpTemplateResponse) Write(w http.ResponseWriter, req *request.HttpRequest) error {
+func (r *HttpTemplateResponse) Write(w http.ResponseWriter, req request.HttpRequest) error {
 	// write the headers
 	if err := r.HttpHeadersResponse.Write(w, req); err != nil {
 		return err

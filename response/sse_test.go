@@ -316,7 +316,7 @@ func TestHttpSSEResponse_Write(t *testing.T) {
 				resp.Cookies().Add(k)
 			}
 			responseRecorder := httptest.NewRecorder()
-			err := resp.Write(responseRecorder, &request.HttpRequest{R: tt.args.request.WithContext(ctx)})
+			err := resp.Write(responseRecorder, request.HttpRequest{R: tt.args.request.WithContext(ctx)})
 			if tt.wantErr {
 				if err == nil {
 					t.Errorf("HttpSSEResponse() want error but got nil")

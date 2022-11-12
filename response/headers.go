@@ -33,7 +33,7 @@ func (r *HttpHeadersResponse) Cookies() HttpCookies {
 	return r.HttpCookies
 }
 
-func (r *HttpHeadersResponse) Write(w http.ResponseWriter, req *request.HttpRequest) error {
+func (r *HttpHeadersResponse) Write(w http.ResponseWriter, req request.HttpRequest) error {
 	statusCode := r.StatusCode()
 	if statusCode < 100 || statusCode > 999 {
 		return errors.New("http status code should be between 100 and 999")
