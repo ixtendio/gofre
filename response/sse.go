@@ -115,7 +115,7 @@ func SSEHttpResponseWithHeaders(ew EventGenerator, headers http.Header) *HttpSSE
 // SSEHttpResponseWithHeadersAndCookies creates a SSE response with custom headers and cookies
 func SSEHttpResponseWithHeadersAndCookies(ew EventGenerator, headers http.Header, cookies []http.Cookie) *HttpSSEResponse {
 	if headers == nil {
-		headers = http.Header{}
+		headers = make(http.Header, 1)
 	}
 	headers.Set("Content-Type", eventStreamContentType)
 	headers.Set("Cache-Control", "no-cache")

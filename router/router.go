@@ -29,7 +29,7 @@ func NewRouter(caseInsensitivePathMatch bool, errLogFunc func(err error)) *Route
 	}
 	return &Router{
 		caseInsensitivePathMatch: caseInsensitivePathMatch,
-		endpointMatcher:          newMatcheri(),
+		endpointMatcher:          newMatcher(),
 		errLogFunc:               errLogFunc,
 	}
 }

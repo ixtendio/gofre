@@ -42,7 +42,7 @@ func PlainTextHttpResponseWithHeaders(statusCode int, payload string, headers ht
 // PlainTextResponseWithHeadersAndCookies creates a plain text response with a specific status code, custom headers and cookies
 func PlainTextResponseWithHeadersAndCookies(statusCode int, payload string, headers http.Header, cookies []http.Cookie) *HttpTextResponse {
 	if headers == nil {
-		headers = http.Header{}
+		headers = make(http.Header, 1)
 	}
 	headers.Set("Content-Type", plainTextContentType)
 	return &HttpTextResponse{
@@ -73,7 +73,7 @@ func HtmlHttpResponseWithHeaders(statusCode int, payload string, headers http.He
 // HtmlResponseWithHeadersAndCookies creates a plain text response with a specific status code, custom headers and cookies
 func HtmlResponseWithHeadersAndCookies(statusCode int, payload string, headers http.Header, cookies []http.Cookie) *HttpTextResponse {
 	if headers == nil {
-		headers = http.Header{}
+		headers = make(http.Header, 1)
 	}
 	headers.Set("Content-Type", htmlContentType)
 	return &HttpTextResponse{

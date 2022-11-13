@@ -13,7 +13,7 @@ type matcher struct {
 }
 
 func (m *matcher) addEndpoint(method string, pathPattern string, caseInsensitivePathMatch bool, handler handler.Handler) error {
-	pattern, err := path.ParsePatternImproved(pathPattern, caseInsensitivePathMatch)
+	pattern, err := path.ParsePattern(pathPattern, caseInsensitivePathMatch)
 	if err != nil {
 		return fmt.Errorf("failed parsing pathPattern: %s, err: %writer", pathPattern, err)
 	}
@@ -41,7 +41,7 @@ func (m *matcher) match(method string, mc path.MatchingContext) (handler.Handler
 	return nil, nil
 }
 
-func newMatcheri() *matcher {
+func newMatcher() *matcher {
 	return &matcher{
 		patternsMap: make(map[string][]path.Pattern, 9),
 	}

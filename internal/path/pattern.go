@@ -9,62 +9,67 @@ import (
 	"unicode"
 )
 
-type captureVar struct {
-	name         string
-	segmentIndex int
-	pattern      *regexp.Regexp
+type segment struct {
+	val               string
+	matchType         MatchType
+	captureVarName    string
+	captureVarPattern *regexp.Regexp
+}
+
+func (s segment) String() string {
+	return s.val
 }
 
 type Pattern struct {
-	segmentsCount             int
-	caseInsensitive           bool
-	maxMatchableSegmentsCount int
-	pathEncode                encode
-	RawValue                  string
-	captureVars               []captureVar
-	Attachment                any
+	caseInsensitive      bool
+	captureVarsLen       int
+	maxMatchableSegments int
+	priority             uint64
+	segments             []segment
+	RawValue             string
+	Attachment           any
 }
 
-func (p *Pattern) HighPriorityThan(pattern Pattern) bool {
-	return p.pathEncode.val < pattern.pathEncode.val
+func (p *Pattern) HighPriorityThan(other Pattern) bool {
+	if p.priority == other.priority {
+		return strings.Compare(p.RawValue, other.RawValue) < 0
+	}
+	return p.priority < other.priority
 }
 
 func (p *Pattern) isGreedy() bool {
-	return p.maxMatchableSegmentsCount == math.MaxInt64
+	return p.maxMatchableSegments == math.MaxInt64
 }
 
 // determinePathSegmentMatchType returns the MatchType for the current URL path segment and the next pattern segment index
 // If the current URL path dose not math the pattern, then MatchTypeUnknown, 0 is returned
 // If the segmentIndex is the last segment pattern then -1 will be returned as the next pattern segment index
 func (p *Pattern) determinePathSegmentMatchType(urlPathSegment string, segmentIndex int) MatchType {
-	if segmentIndex < 0 || segmentIndex >= p.segmentsCount {
+	if segmentIndex < 0 || segmentIndex >= len(p.segments) {
 		return MatchTypeUnknown
 	}
-	if !p.isGreedy() && segmentIndex >= p.maxMatchableSegmentsCount {
+	if !p.isGreedy() && segmentIndex >= p.maxMatchableSegments {
 		return MatchTypeUnknown
 	}
 	var match bool
-	matchType := p.getSegmentMatchType(segmentIndex)
+	segment := &p.segments[segmentIndex]
+	matchType := segment.matchType
 	switch matchType {
 	case MatchTypeLiteral:
-		patternSegment := p.getSegment(segmentIndex)
-		if p.caseInsensitive {
-			match = strings.EqualFold(urlPathSegment, patternSegment)
-		} else {
-			match = urlPathSegment == patternSegment
+		patternSegment := segment.val
+		if len(urlPathSegment) == len(patternSegment) {
+			if p.caseInsensitive {
+				match = strings.EqualFold(urlPathSegment, patternSegment)
+			} else {
+				match = urlPathSegment == patternSegment
+			}
 		}
 	case MatchTypeSinglePath, MatchTypeWithCaptureVars, MatchTypeMultiplePaths:
 		match = true
 	case MatchTypeWithConstraintCaptureVars:
-		for i := 0; i < len(p.captureVars); i++ {
-			cv := p.captureVars[i]
-			if cv.segmentIndex == segmentIndex && cv.pattern != nil {
-				match = cv.pattern.MatchString(urlPathSegment)
-				break
-			}
-		}
+		match = segment.captureVarPattern.MatchString(urlPathSegment)
 	case MatchTypeRegex:
-		patternSegment := p.getSegment(segmentIndex)
+		patternSegment := segment.val
 		match = regexSegmentMatch(urlPathSegment, patternSegment, p.caseInsensitive)
 	}
 	if match {
@@ -73,99 +78,73 @@ func (p *Pattern) determinePathSegmentMatchType(urlPathSegment string, segmentIn
 	return MatchTypeUnknown
 }
 
-func (p *Pattern) getSegmentMatchType(lookupSegmentIndex int) MatchType {
-	var segmentIndex int
-	prevMatchType := MatchTypeUnknown
-	n := p.pathEncode.val
-	for i := maxPathSegments - 1; i >= 0; i-- {
-		spliter := getDecimalDivider(i)
-		currentMatchType := MatchType(n / spliter)
-		n = n % spliter
-		if prevMatchType == MatchTypeMultiplePaths && currentMatchType == MatchTypeMultiplePaths {
-			continue
-		}
-		if segmentIndex == lookupSegmentIndex {
-			return currentMatchType
-		}
-		prevMatchType = currentMatchType
-		segmentIndex++
-	}
-	return MatchTypeUnknown
-}
-
-func (p *Pattern) getSegment(segmentIndex int) string {
-	var pathSegmentStart int
-	var pathSegmentsCount int
-	pathPattern := p.RawValue
-	pathPatternLen := len(pathPattern)
-	for pos := 1; pos < pathPatternLen; pos++ {
-		if pathPattern[pos] == '/' || pos == pathPatternLen-1 {
-			if pathSegmentsCount == segmentIndex {
-				if pathPattern[pos] == '/' {
-					return pathPattern[pathSegmentStart+1 : pos]
-				} else {
-					return pathPattern[pathSegmentStart+1:]
-				}
-			}
-			pathSegmentsCount++
-			pathSegmentStart = pos
-		}
-	}
-	return ""
-}
-
 func (p *Pattern) String() string {
 	return p.RawValue
 }
 
-func ParsePatternImproved(pathPattern string, caseInsensitive bool) (Pattern, error) {
+func ParsePattern(pathPattern string, caseInsensitive bool) (Pattern, error) {
 	if len(pathPattern) == 0 || pathPattern[0] != '/' {
 		return Pattern{}, fmt.Errorf("the path pattern should start with /")
 	}
 
-	pathPatternLen := len(pathPattern)
-	captureVars := createCaptureVarsContainers(pathPattern)
-	var captureVarsIndex int
+	if pathPattern == "/" {
+		return Pattern{
+			caseInsensitive: caseInsensitive,
+			RawValue:        "/",
+		}, nil
+	}
+
+	pathLen := len(pathPattern)
+	var maxSegmentsSize int
+	for pos := 0; pos < pathLen; pos++ {
+		if pathPattern[pos] == '/' {
+			maxSegmentsSize++
+		}
+	}
+
 	var pathSegmentStart int
-	var pathEncode encode
-	//var pathSegmentsMatchTypeEncoding uint64
 	var pathSegmentsCount int
+	var captureVarsLen int
 	var lastSegmentMatchType MatchType
 	var maxSegmentMatchType MatchType
+	segments := make([]segment, maxSegmentsSize)
+	pathPatternLen := len(pathPattern)
 
 	for pos := 1; pos < pathPatternLen; pos++ {
 		if pathPattern[pos] == '/' || pos == pathPatternLen-1 {
-			var pathSegment string
+			var segmentVal string
 			if pathPattern[pos] == '/' {
-				pathSegment = pathPattern[pathSegmentStart+1 : pos]
+				segmentVal = pathPattern[pathSegmentStart+1 : pos]
 			} else {
-				pathSegment = pathPattern[pathSegmentStart+1:]
+				segmentVal = pathPattern[pathSegmentStart+1:]
 			}
-			if err := validatePathSegment(pathSegment); err != nil {
-				return Pattern{}, fmt.Errorf("invalid path pattern: [%s], failed path segment validation: [%s], err: %w", pathPattern, pathSegment, err)
+			if err := validatePathSegment(segmentVal); err != nil {
+				return Pattern{}, fmt.Errorf("invalid path pattern: [%s], failed path segment validation: [%s], err: %w", pathPattern, segmentVal, err)
 			}
 
 			pathSegmentStart = pos
-			pathSegmentsCount++
-			currentSegmentMatchType := determineMatchTypeForSegment(pathSegment)
-			if lastSegmentMatchType == MatchTypeMultiplePaths && currentSegmentMatchType == MatchTypeMultiplePaths {
-				return Pattern{}, fmt.Errorf("invalid path pattern: [%s], not allowed to have consecutive path segments with **: [%s]", pathPattern, pathSegment)
+			segmentMatchType := determineMatchTypeForSegment(segmentVal)
+			if lastSegmentMatchType == MatchTypeMultiplePaths && segmentMatchType == MatchTypeMultiplePaths {
+				return Pattern{}, fmt.Errorf("invalid path pattern: [%s], not allowed to have consecutive path segments with **: [%s]", pathPattern, segmentVal)
 			}
-			lastSegmentMatchType = currentSegmentMatchType
-			if currentSegmentMatchType > maxSegmentMatchType {
-				maxSegmentMatchType = currentSegmentMatchType
+			lastSegmentMatchType = segmentMatchType
+			if segmentMatchType > maxSegmentMatchType {
+				maxSegmentMatchType = segmentMatchType
 			}
 
-			pathEncode = pathEncode.append(currentSegmentMatchType)
-			if currentSegmentMatchType == MatchTypeWithCaptureVars {
-				captureVars[captureVarsIndex] = captureVar{
-					segmentIndex: pathSegmentsCount - 1,
-					name:         pathSegment[1 : len(pathSegment)-1],
-				}
-				captureVarsIndex++
-			} else if currentSegmentMatchType == MatchTypeWithConstraintCaptureVars {
-				colonStartIndex := strings.IndexRune(pathSegment, ':')
-				regexPattern := pathSegment[colonStartIndex+1 : len(pathSegment)-1]
+			segment := segment{
+				val:               segmentVal,
+				matchType:         segmentMatchType,
+				captureVarName:    "",
+				captureVarPattern: nil,
+			}
+			if segmentMatchType == MatchTypeWithCaptureVars {
+				captureVarsLen++
+				segment.captureVarName = segmentVal[1 : len(segmentVal)-1]
+			} else if segmentMatchType == MatchTypeWithConstraintCaptureVars {
+				captureVarsLen++
+				colonStartIndex := strings.IndexRune(segmentVal, ':')
+				regexPattern := segmentVal[colonStartIndex+1 : len(segmentVal)-1]
 				if caseInsensitive {
 					regexPattern = "(?i)" + regexPattern
 				}
@@ -173,26 +152,27 @@ func ParsePatternImproved(pathPattern string, caseInsensitive bool) (Pattern, er
 				if err != nil {
 					return Pattern{}, fmt.Errorf("invalid path pattern: [%s], failed to compile regex: [%s], err: %w", pathPattern, regexPattern, err)
 				}
-				captureVars[captureVarsIndex] = captureVar{
-					segmentIndex: pathSegmentsCount - 1,
-					name:         pathSegment[1:colonStartIndex],
-					pattern:      regex,
-				}
-				captureVarsIndex++
+				segment.captureVarName = segmentVal[1:colonStartIndex]
+				segment.captureVarPattern = regex
 			}
+			segments[pathSegmentsCount] = segment
+			pathSegmentsCount++
 		}
 	}
+
 	maxMatchableSegments := pathSegmentsCount
 	if maxSegmentMatchType == MatchTypeMultiplePaths {
 		maxMatchableSegments = math.MaxInt
 	}
+	segments = segments[0:pathSegmentsCount]
 	return Pattern{
-		segmentsCount:             pathSegmentsCount,
-		caseInsensitive:           caseInsensitive,
-		maxMatchableSegmentsCount: maxMatchableSegments,
-		pathEncode:                pathEncode.doPadding(),
-		RawValue:                  pathPattern,
-		captureVars:               captureVars,
+		caseInsensitive:      caseInsensitive,
+		captureVarsLen:       captureVarsLen,
+		maxMatchableSegments: maxMatchableSegments,
+		priority:             computePriority(segments),
+		segments:             segments,
+		RawValue:             pathPattern,
+		Attachment:           nil,
 	}, nil
 }
 
@@ -359,21 +339,4 @@ func validatePathSegment(pathSegment string) error {
 	}
 
 	return nil
-}
-
-func createCaptureVarsContainers(pathPattern string) []captureVar {
-	var captureVarsCount int
-	for pos := 1; pos < len(pathPattern); pos++ {
-		ch := pathPattern[pos]
-		switch ch {
-		case '{':
-			if pathPattern[pos-1] == '/' {
-				captureVarsCount++
-			}
-		}
-	}
-	if captureVarsCount == 0 {
-		return nil
-	}
-	return make([]captureVar, captureVarsCount)
 }

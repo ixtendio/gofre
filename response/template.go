@@ -69,7 +69,7 @@ func TemplateHttpResponseWithCookies(template ExecutableTemplate, statusCode int
 // TemplateHttpResponseWithHeadersAndCookies creates an HTML response with custom headers and cookies
 func TemplateHttpResponseWithHeadersAndCookies(template ExecutableTemplate, statusCode int, templateName string, templateData any, headers http.Header, cookies []http.Cookie) *HttpTemplateResponse {
 	if headers == nil {
-		headers = http.Header{}
+		headers = make(http.Header, 1)
 	}
 	if len(headers.Get("Content-Type")) == 0 {
 		if _, ok := template.(*html.Template); ok {

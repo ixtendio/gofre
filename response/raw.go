@@ -45,7 +45,7 @@ func RawWriterHttpResponseWithCookies(statusCode int, contentType string, cookie
 // RawWriterHttpResponseWithHeadersAndCookies creates a 200 success reader response with custom headers and cookies
 func RawWriterHttpResponseWithHeadersAndCookies(statusCode int, contentType string, headers http.Header, cookies []http.Cookie, writeFunc RawWriterFunc) *HttpRawResponse {
 	if headers == nil {
-		headers = http.Header{}
+		headers = make(http.Header, 1)
 	}
 	headers.Set("Content-Type", contentType)
 	return &HttpRawResponse{

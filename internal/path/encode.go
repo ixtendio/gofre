@@ -1,7 +1,5 @@
 package path
 
-import "strconv"
-
 type MatchType int
 
 const (
@@ -13,31 +11,22 @@ const (
 	MatchTypeRegex                     = MatchType(4)
 	MatchTypeSinglePath                = MatchType(5)
 	MatchTypeMultiplePaths             = MatchType(6)
-	matchTypeUnset                     = MatchType(9)
 )
 
-type encode struct {
-	val uint64
-	len int
-}
-
-func (e encode) doPadding() encode {
-	val := e.val
-	if val == 0 || e.len == maxPathSegments {
-		return e
-	}
-
+func computePriority(segments []segment) uint64 {
+	var priority uint64
 	var multiplePathsMatcherSegmentsCount int
-	var digitsCount int
-	for n := val; n > 0; n = n / 10 {
-		if MatchType(n%10) == MatchTypeMultiplePaths {
+	digitsCount := len(segments)
+	for i := 0; i < digitsCount; i++ {
+		mt := segments[i].matchType
+		if mt == MatchTypeMultiplePaths {
 			multiplePathsMatcherSegmentsCount++
 		}
-		digitsCount++
+		priority = priority*10 + uint64(mt)
 	}
 
 	if multiplePathsMatcherSegmentsCount == 0 {
-		return encode{val: val * getDecimalDivider(maxPathSegments-digitsCount), len: maxPathSegments}
+		return priority * getDecimalDivider(maxPathSegments-digitsCount)
 	} else {
 		digitsPerSegmentToAdd := (maxPathSegments - digitsCount) / multiplePathsMatcherSegmentsCount
 		digitsPerSegmentReminderToAdd := (maxPathSegments - digitsCount) % multiplePathsMatcherSegmentsCount
@@ -56,10 +45,10 @@ func (e encode) doPadding() encode {
 
 		dividerDigits := 1
 		for i := 0; i < multiplePathsMatcherSegmentsCount; i++ {
-			splitIndex := getSplitIndex(val, dividerDigits)
+			splitIndex := getSplitIndex(priority, dividerDigits)
 			m := getDecimalDivider(splitIndex)
-			n := val / m
-			r := val % m
+			n := priority / m
+			r := priority % m
 			digitsToAdd := digitsPerSegmentToAdd
 			if i == multiplePathsMatcherSegmentsCount-1 {
 				digitsToAdd += digitsPerSegmentReminderToAdd
@@ -68,47 +57,12 @@ func (e encode) doPadding() encode {
 			for j := 0; j < digitsToAdd; j++ {
 				n = n*10 + uint64(MatchTypeMultiplePaths)
 			}
-			val = n*m + r
+			priority = n*m + r
 			dividerDigits = splitIndex + digitsToAdd
 		}
 
-		return encode{val: val, len: maxPathSegments}
+		return priority
 	}
-}
-
-func (e encode) split(index int) (encode, encode) {
-	if index < 0 || index >= e.len {
-		return e, encode{}
-	}
-	val := e.val
-	rLen := e.len - index - 1
-	spliter := getDecimalDivider(rLen)
-	return encode{val: val / spliter, len: e.len - rLen}, encode{val: val % spliter, len: rLen}
-}
-
-func (e encode) set(index int, setVal MatchType) encode {
-	if e.val < 10 {
-		return encode{val: uint64(setVal), len: 1}
-	}
-	l, r := e.split(index)
-	if l.val == 0 {
-		return e
-	}
-
-	val := (l.val/10)*10 + uint64(setVal)
-	val = val*getDecimalDivider(r.len) + r.val
-	return encode{val: val, len: e.len}
-}
-
-func (e encode) append(value MatchType) encode {
-	if e.len >= maxPathSegments {
-		return e
-	}
-	return encode{val: e.val*10 + uint64(value), len: e.len + 1}
-}
-
-func (e encode) String() string {
-	return strconv.Itoa(int(e.val))
 }
 
 func getDecimalDivider(zeroCount int) uint64 {
@@ -151,50 +105,5 @@ func getDecimalDivider(zeroCount int) uint64 {
 		return 10
 	default:
 		return 1
-	}
-}
-
-func newUrlPathEncode(size int) encode {
-	switch size {
-	case 19:
-		return encode{val: 9999999999999999999, len: size}
-	case 18:
-		return encode{val: 999999999999999999, len: size}
-	case 17:
-		return encode{val: 99999999999999999, len: size}
-	case 16:
-		return encode{val: 9999999999999999, len: size}
-	case 15:
-		return encode{val: 999999999999999, len: size}
-	case 14:
-		return encode{val: 99999999999999, len: size}
-	case 13:
-		return encode{val: 9999999999999, len: size}
-	case 12:
-		return encode{val: 999999999999, len: size}
-	case 11:
-		return encode{val: 99999999999, len: size}
-	case 10:
-		return encode{val: 9999999999, len: size}
-	case 9:
-		return encode{val: 999999999, len: size}
-	case 8:
-		return encode{val: 99999999, len: size}
-	case 7:
-		return encode{val: 9999999, len: size}
-	case 6:
-		return encode{val: 999999, len: size}
-	case 5:
-		return encode{val: 99999, len: size}
-	case 4:
-		return encode{val: 9999, len: size}
-	case 3:
-		return encode{val: 999, len: size}
-	case 2:
-		return encode{val: 99, len: size}
-	case 1:
-		return encode{val: 9, len: size}
-	default:
-		return encode{}
 	}
 }

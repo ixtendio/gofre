@@ -6,54 +6,52 @@ type MatchingContext struct {
 	// The original request path
 	originalPath string
 	// The non-empty path segments where the double slashes were removed
-	pathSegments []string
+	pathSegments []segment
 	CaptureVars  map[string]string
-	// the path segment encode
-	pathEncode encode
 }
 
 func (mc *MatchingContext) MatchPatterns(patterns []Pattern) (Pattern, bool) {
 	patternsLen := len(patterns)
 	urlLen := len(mc.pathSegments)
-	urlPathEncode := mc.pathEncode
-	var matchFunc func(patternIndex int, urlSegmentIndex int, patternSegmentIndex int) (Pattern, bool)
+	var matchFuncRecursive func(patternIndex int, urlSegmentIndex int, patternSegmentIndex int) (Pattern, bool)
 
-	matchFunc = func(patternIndex int, urlSegmentIndex int, patternSegmentIndex int) (Pattern, bool) {
+	matchFuncRecursive = func(patternIndex int, urlSegmentIndex int, patternSegmentIndex int) (Pattern, bool) {
 		var foundPattern Pattern
 		var found bool
 		for pi := patternIndex; pi < patternsLen; pi++ {
-			pattern := patterns[pi]
+			pattern := &patterns[pi]
+			patternSegmentsLen := len(pattern.segments)
 			if urlLen == 0 {
-				if pattern.segmentsCount == 0 || (pattern.isGreedy() && pattern.segmentsCount == 1) {
-					return pattern, true
+				if patternSegmentsLen == 0 || (pattern.isGreedy() && patternSegmentsLen == 1) {
+					return *pattern, true
 				}
-			} else if urlSegmentIndex < urlLen && urlLen <= pattern.maxMatchableSegmentsCount {
-				segment := mc.pathSegments[urlSegmentIndex]
-				segmentMatchType := pattern.determinePathSegmentMatchType(segment, patternSegmentIndex)
+			} else if urlLen <= pattern.maxMatchableSegments && urlSegmentIndex < urlLen {
+				urlSegment := &mc.pathSegments[urlSegmentIndex]
+				segmentMatchType := pattern.determinePathSegmentMatchType(urlSegment.val, patternSegmentIndex)
 				if segmentMatchType == MatchTypeMultiplePaths {
 					for usi := urlSegmentIndex; usi < urlLen; usi++ {
-						segment := mc.pathSegments[usi]
-						if nextSmt := pattern.determinePathSegmentMatchType(segment, patternSegmentIndex+1); nextSmt != MatchTypeUnknown {
-							foundPattern, found = matchFunc(pi, usi, patternSegmentIndex+1)
+						urlSegment := &mc.pathSegments[usi]
+						if nextSmt := pattern.determinePathSegmentMatchType(urlSegment.val, patternSegmentIndex+1); nextSmt != MatchTypeUnknown {
+							foundPattern, found = matchFuncRecursive(pi, usi, patternSegmentIndex+1)
 						} else {
-							if usi == urlLen-1 && patternSegmentIndex == pattern.segmentsCount-1 {
-								urlPathEncode = urlPathEncode.set(usi, MatchTypeMultiplePaths)
-								foundPattern = pattern
+							if usi == urlLen-1 && patternSegmentIndex == patternSegmentsLen-1 {
+								urlSegment.matchType = MatchTypeMultiplePaths
+								foundPattern = *pattern
 								found = true
 							}
 						}
 						if found {
 							break
 						}
-						urlPathEncode = urlPathEncode.set(usi, MatchTypeMultiplePaths)
+						urlSegment.matchType = MatchTypeMultiplePaths
 					}
 				} else if segmentMatchType != MatchTypeUnknown {
-					urlPathEncode = urlPathEncode.set(urlSegmentIndex, segmentMatchType)
-					if urlSegmentIndex < urlLen && patternSegmentIndex < pattern.segmentsCount {
-						if urlSegmentIndex == urlLen-1 && patternSegmentIndex == pattern.segmentsCount-1 {
-							foundPattern, found = pattern, true
+					urlSegment.matchType = segmentMatchType
+					if urlSegmentIndex < urlLen && patternSegmentIndex < patternSegmentsLen {
+						if urlSegmentIndex == urlLen-1 && patternSegmentIndex == patternSegmentsLen-1 {
+							foundPattern, found = *pattern, true
 						} else {
-							foundPattern, found = matchFunc(pi, urlSegmentIndex+1, patternSegmentIndex+1)
+							foundPattern, found = matchFuncRecursive(pi, urlSegmentIndex+1, patternSegmentIndex+1)
 						}
 					}
 				}
@@ -66,26 +64,74 @@ func (mc *MatchingContext) MatchPatterns(patterns []Pattern) (Pattern, bool) {
 		return foundPattern, found
 	}
 
-	if p, found := matchFunc(0, 0, 0); found {
-		captureVarsLen := len(p.captureVars)
-		if captureVarsLen != 0 {
-			mc.CaptureVars = make(map[string]string, captureVarsLen)
-			var usi int
-			var cvi int
-			l, r := urlPathEncode.split(0)
-			for l.len > 0 {
-				if MatchType(l.val) == MatchTypeWithCaptureVars ||
-					MatchType(l.val) == MatchTypeWithConstraintCaptureVars {
-					varName := p.captureVars[cvi].name
-					varValue := mc.pathSegments[usi]
-					mc.CaptureVars[varName] = varValue
-					cvi++
+	//matchFuncIter := func() (Pattern, bool) {
+	//	//var foundPattern Pattern
+	//	//var found bool
+	//	var patternIndex int
+	//	var patternSegmentIndex int
+	//	var urlSegmentIndex int
+	//	for patternIndex < patternsLen {
+	//		pattern := patterns[patternIndex]
+	//		if urlLen == 0 {
+	//			if pattern.segmentsCount == 0 || (pattern.isGreedy() && pattern.segmentsCount == 1) {
+	//				return pattern, true
+	//			}
+	//		} else if urlSegmentIndex < urlLen && urlLen <= pattern.maxMatchableSegments {
+	//			segment := mc.pathSegments[urlSegmentIndex]
+	//			segmentMatchType := pattern.determinePathSegmentMatchType(segment, patternSegmentIndex)
+	//			if segmentMatchType == MatchTypeMultiplePaths {
+	//				if nextSmt := pattern.determinePathSegmentMatchType(segment, patternSegmentIndex+1); nextSmt != MatchTypeUnknown {
+	//					patternSegmentIndex++
+	//				} else {
+	//					if urlSegmentIndex == urlLen-1 && patternSegmentIndex == pattern.segmentsCount-1 {
+	//						urlPathEncode = urlPathEncode.set(urlSegmentIndex, MatchTypeMultiplePaths)
+	//						return pattern, true
+	//					}
+	//					urlPathEncode = urlPathEncode.set(urlSegmentIndex, MatchTypeMultiplePaths)
+	//				}
+	//			} else if segmentMatchType != MatchTypeUnknown {
+	//				urlPathEncode = urlPathEncode.set(urlSegmentIndex, segmentMatchType)
+	//				if urlSegmentIndex < urlLen && patternSegmentIndex < pattern.segmentsCount {
+	//					if urlSegmentIndex == urlLen-1 && patternSegmentIndex == pattern.segmentsCount-1 {
+	//						return pattern, true
+	//					} else {
+	//						urlSegmentIndex++
+	//						patternSegmentIndex++
+	//					}
+	//				}
+	//			} else {
+	//				patternIndex++
+	//			}
+	//		} else {
+	//			patternIndex++
+	//		}
+	//	}
+	//	return Pattern{}, false
+	//}
+
+	if p, found := matchFuncRecursive(0, 0, 0); found {
+		//if p, found := matchFuncIter(); found {
+		if p.captureVarsLen > 0 {
+			mc.CaptureVars = make(map[string]string, p.captureVarsLen)
+
+			patternSegmentsLen := len(p.segments)
+			var psi int
+			for i := 0; i < len(mc.pathSegments); i++ {
+				urlSegment := &mc.pathSegments[i]
+				if urlSegment.matchType == MatchTypeWithCaptureVars ||
+					urlSegment.matchType == MatchTypeWithConstraintCaptureVars {
+					for ; psi < patternSegmentsLen; psi++ {
+						patternSegment := &p.segments[psi]
+						if patternSegment.matchType == MatchTypeWithCaptureVars ||
+							patternSegment.matchType == MatchTypeWithConstraintCaptureVars {
+							mc.CaptureVars[patternSegment.captureVarName] = urlSegment.val
+							psi++
+							break
+						}
+					}
 				}
-				l, r = r.split(0)
-				usi++
 			}
 		}
-		mc.pathEncode = urlPathEncode
 		return p, true
 	}
 	return Pattern{}, false
@@ -113,17 +159,17 @@ func ParseURLPath(requestUrl *url.URL) MatchingContext {
 	}
 
 	var segmentsIndex int
-	segments := make([]string, maxSegmentsSize)
+	segments := make([]segment, maxSegmentsSize)
 	segmentStartPos := -1
-	addSegmentFunc := func(segment string) {
-		if len(segment) > 0 {
-			if segment == ".." {
+	addSegmentFunc := func(seg string) {
+		if len(seg) > 0 {
+			if seg == ".." {
 				segmentsIndex--
 				if segmentsIndex < 0 {
 					segmentsIndex = 0
 				}
 			} else {
-				segments[segmentsIndex] = segment
+				segments[segmentsIndex] = segment{val: seg}
 				segmentsIndex++
 			}
 		}
@@ -151,6 +197,5 @@ func ParseURLPath(requestUrl *url.URL) MatchingContext {
 	return MatchingContext{
 		originalPath: requestPath,
 		pathSegments: segments[0:segmentsIndex],
-		pathEncode:   newUrlPathEncode(segmentsIndex),
 	}
 }

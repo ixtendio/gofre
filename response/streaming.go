@@ -43,7 +43,7 @@ func StreamHttpResponseWithCookies(statusCode int, contentType string, cookies [
 // StreamHttpResponseWithHeadersAndCookies creates a 200 success reader response with custom headers and cookies
 func StreamHttpResponseWithHeadersAndCookies(statusCode int, contentType string, headers http.Header, cookies []http.Cookie, reader io.Reader) *HttpStreamResponse {
 	if headers == nil {
-		headers = http.Header{}
+		headers = make(http.Header, 1)
 	}
 	headers.Set("Content-Type", contentType)
 	return &HttpStreamResponse{

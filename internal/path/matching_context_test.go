@@ -169,11 +169,54 @@ var (
 		"/progs/update.bash"}
 )
 
+type p struct {
+	val     string
+	valType uint8
+}
+
+func Benchmark_Alloc_StringArray(b *testing.B) {
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		arr := make([]string, 3)
+		arr[0] = "q423323433432"
+		arr[1] = "wsasdsdadasd"
+		arr[2] = "exzcxczxcxczxc"
+		useArr(arr)
+	}
+}
+
+func Benchmark_Alloc_StructArray(b *testing.B) {
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		arr := make([]p, 3)
+		arr[0] = p{val: "q2254435454"}
+		arr[1] = p{val: "wfdsfsdfsd"}
+		arr[2] = p{val: "edfdsfsdf"}
+		useStructArray(arr)
+	}
+}
+
+func useArr(arr []string) {
+
+}
+
+func useStructArray(arr []p) {
+
+}
+
+func Benchmark_ParseURLPath(b *testing.B) {
+	url := mustParseURL("https://example.com/a/b/c/d/e/f/g/h/i/j/k/def?q=morefoo%25bar")
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		ParseURLPath(url)
+	}
+}
+
 func Benchmark_MatchPattern(b *testing.B) {
 	mc := ParseURLPath(mustParseURL("https://www.domain.com/gopher/pencil/gopherhelmet.jpg"))
 	var patterns []Pattern
 	for _, ps := range staticPaths {
-		p, err := ParsePatternImproved(ps, false)
+		p, err := ParsePattern(ps, false)
 		if err != nil {
 			b.Fatalf("MatchPatterns() pattern: [%s] parse error: %v", ps, err)
 		}
@@ -207,7 +250,6 @@ func TestParseURLPath(t *testing.T) {
 			want: MatchingContext{
 				originalPath: "",
 				pathSegments: nil,
-				pathEncode:   newUrlPathEncode(0),
 			},
 		},
 		{
@@ -216,7 +258,6 @@ func TestParseURLPath(t *testing.T) {
 			want: MatchingContext{
 				originalPath: "/",
 				pathSegments: nil,
-				pathEncode:   newUrlPathEncode(0),
 			},
 		},
 		{
@@ -224,8 +265,7 @@ func TestParseURLPath(t *testing.T) {
 			requestUrl: mustParseURL("https://example.com/abc?q=morefoo%25bar"),
 			want: MatchingContext{
 				originalPath: "/abc",
-				pathSegments: []string{"abc"},
-				pathEncode:   newUrlPathEncode(1),
+				pathSegments: []segment{{val: "abc"}},
 			},
 		},
 		{
@@ -234,7 +274,6 @@ func TestParseURLPath(t *testing.T) {
 			want: MatchingContext{
 				originalPath: "//",
 				pathSegments: nil,
-				pathEncode:   newUrlPathEncode(0),
 			},
 		},
 		{
@@ -242,8 +281,7 @@ func TestParseURLPath(t *testing.T) {
 			requestUrl: mustParseURL("https://example.com//abc?q=morefoo%25bar"),
 			want: MatchingContext{
 				originalPath: "//abc",
-				pathSegments: []string{"abc"},
-				pathEncode:   newUrlPathEncode(1),
+				pathSegments: []segment{{val: "abc"}},
 			},
 		},
 		{
@@ -251,8 +289,7 @@ func TestParseURLPath(t *testing.T) {
 			requestUrl: mustParseURL("https://example.com/abc/?q=morefoo%25bar"),
 			want: MatchingContext{
 				originalPath: "/abc/",
-				pathSegments: []string{"abc"},
-				pathEncode:   newUrlPathEncode(1),
+				pathSegments: []segment{{val: "abc"}},
 			},
 		},
 		{
@@ -260,8 +297,7 @@ func TestParseURLPath(t *testing.T) {
 			requestUrl: mustParseURL("https://example.com/abc//def?q=morefoo%25bar"),
 			want: MatchingContext{
 				originalPath: "/abc//def",
-				pathSegments: []string{"abc", "def"},
-				pathEncode:   newUrlPathEncode(2),
+				pathSegments: []segment{{val: "abc"}, {val: "def"}},
 			},
 		},
 		{
@@ -269,8 +305,7 @@ func TestParseURLPath(t *testing.T) {
 			requestUrl: mustParseURL("https://example.com/foo%25fbar?q=morefoo%25bar"),
 			want: MatchingContext{
 				originalPath: "/foo%fbar",
-				pathSegments: []string{"foo%fbar"},
-				pathEncode:   newUrlPathEncode(1),
+				pathSegments: []segment{{val: "foo%fbar"}},
 			},
 		},
 		{
@@ -278,8 +313,7 @@ func TestParseURLPath(t *testing.T) {
 			requestUrl: mustParseURL("https://example.com/foo%2fbar?q=morefoo%25bar"),
 			want: MatchingContext{
 				originalPath: "/foo/bar",
-				pathSegments: []string{"foo", "bar"},
-				pathEncode:   newUrlPathEncode(2),
+				pathSegments: []segment{{val: "foo"}, {val: "bar"}},
 			},
 		},
 		{
@@ -287,8 +321,7 @@ func TestParseURLPath(t *testing.T) {
 			requestUrl: mustParseURL("https://example.com/path/to/new/../file"),
 			want: MatchingContext{
 				originalPath: "/path/to/new/../file",
-				pathSegments: []string{"path", "to", "file"},
-				pathEncode:   newUrlPathEncode(3),
+				pathSegments: []segment{{val: "path"}, {val: "to"}, {val: "file"}},
 			},
 		},
 		{
@@ -296,8 +329,7 @@ func TestParseURLPath(t *testing.T) {
 			requestUrl: mustParseURL("https://example.com/foo/../../bar"),
 			want: MatchingContext{
 				originalPath: "/foo/../../bar",
-				pathSegments: []string{"bar"},
-				pathEncode:   newUrlPathEncode(1),
+				pathSegments: []segment{{val: "bar"}},
 			},
 		},
 		{
@@ -306,7 +338,6 @@ func TestParseURLPath(t *testing.T) {
 			want: MatchingContext{
 				originalPath: "/foo/../..",
 				pathSegments: nil,
-				pathEncode:   newUrlPathEncode(0),
 			},
 		},
 		{
@@ -315,7 +346,6 @@ func TestParseURLPath(t *testing.T) {
 			want: MatchingContext{
 				originalPath: "/foo/..",
 				pathSegments: nil,
-				pathEncode:   newUrlPathEncode(0),
 			},
 		},
 		{
@@ -324,7 +354,6 @@ func TestParseURLPath(t *testing.T) {
 			want: MatchingContext{
 				originalPath: "/foo/..",
 				pathSegments: nil,
-				pathEncode:   newUrlPathEncode(0),
 			},
 		},
 	}
@@ -337,12 +366,12 @@ func TestParseURLPath(t *testing.T) {
 	}
 }
 
-func TestMatchingContextImproved_MatchPattern(t *testing.T) {
+func TestMatchingContext_MatchPattern(t *testing.T) {
 	type want struct {
-		pattern       string
-		urlPathEncode encode
-		captureVars   map[string]string
-		found         bool
+		pattern         string
+		urlPathSegments []segment
+		captureVars     map[string]string
+		found           bool
 	}
 	tests := []struct {
 		name     string
@@ -355,9 +384,8 @@ func TestMatchingContextImproved_MatchPattern(t *testing.T) {
 			urlPath:  "/",
 			patterns: []string{"/a"},
 			want: want{
-				pattern:       "",
-				urlPathEncode: encode{val: 0, len: 0},
-				found:         false,
+				pattern: "",
+				found:   false,
 			},
 		},
 		{
@@ -365,9 +393,8 @@ func TestMatchingContextImproved_MatchPattern(t *testing.T) {
 			urlPath:  "/",
 			patterns: []string{"/"},
 			want: want{
-				pattern:       "/",
-				urlPathEncode: encode{val: 0, len: 0},
-				found:         true,
+				pattern: "/",
+				found:   true,
 			},
 		},
 		{
@@ -375,9 +402,8 @@ func TestMatchingContextImproved_MatchPattern(t *testing.T) {
 			urlPath:  "/a/../b/../",
 			patterns: []string{"/"},
 			want: want{
-				pattern:       "/",
-				urlPathEncode: encode{val: 0, len: 0},
-				found:         true,
+				pattern: "/",
+				found:   true,
 			},
 		},
 		{
@@ -385,9 +411,11 @@ func TestMatchingContextImproved_MatchPattern(t *testing.T) {
 			urlPath:  "/a/b/",
 			patterns: []string{"/b/c", "/a/b"},
 			want: want{
-				pattern:       "/a/b",
-				urlPathEncode: encode{val: 11, len: 2},
-				found:         true,
+				pattern: "/a/b",
+				urlPathSegments: []segment{
+					{val: "a", matchType: MatchTypeLiteral},
+					{val: "b", matchType: MatchTypeLiteral}},
+				found: true,
 			},
 		},
 		{
@@ -395,9 +423,8 @@ func TestMatchingContextImproved_MatchPattern(t *testing.T) {
 			urlPath:  "/a/r/",
 			patterns: []string{"/b/c", "/a/b"},
 			want: want{
-				pattern:       "",
-				urlPathEncode: encode{val: 99, len: 2},
-				found:         false,
+				pattern: "",
+				found:   false,
 			},
 		},
 		{
@@ -405,9 +432,8 @@ func TestMatchingContextImproved_MatchPattern(t *testing.T) {
 			urlPath:  "/",
 			patterns: []string{"/**"},
 			want: want{
-				pattern:       "/**",
-				urlPathEncode: encode{val: 0, len: 0},
-				found:         true,
+				pattern: "/**",
+				found:   true,
 			},
 		},
 		{
@@ -415,9 +441,8 @@ func TestMatchingContextImproved_MatchPattern(t *testing.T) {
 			urlPath:  "/a/../b/../",
 			patterns: []string{"/**"},
 			want: want{
-				pattern:       "/**",
-				urlPathEncode: encode{val: 0, len: 0},
-				found:         true,
+				pattern: "/**",
+				found:   true,
 			},
 		},
 		{
@@ -425,9 +450,15 @@ func TestMatchingContextImproved_MatchPattern(t *testing.T) {
 			urlPath:  "/bla/testing/testing/bla/bla",
 			patterns: []string{"/bla/**/testing/**/bla"},
 			want: want{
-				pattern:       "/bla/**/testing/**/bla",
-				urlPathEncode: encode{val: 11661, len: 5},
-				found:         true,
+				pattern: "/bla/**/testing/**/bla",
+				urlPathSegments: []segment{
+					{val: "bla", matchType: MatchTypeLiteral},
+					{val: "testing", matchType: MatchTypeLiteral},
+					{val: "testing", matchType: MatchTypeMultiplePaths},
+					{val: "bla", matchType: MatchTypeMultiplePaths},
+					{val: "bla", matchType: MatchTypeLiteral},
+				},
+				found: true,
 			},
 		},
 		{
@@ -435,9 +466,8 @@ func TestMatchingContextImproved_MatchPattern(t *testing.T) {
 			urlPath:  "/bla/testing/testing/bla/blaa",
 			patterns: []string{"/bla/**/testing/**/bla"},
 			want: want{
-				pattern:       "",
-				urlPathEncode: encode{val: 99999, len: 5},
-				found:         false,
+				pattern: "",
+				found:   false,
 			},
 		},
 		{
@@ -445,9 +475,16 @@ func TestMatchingContextImproved_MatchPattern(t *testing.T) {
 			urlPath:  "/bla/bla/bla/bla/bla/bla",
 			patterns: []string{"/bla/**/bla/**/bla"},
 			want: want{
-				pattern:       "/bla/**/bla/**/bla",
-				urlPathEncode: encode{val: 116661, len: 6},
-				found:         true,
+				pattern: "/bla/**/bla/**/bla",
+				urlPathSegments: []segment{
+					{val: "bla", matchType: MatchTypeLiteral},
+					{val: "bla", matchType: MatchTypeLiteral},
+					{val: "bla", matchType: MatchTypeMultiplePaths},
+					{val: "bla", matchType: MatchTypeMultiplePaths},
+					{val: "bla", matchType: MatchTypeMultiplePaths},
+					{val: "bla", matchType: MatchTypeLiteral},
+				},
+				found: true,
 			},
 		},
 		{
@@ -455,9 +492,15 @@ func TestMatchingContextImproved_MatchPattern(t *testing.T) {
 			urlPath:  "/bla/testing/testing/bla/bla",
 			patterns: []string{"/bla/**/testing/**/bla", "/bla/**/bla"},
 			want: want{
-				pattern:       "/bla/**/testing/**/bla",
-				urlPathEncode: encode{val: 11661, len: 5},
-				found:         true,
+				pattern: "/bla/**/testing/**/bla",
+				urlPathSegments: []segment{
+					{val: "bla", matchType: MatchTypeLiteral},
+					{val: "testing", matchType: MatchTypeLiteral},
+					{val: "testing", matchType: MatchTypeMultiplePaths},
+					{val: "bla", matchType: MatchTypeMultiplePaths},
+					{val: "bla", matchType: MatchTypeLiteral},
+				},
+				found: true,
 			},
 		},
 		{
@@ -465,9 +508,13 @@ func TestMatchingContextImproved_MatchPattern(t *testing.T) {
 			urlPath:  "/a/b/e",
 			patterns: []string{"/a/b/c", "/a/*/d", "/a/**"},
 			want: want{
-				pattern:       "/a/**",
-				urlPathEncode: encode{val: 166, len: 3},
-				found:         true,
+				pattern: "/a/**",
+				urlPathSegments: []segment{
+					{val: "a", matchType: MatchTypeLiteral},
+					{val: "b", matchType: MatchTypeMultiplePaths},
+					{val: "e", matchType: MatchTypeMultiplePaths},
+				},
+				found: true,
 			},
 		},
 		{
@@ -475,9 +522,15 @@ func TestMatchingContextImproved_MatchPattern(t *testing.T) {
 			urlPath:  "/a/b/c/d/e",
 			patterns: []string{"/a/b", "/a/*/*/d", "/a/**/e"},
 			want: want{
-				pattern:       "/a/**/e",
-				urlPathEncode: encode{val: 16661, len: 5},
-				found:         true,
+				pattern: "/a/**/e",
+				urlPathSegments: []segment{
+					{val: "a", matchType: MatchTypeLiteral},
+					{val: "b", matchType: MatchTypeMultiplePaths},
+					{val: "c", matchType: MatchTypeMultiplePaths},
+					{val: "d", matchType: MatchTypeMultiplePaths},
+					{val: "e", matchType: MatchTypeLiteral},
+				},
+				found: true,
 			},
 		},
 		{
@@ -485,10 +538,13 @@ func TestMatchingContextImproved_MatchPattern(t *testing.T) {
 			urlPath:  "/a/ab",
 			patterns: []string{"/a/{b}", "/a/b"},
 			want: want{
-				pattern:       "/a/{b}",
-				urlPathEncode: encode{val: 13, len: 2},
-				captureVars:   map[string]string{"b": "ab"},
-				found:         true,
+				pattern: "/a/{b}",
+				urlPathSegments: []segment{
+					{val: "a", matchType: MatchTypeLiteral},
+					{val: "ab", matchType: MatchTypeWithCaptureVars},
+				},
+				captureVars: map[string]string{"b": "ab"},
+				found:       true,
 			},
 		},
 		{
@@ -496,9 +552,16 @@ func TestMatchingContextImproved_MatchPattern(t *testing.T) {
 			urlPath:  "/XXXblaXXXX/testing/testing/bla/testing/testing/",
 			patterns: []string{"/*bla*/**/bla/**"},
 			want: want{
-				pattern:       "/*bla*/**/bla/**",
-				urlPathEncode: encode{val: 466166, len: 6},
-				found:         true,
+				pattern: "/*bla*/**/bla/**",
+				urlPathSegments: []segment{
+					{val: "XXXblaXXXX", matchType: MatchTypeRegex},
+					{val: "testing", matchType: MatchTypeMultiplePaths},
+					{val: "testing", matchType: MatchTypeMultiplePaths},
+					{val: "bla", matchType: MatchTypeLiteral},
+					{val: "testing", matchType: MatchTypeMultiplePaths},
+					{val: "testing", matchType: MatchTypeMultiplePaths},
+				},
+				found: true,
 			},
 		},
 		{
@@ -506,9 +569,16 @@ func TestMatchingContextImproved_MatchPattern(t *testing.T) {
 			urlPath:  "/XXXblaXXXX/testing/testing/bla/testing/testing.jpg",
 			patterns: []string{"/*bla*/**/bla/**"},
 			want: want{
-				pattern:       "/*bla*/**/bla/**",
-				urlPathEncode: encode{val: 466166, len: 6},
-				found:         true,
+				pattern: "/*bla*/**/bla/**",
+				urlPathSegments: []segment{
+					{val: "XXXblaXXXX", matchType: MatchTypeRegex},
+					{val: "testing", matchType: MatchTypeMultiplePaths},
+					{val: "testing", matchType: MatchTypeMultiplePaths},
+					{val: "bla", matchType: MatchTypeLiteral},
+					{val: "testing", matchType: MatchTypeMultiplePaths},
+					{val: "testing.jpg", matchType: MatchTypeMultiplePaths},
+				},
+				found: true,
 			},
 		},
 		{
@@ -516,10 +586,19 @@ func TestMatchingContextImproved_MatchPattern(t *testing.T) {
 			urlPath:  "/a/b/c/d/e/f/g/h",
 			patterns: []string{"/a/{b}/{c}/**/g/h"},
 			want: want{
-				pattern:       "/a/{b}/{c}/**/g/h",
-				urlPathEncode: encode{val: 13366611, len: 8},
-				captureVars:   map[string]string{"b": "b", "c": "c"},
-				found:         true,
+				pattern: "/a/{b}/{c}/**/g/h",
+				urlPathSegments: []segment{
+					{val: "a", matchType: MatchTypeLiteral},
+					{val: "b", matchType: MatchTypeWithCaptureVars},
+					{val: "c", matchType: MatchTypeWithCaptureVars},
+					{val: "d", matchType: MatchTypeMultiplePaths},
+					{val: "e", matchType: MatchTypeMultiplePaths},
+					{val: "f", matchType: MatchTypeMultiplePaths},
+					{val: "g", matchType: MatchTypeLiteral},
+					{val: "h", matchType: MatchTypeLiteral},
+				},
+				captureVars: map[string]string{"b": "b", "c": "c"},
+				found:       true,
 			},
 		},
 		{
@@ -527,10 +606,18 @@ func TestMatchingContextImproved_MatchPattern(t *testing.T) {
 			urlPath:  "/a/b/c/d/e/f/g",
 			patterns: []string{"/a/{b}/{c}/*/f/g", "/a/{c}/{b}/**/f/g"},
 			want: want{
-				pattern:       "/a/{c}/{b}/**/f/g",
-				urlPathEncode: encode{val: 1336611, len: 7},
-				captureVars:   map[string]string{"b": "c", "c": "b"},
-				found:         true,
+				pattern: "/a/{c}/{b}/**/f/g",
+				urlPathSegments: []segment{
+					{val: "a", matchType: MatchTypeLiteral},
+					{val: "b", matchType: MatchTypeWithCaptureVars},
+					{val: "c", matchType: MatchTypeWithCaptureVars},
+					{val: "d", matchType: MatchTypeMultiplePaths},
+					{val: "e", matchType: MatchTypeMultiplePaths},
+					{val: "f", matchType: MatchTypeLiteral},
+					{val: "g", matchType: MatchTypeLiteral},
+				},
+				captureVars: map[string]string{"b": "c", "c": "b"},
+				found:       true,
 			},
 		},
 		{
@@ -538,10 +625,18 @@ func TestMatchingContextImproved_MatchPattern(t *testing.T) {
 			urlPath:  "/a/b/c/d/e/f/g",
 			patterns: []string{"/a/{b}/{c}/{d}/f/g", "/a/{c}/{b}/**/f/{d}", "/a/{c}/{b}/**/f/g", "/a/{c}/{b}/*/{d}/f/g"},
 			want: want{
-				pattern:       "/a/{c}/{b}/*/{d}/f/g",
-				urlPathEncode: encode{val: 1335311, len: 7},
-				captureVars:   map[string]string{"b": "c", "c": "b", "d": "e"},
-				found:         true,
+				pattern: "/a/{c}/{b}/*/{d}/f/g",
+				urlPathSegments: []segment{
+					{val: "a", matchType: MatchTypeLiteral},
+					{val: "b", matchType: MatchTypeWithCaptureVars},
+					{val: "c", matchType: MatchTypeWithCaptureVars},
+					{val: "d", matchType: MatchTypeSinglePath},
+					{val: "e", matchType: MatchTypeWithCaptureVars},
+					{val: "f", matchType: MatchTypeLiteral},
+					{val: "g", matchType: MatchTypeLiteral},
+				},
+				captureVars: map[string]string{"b": "c", "c": "b", "d": "e"},
+				found:       true,
 			},
 		},
 		{
@@ -549,9 +644,8 @@ func TestMatchingContextImproved_MatchPattern(t *testing.T) {
 			urlPath:  "/a/b/c/d/e/f/h",
 			patterns: []string{"/a/{b}/{c}/{d}/f/g", "/a/{c}/{b}/**/f/{d}/q", "/a/{c}/{b}/**/f/g", "/a/{c}/{b}/*/{d}/f/g"},
 			want: want{
-				pattern:       "",
-				urlPathEncode: encode{val: 9999999, len: 7},
-				found:         false,
+				pattern: "",
+				found:   false,
 			},
 		},
 	}
@@ -560,7 +654,7 @@ func TestMatchingContextImproved_MatchPattern(t *testing.T) {
 			mc := ParseURLPath(mustParseURL("https://www.domain.com" + tt.urlPath))
 			var patterns []Pattern
 			for _, ps := range tt.patterns {
-				p, err := ParsePatternImproved(ps, false)
+				p, err := ParsePattern(ps, false)
 				if err != nil {
 					t.Fatalf("MatchPatterns() pattern: [%s] parse error: %v", ps, err)
 				}
@@ -571,10 +665,12 @@ func TestMatchingContextImproved_MatchPattern(t *testing.T) {
 			})
 			p, found := mc.MatchPatterns(patterns)
 			got := want{
-				pattern:       p.RawValue,
-				urlPathEncode: mc.pathEncode,
-				captureVars:   mc.CaptureVars,
-				found:         found,
+				pattern:     p.RawValue,
+				captureVars: mc.CaptureVars,
+				found:       found,
+			}
+			if found {
+				got.urlPathSegments = mc.pathSegments
 			}
 			if !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("MatchPatterns() got = %v, want %v", got, tt.want)

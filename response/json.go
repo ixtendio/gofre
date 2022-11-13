@@ -64,7 +64,7 @@ func JsonHttpResponseWithHeaders(statusCode int, payload any, headers http.Heade
 // JsonHttpResponseWithHeadersAndCookies creates a JSON response with a specific status code, custom headers and cookies
 func JsonHttpResponseWithHeadersAndCookies(statusCode int, payload any, headers http.Header, cookies []http.Cookie) *HttpJsonResponse {
 	if headers == nil {
-		headers = http.Header{}
+		headers = make(http.Header, 1)
 	}
 	headers.Set("Content-Type", jsonContentType)
 	return &HttpJsonResponse{
@@ -95,7 +95,7 @@ func JsonErrorHttpResponseWithHeaders(statusCode int, err error, headers http.He
 // JsonErrorHttpResponseWithHeadersAndCookies creates an error JSON response with custom headers and cookies
 func JsonErrorHttpResponseWithHeadersAndCookies(statusCode int, err error, headers http.Header, cookies []http.Cookie) *HttpJsonResponse {
 	if headers == nil {
-		headers = http.Header{}
+		headers = make(http.Header, 1)
 	}
 	headers.Set("Content-Type", jsonContentType)
 	return &HttpJsonResponse{
