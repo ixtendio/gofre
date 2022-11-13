@@ -9,7 +9,7 @@ import (
 )
 
 type matcher struct {
-	patternsMap map[string][]path.Pattern
+	patternsMap map[string][]*path.Pattern
 }
 
 func (m *matcher) addEndpoint(method string, pathPattern string, caseInsensitivePathMatch bool, handler handler.Handler) error {
@@ -20,7 +20,7 @@ func (m *matcher) addEndpoint(method string, pathPattern string, caseInsensitive
 	method = strings.ToUpper(method)
 	pattern.Attachment = handler
 	patterns := m.patternsMap[method]
-	patterns = append(patterns, pattern)
+	patterns = append(patterns, &pattern)
 
 	sort.SliceStable(patterns, func(i, j int) bool {
 		return patterns[i].HighPriorityThan(patterns[j])
@@ -43,6 +43,6 @@ func (m *matcher) match(method string, mc path.MatchingContext) (handler.Handler
 
 func newMatcher() *matcher {
 	return &matcher{
-		patternsMap: make(map[string][]path.Pattern, 9),
+		patternsMap: make(map[string][]*path.Pattern, 9),
 	}
 }

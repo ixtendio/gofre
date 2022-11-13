@@ -10,7 +10,7 @@ type MatchingContext struct {
 	CaptureVars  map[string]string
 }
 
-func (mc *MatchingContext) MatchPatterns(patterns []Pattern) (Pattern, bool) {
+func (mc *MatchingContext) MatchPatterns(patterns []*Pattern) (Pattern, bool) {
 	patternsLen := len(patterns)
 	urlLen := len(mc.pathSegments)
 	var matchFuncRecursive func(patternIndex int, urlSegmentIndex int, patternSegmentIndex int) (Pattern, bool)
@@ -19,13 +19,13 @@ func (mc *MatchingContext) MatchPatterns(patterns []Pattern) (Pattern, bool) {
 		var foundPattern Pattern
 		var found bool
 		for pi := patternIndex; pi < patternsLen; pi++ {
-			pattern := &patterns[pi]
+			pattern := patterns[pi]
 			patternSegmentsLen := len(pattern.segments)
 			if urlLen == 0 {
 				if patternSegmentsLen == 0 || (pattern.isGreedy() && patternSegmentsLen == 1) {
 					return *pattern, true
 				}
-			} else if urlLen <= pattern.maxMatchableSegments && urlSegmentIndex < urlLen {
+			} else if (urlLen == pattern.maxMatchableSegments || pattern.isGreedy()) && urlSegmentIndex < urlLen {
 				urlSegment := &mc.pathSegments[urlSegmentIndex]
 				segmentMatchType := pattern.determinePathSegmentMatchType(urlSegment.val, patternSegmentIndex)
 				if segmentMatchType == MatchTypeMultiplePaths {
@@ -64,50 +64,77 @@ func (mc *MatchingContext) MatchPatterns(patterns []Pattern) (Pattern, bool) {
 		return foundPattern, found
 	}
 
-	//matchFuncIter := func() (Pattern, bool) {
-	//	//var foundPattern Pattern
-	//	//var found bool
-	//	var patternIndex int
-	//	var patternSegmentIndex int
-	//	var urlSegmentIndex int
-	//	for patternIndex < patternsLen {
-	//		pattern := patterns[patternIndex]
-	//		if urlLen == 0 {
-	//			if pattern.segmentsCount == 0 || (pattern.isGreedy() && pattern.segmentsCount == 1) {
-	//				return pattern, true
-	//			}
-	//		} else if urlSegmentIndex < urlLen && urlLen <= pattern.maxMatchableSegments {
-	//			segment := mc.pathSegments[urlSegmentIndex]
-	//			segmentMatchType := pattern.determinePathSegmentMatchType(segment, patternSegmentIndex)
-	//			if segmentMatchType == MatchTypeMultiplePaths {
-	//				if nextSmt := pattern.determinePathSegmentMatchType(segment, patternSegmentIndex+1); nextSmt != MatchTypeUnknown {
-	//					patternSegmentIndex++
-	//				} else {
-	//					if urlSegmentIndex == urlLen-1 && patternSegmentIndex == pattern.segmentsCount-1 {
-	//						urlPathEncode = urlPathEncode.set(urlSegmentIndex, MatchTypeMultiplePaths)
-	//						return pattern, true
-	//					}
-	//					urlPathEncode = urlPathEncode.set(urlSegmentIndex, MatchTypeMultiplePaths)
-	//				}
-	//			} else if segmentMatchType != MatchTypeUnknown {
-	//				urlPathEncode = urlPathEncode.set(urlSegmentIndex, segmentMatchType)
-	//				if urlSegmentIndex < urlLen && patternSegmentIndex < pattern.segmentsCount {
-	//					if urlSegmentIndex == urlLen-1 && patternSegmentIndex == pattern.segmentsCount-1 {
-	//						return pattern, true
-	//					} else {
-	//						urlSegmentIndex++
-	//						patternSegmentIndex++
-	//					}
-	//				}
-	//			} else {
-	//				patternIndex++
-	//			}
-	//		} else {
-	//			patternIndex++
-	//		}
-	//	}
-	//	return Pattern{}, false
-	//}
+	matchFuncIter := func() (Pattern, bool) {
+		var patternIndex int
+		var patternSegmentIndex int
+		var urlSegmentIndex int
+		var doReturn bool
+		lastGreedyPatternSegmentIndex := -1
+		lastGreedyUrlSegmentIndex := -1
+		for patternIndex < patternsLen {
+			pattern := patterns[patternIndex]
+			patternSegmentsLen := len(pattern.segments)
+			if urlLen == 0 {
+				if patternSegmentsLen == 0 || (pattern.isGreedy() && patternSegmentsLen == 1) {
+					return *pattern, true
+				}
+				patternIndex++
+				continue
+			}
+
+			if !pattern.isGreedy() && urlLen != pattern.maxMatchableSegments {
+				patternIndex++
+				continue
+			}
+
+			if urlSegmentIndex < urlLen && patternSegmentIndex < patternSegmentsLen {
+				urlSegment := &mc.pathSegments[urlSegmentIndex]
+				segmentMatchType := pattern.determinePathSegmentMatchType(urlSegment.val, patternSegmentIndex)
+				if segmentMatchType == MatchTypeMultiplePaths {
+					lastGreedyPatternSegmentIndex = patternSegmentIndex
+					lastGreedyUrlSegmentIndex = urlSegmentIndex
+					if patternSegmentIndex+1 < patternSegmentsLen && pattern.determinePathSegmentMatchType(urlSegment.val, patternSegmentIndex+1) != MatchTypeUnknown {
+						patternSegmentIndex++
+					} else {
+						if urlSegmentIndex == urlLen-1 && patternSegmentIndex == patternSegmentsLen-1 {
+							urlSegment.matchType = MatchTypeMultiplePaths
+							return *pattern, true
+						}
+						urlSegmentIndex++
+						urlSegment.matchType = MatchTypeMultiplePaths
+					}
+				} else if segmentMatchType != MatchTypeUnknown {
+					urlSegment.matchType = segmentMatchType
+					if urlSegmentIndex == urlLen-1 && patternSegmentIndex == patternSegmentsLen-1 {
+						return *pattern, true
+					} else {
+						urlSegmentIndex++
+						patternSegmentIndex++
+					}
+				} else {
+					doReturn = true
+				}
+			} else {
+				doReturn = true
+			}
+
+			if doReturn {
+				doReturn = false
+				if lastGreedyPatternSegmentIndex != -1 {
+					urlSegment := &mc.pathSegments[lastGreedyUrlSegmentIndex]
+					urlSegment.matchType = MatchTypeMultiplePaths
+					patternSegmentIndex = lastGreedyPatternSegmentIndex
+					urlSegmentIndex = lastGreedyUrlSegmentIndex + 1
+					lastGreedyPatternSegmentIndex = -1
+					lastGreedyUrlSegmentIndex = -1
+				} else {
+					patternIndex++
+				}
+			}
+		}
+		return Pattern{}, false
+	}
+	_ = matchFuncIter
 
 	if p, found := matchFuncRecursive(0, 0, 0); found {
 		//if p, found := matchFuncIter(); found {

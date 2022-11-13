@@ -9,7 +9,7 @@ import (
 )
 
 var (
-	staticPaths = []string{"/",
+	literalPaterns = []string{"/",
 		"/cmd.html",
 		"/code.html",
 		"/contrib.html",
@@ -169,41 +169,6 @@ var (
 		"/progs/update.bash"}
 )
 
-type p struct {
-	val     string
-	valType uint8
-}
-
-func Benchmark_Alloc_StringArray(b *testing.B) {
-	b.ReportAllocs()
-	for i := 0; i < b.N; i++ {
-		arr := make([]string, 3)
-		arr[0] = "q423323433432"
-		arr[1] = "wsasdsdadasd"
-		arr[2] = "exzcxczxcxczxc"
-		useArr(arr)
-	}
-}
-
-func Benchmark_Alloc_StructArray(b *testing.B) {
-	b.ReportAllocs()
-	for i := 0; i < b.N; i++ {
-		arr := make([]p, 3)
-		arr[0] = p{val: "q2254435454"}
-		arr[1] = p{val: "wfdsfsdfsd"}
-		arr[2] = p{val: "edfdsfsdf"}
-		useStructArray(arr)
-	}
-}
-
-func useArr(arr []string) {
-
-}
-
-func useStructArray(arr []p) {
-
-}
-
 func Benchmark_ParseURLPath(b *testing.B) {
 	url := mustParseURL("https://example.com/a/b/c/d/e/f/g/h/i/j/k/def?q=morefoo%25bar")
 	b.ReportAllocs()
@@ -214,13 +179,13 @@ func Benchmark_ParseURLPath(b *testing.B) {
 
 func Benchmark_MatchPattern(b *testing.B) {
 	mc := ParseURLPath(mustParseURL("https://www.domain.com/gopher/pencil/gopherhelmet.jpg"))
-	var patterns []Pattern
-	for _, ps := range staticPaths {
+	var patterns []*Pattern
+	for _, ps := range literalPaterns {
 		p, err := ParsePattern(ps, false)
 		if err != nil {
 			b.Fatalf("MatchPatterns() pattern: [%s] parse error: %v", ps, err)
 		}
-		patterns = append(patterns, p)
+		patterns = append(patterns, &p)
 	}
 	sort.SliceStable(patterns, func(i, j int) bool {
 		return patterns[i].HighPriorityThan(patterns[j])
@@ -518,6 +483,23 @@ func TestMatchingContext_MatchPattern(t *testing.T) {
 			},
 		},
 		{
+			name:     "3 patterns, 2 with the same length greedy pattern should match",
+			urlPath:  "/a/b/c/d/e/h",
+			patterns: []string{"/a/b/c/d/e/f", "/a/*/c/d/e/g", "/a/**"},
+			want: want{
+				pattern: "/a/**",
+				urlPathSegments: []segment{
+					{val: "a", matchType: MatchTypeLiteral},
+					{val: "b", matchType: MatchTypeMultiplePaths},
+					{val: "c", matchType: MatchTypeMultiplePaths},
+					{val: "d", matchType: MatchTypeMultiplePaths},
+					{val: "e", matchType: MatchTypeMultiplePaths},
+					{val: "h", matchType: MatchTypeMultiplePaths},
+				},
+				found: true,
+			},
+		},
+		{
 			name:     "3 patterns, greedy pattern should match",
 			urlPath:  "/a/b/c/d/e",
 			patterns: []string{"/a/b", "/a/*/*/d", "/a/**/e"},
@@ -648,17 +630,31 @@ func TestMatchingContext_MatchPattern(t *testing.T) {
 				found:   false,
 			},
 		},
+		{
+			name:     "literal patterns",
+			urlPath:  "/gopher/pencil/gopherswrench.jpg",
+			patterns: literalPaterns,
+			want: want{
+				pattern: "/gopher/pencil/gopherswrench.jpg",
+				urlPathSegments: []segment{
+					{val: "gopher", matchType: MatchTypeLiteral},
+					{val: "pencil", matchType: MatchTypeLiteral},
+					{val: "gopherswrench.jpg", matchType: MatchTypeLiteral},
+				},
+				found: true,
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			mc := ParseURLPath(mustParseURL("https://www.domain.com" + tt.urlPath))
-			var patterns []Pattern
+			var patterns []*Pattern
 			for _, ps := range tt.patterns {
 				p, err := ParsePattern(ps, false)
 				if err != nil {
 					t.Fatalf("MatchPatterns() pattern: [%s] parse error: %v", ps, err)
 				}
-				patterns = append(patterns, p)
+				patterns = append(patterns, &p)
 			}
 			sort.SliceStable(patterns, func(i, j int) bool {
 				return patterns[i].HighPriorityThan(patterns[j])

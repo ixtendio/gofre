@@ -30,7 +30,7 @@ type Pattern struct {
 	Attachment           any
 }
 
-func (p *Pattern) HighPriorityThan(other Pattern) bool {
+func (p *Pattern) HighPriorityThan(other *Pattern) bool {
 	if p.priority == other.priority {
 		return strings.Compare(p.RawValue, other.RawValue) < 0
 	}
@@ -45,36 +45,63 @@ func (p *Pattern) isGreedy() bool {
 // If the current URL path dose not math the pattern, then MatchTypeUnknown, 0 is returned
 // If the segmentIndex is the last segment pattern then -1 will be returned as the next pattern segment index
 func (p *Pattern) determinePathSegmentMatchType(urlPathSegment string, segmentIndex int) MatchType {
-	if segmentIndex < 0 || segmentIndex >= len(p.segments) {
-		return MatchTypeUnknown
-	}
 	if !p.isGreedy() && segmentIndex >= p.maxMatchableSegments {
 		return MatchTypeUnknown
 	}
-	var match bool
+
 	segment := &p.segments[segmentIndex]
 	matchType := segment.matchType
-	switch matchType {
-	case MatchTypeLiteral:
-		patternSegment := segment.val
-		if len(urlPathSegment) == len(patternSegment) {
+	if matchType == MatchTypeLiteral {
+		if len(urlPathSegment) == len(segment.val) {
 			if p.caseInsensitive {
-				match = strings.EqualFold(urlPathSegment, patternSegment)
+				if strings.EqualFold(urlPathSegment, segment.val) {
+					return MatchTypeLiteral
+				}
 			} else {
-				match = urlPathSegment == patternSegment
+				if urlPathSegment == segment.val {
+					return MatchTypeLiteral
+				}
 			}
 		}
-	case MatchTypeSinglePath, MatchTypeWithCaptureVars, MatchTypeMultiplePaths:
-		match = true
-	case MatchTypeWithConstraintCaptureVars:
-		match = segment.captureVarPattern.MatchString(urlPathSegment)
-	case MatchTypeRegex:
-		patternSegment := segment.val
-		match = regexSegmentMatch(urlPathSegment, patternSegment, p.caseInsensitive)
-	}
-	if match {
+		return MatchTypeUnknown
+	} else if matchType == MatchTypeSinglePath ||
+		matchType == MatchTypeWithCaptureVars ||
+		matchType == MatchTypeMultiplePaths {
 		return matchType
+	} else if matchType == MatchTypeWithConstraintCaptureVars {
+		if segment.captureVarPattern.MatchString(urlPathSegment) {
+			return MatchTypeWithConstraintCaptureVars
+		}
+		return MatchTypeUnknown
+	} else if matchType == MatchTypeRegex {
+		if regexSegmentMatch(urlPathSegment, segment.val, p.caseInsensitive) {
+			return MatchTypeRegex
+		}
+		return MatchTypeUnknown
 	}
+
+	//matchType := segment.matchType
+	//switch matchType {
+	//case MatchTypeLiteral:
+	//	patternSegment := segment.val
+	//	if len(urlPathSegment) == len(patternSegment) {
+	//		if p.caseInsensitive {
+	//			match = strings.EqualFold(urlPathSegment, patternSegment)
+	//		} else {
+	//			match = urlPathSegment == patternSegment
+	//		}
+	//	}
+	//case MatchTypeSinglePath, MatchTypeWithCaptureVars, MatchTypeMultiplePaths:
+	//	match = true
+	//case MatchTypeWithConstraintCaptureVars:
+	//	match = segment.captureVarPattern.MatchString(urlPathSegment)
+	//case MatchTypeRegex:
+	//	patternSegment := segment.val
+	//	match = regexSegmentMatch(urlPathSegment, patternSegment, p.caseInsensitive)
+	//}
+	//if match {
+	//	return matchType
+	//}
 	return MatchTypeUnknown
 }
 
