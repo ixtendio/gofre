@@ -17,9 +17,6 @@ type node struct {
 }
 
 func (n *node) canMatchPathWithLength(urlPathLen uint8) bool {
-	//if n.maxMatchableSegments == 0 || n.maxMatchableSegments == greedyPatternMaxMatchableSegments {
-	//	return true
-	//}
 	return urlPathLen <= n.maxMatchableSegments
 }
 

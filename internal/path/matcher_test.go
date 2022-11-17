@@ -133,6 +133,15 @@ func TestMatcher_Match(t *testing.T) {
 			},
 		},
 		{
+			name:     "long pattern with more than 19 segments not supported",
+			patterns: []string{"/**"},
+			args:     "/1/2/3/4/5/6/7/8/9/10/11/12/13/14/15/16/17/18/19/20",
+			want: want{
+				matchedPattern:       "",
+				urlSegmentsMatchType: 0,
+			},
+		},
+		{
 			name:     "1 literal pattern that match",
 			patterns: []string{"/a/b/c"},
 			args:     "/a/b/c",
