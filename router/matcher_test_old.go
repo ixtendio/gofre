@@ -905,14 +905,14 @@ package router
 //}
 //
 //func newEndpointMatcherWithPatterns(patterns ...string) (*matcher, error) {
-//	endpointMatcher := newMatcher()
+//	endpointMatchers := newMatcher()
 //	for _, pattern := range patterns {
 //		parts := strings.SplitN(pattern, ":", 2)
-//		if err := endpointMatcher.addEndpoint(strings.ToUpper(parts[0]), parts[1], false, errorHandler(pattern)); err != nil {
+//		if err := endpointMatchers.addEndpoint(strings.ToUpper(parts[0]), parts[1], false, errorHandler(pattern)); err != nil {
 //			return nil, fmt.Errorf("failed to register: %s, err: %v", pattern, err)
 //		}
 //	}
-//	return endpointMatcher, nil
+//	return endpointMatchers, nil
 //}
 //
 //func errorHandler(msg string) handler2.Handler {

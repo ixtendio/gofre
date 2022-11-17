@@ -1,6 +1,7 @@
 package request
 
 import (
+	"github.com/ixtendio/gofre/internal/path"
 	"net/http"
 	"reflect"
 	"testing"
@@ -35,11 +36,11 @@ func TestNewHttpRequest(t *testing.T) {
 }
 
 func TestNewHttpRequestWithPathVars(t *testing.T) {
-	m := map[string]string{"key": "val"}
+	m := []path.CaptureVar{{Name: "key", Value: "val"}}
 	req, _ := http.NewRequest("GET", "https://www.domain.com", nil)
 	type args struct {
 		r        *http.Request
-		pathVars map[string]string
+		pathVars []path.CaptureVar
 	}
 	tests := []struct {
 		name string
@@ -68,7 +69,7 @@ func TestHttpRequest_PathVar(t *testing.T) {
 	req, _ := http.NewRequest("GET", "https://www.domain.com", nil)
 	type fields struct {
 		R        *http.Request
-		pathVars map[string]string
+		pathVars []path.CaptureVar
 	}
 	type args struct {
 		varName string
@@ -92,7 +93,7 @@ func TestHttpRequest_PathVar(t *testing.T) {
 			name: "pathVars is not nil but key does not exists",
 			fields: fields{
 				R:        req,
-				pathVars: map[string]string{"key1": "val"},
+				pathVars: []path.CaptureVar{{Name: "key1", Value: "val"}},
 			},
 			args: args{"key"},
 			want: "",
@@ -100,7 +101,7 @@ func TestHttpRequest_PathVar(t *testing.T) {
 			name: "pathVars is not nil and key exists",
 			fields: fields{
 				R:        req,
-				pathVars: map[string]string{"key": "val"},
+				pathVars: []path.CaptureVar{{Name: "key", Value: "val"}},
 			},
 			args: args{"key"},
 			want: "val",

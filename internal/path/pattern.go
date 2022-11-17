@@ -9,23 +9,60 @@ import (
 	"unicode"
 )
 
+const greedyPatternMaxMatchableSegments = math.MaxUint8
+
 type segment struct {
 	val               string
 	matchType         MatchType
+	caseInsensitive   bool
 	captureVarName    string
 	captureVarPattern *regexp.Regexp
 }
 
-func (s segment) String() string {
+func (s *segment) matchUrlPathSegment(urlPathSegment *segment) MatchType {
+	urlPathSegmentVal := urlPathSegment.val
+	matchType := s.matchType
+	if matchType == MatchTypeLiteral {
+		if len(urlPathSegmentVal) == len(s.val) {
+			if s.caseInsensitive {
+				if strings.EqualFold(urlPathSegmentVal, s.val) {
+					return MatchTypeLiteral
+				}
+			} else {
+				if urlPathSegmentVal == s.val {
+					return MatchTypeLiteral
+				}
+			}
+		}
+		return MatchTypeUnknown
+	} else if matchType == MatchTypeSingleSegment ||
+		matchType == MatchTypeCaptureVar ||
+		matchType == MatchTypeMultipleSegments {
+		return matchType
+	} else if matchType == MatchTypeConstraintCaptureVar {
+		if s.captureVarPattern.MatchString(urlPathSegmentVal) {
+			return MatchTypeConstraintCaptureVar
+		}
+		return MatchTypeUnknown
+	} else if matchType == MatchTypeRegex {
+		if regexSegmentMatch(urlPathSegmentVal, s.val, s.caseInsensitive) {
+			return MatchTypeRegex
+		}
+		return MatchTypeUnknown
+	}
+	return MatchTypeUnknown
+}
+
+func (s *segment) String() string {
 	return s.val
 }
 
 type Pattern struct {
 	caseInsensitive      bool
-	captureVarsLen       int
-	maxMatchableSegments int
+	captureVarsLen       uint8
+	maxMatchableSegments uint8
 	priority             uint64
-	segments             []segment
+	segments             []*segment
 	RawValue             string
 	Attachment           any
 }
@@ -38,84 +75,20 @@ func (p *Pattern) HighPriorityThan(other *Pattern) bool {
 }
 
 func (p *Pattern) isGreedy() bool {
-	return p.maxMatchableSegments == math.MaxInt64
-}
-
-// determinePathSegmentMatchType returns the MatchType for the current URL path segment and the next pattern segment index
-// If the current URL path dose not math the pattern, then MatchTypeUnknown, 0 is returned
-// If the segmentIndex is the last segment pattern then -1 will be returned as the next pattern segment index
-func (p *Pattern) determinePathSegmentMatchType(urlPathSegment string, segmentIndex int) MatchType {
-	if !p.isGreedy() && segmentIndex >= p.maxMatchableSegments {
-		return MatchTypeUnknown
-	}
-
-	segment := &p.segments[segmentIndex]
-	matchType := segment.matchType
-	if matchType == MatchTypeLiteral {
-		if len(urlPathSegment) == len(segment.val) {
-			if p.caseInsensitive {
-				if strings.EqualFold(urlPathSegment, segment.val) {
-					return MatchTypeLiteral
-				}
-			} else {
-				if urlPathSegment == segment.val {
-					return MatchTypeLiteral
-				}
-			}
-		}
-		return MatchTypeUnknown
-	} else if matchType == MatchTypeSinglePath ||
-		matchType == MatchTypeWithCaptureVars ||
-		matchType == MatchTypeMultiplePaths {
-		return matchType
-	} else if matchType == MatchTypeWithConstraintCaptureVars {
-		if segment.captureVarPattern.MatchString(urlPathSegment) {
-			return MatchTypeWithConstraintCaptureVars
-		}
-		return MatchTypeUnknown
-	} else if matchType == MatchTypeRegex {
-		if regexSegmentMatch(urlPathSegment, segment.val, p.caseInsensitive) {
-			return MatchTypeRegex
-		}
-		return MatchTypeUnknown
-	}
-
-	//matchType := segment.matchType
-	//switch matchType {
-	//case MatchTypeLiteral:
-	//	patternSegment := segment.val
-	//	if len(urlPathSegment) == len(patternSegment) {
-	//		if p.caseInsensitive {
-	//			match = strings.EqualFold(urlPathSegment, patternSegment)
-	//		} else {
-	//			match = urlPathSegment == patternSegment
-	//		}
-	//	}
-	//case MatchTypeSinglePath, MatchTypeWithCaptureVars, MatchTypeMultiplePaths:
-	//	match = true
-	//case MatchTypeWithConstraintCaptureVars:
-	//	match = segment.captureVarPattern.MatchString(urlPathSegment)
-	//case MatchTypeRegex:
-	//	patternSegment := segment.val
-	//	match = regexSegmentMatch(urlPathSegment, patternSegment, p.caseInsensitive)
-	//}
-	//if match {
-	//	return matchType
-	//}
-	return MatchTypeUnknown
+	return p.maxMatchableSegments == greedyPatternMaxMatchableSegments
 }
 
 func (p *Pattern) String() string {
 	return p.RawValue
 }
 
-func ParsePattern(pathPattern string, caseInsensitive bool) (Pattern, error) {
+func ParsePattern(pathPattern string, caseInsensitive bool) (*Pattern, error) {
 	if len(pathPattern) == 0 || pathPattern[0] != '/' {
-		return Pattern{}, fmt.Errorf("the path pattern should start with /")
+		return nil, fmt.Errorf("the path pattern should start with /")
 	}
 
 	if pathPattern == "/" {
-		return Pattern{
+		return &Pattern{
 			caseInsensitive: caseInsensitive,
 			RawValue:        "/",
 		}, nil
@@ -130,11 +103,11 @@ func ParsePattern(pathPattern string, caseInsensitive bool) (Pattern, error) {
 	}
 
 	var pathSegmentStart int
-	var pathSegmentsCount int
-	var captureVarsLen int
+	var pathSegmentsCount uint8
+	var captureVarsLen uint8
 	var lastSegmentMatchType MatchType
 	var maxSegmentMatchType MatchType
-	segments := make([]segment, maxSegmentsSize)
+	segments := make([]*segment, maxSegmentsSize)
 	pathPatternLen := len(pathPattern)
 
 	for pos := 1; pos < pathPatternLen; pos++ {
@@ -146,29 +119,30 @@ func ParsePattern(pathPattern string, caseInsensitive bool) (Pattern, error) {
 				segmentVal = pathPattern[pathSegmentStart+1:]
 			}
 			if err := validatePathSegment(segmentVal); err != nil {
-				return Pattern{}, fmt.Errorf("invalid path pattern: [%s], failed path segment validation: [%s], err: %w", pathPattern, segmentVal, err)
+				return nil, fmt.Errorf("invalid path pattern: [%s], failed path segment validation: [%s], err: %w", pathPattern, segmentVal, err)
 			}
 
 			pathSegmentStart = pos
 			segmentMatchType := determineMatchTypeForSegment(segmentVal)
-			if lastSegmentMatchType == MatchTypeMultiplePaths && segmentMatchType == MatchTypeMultiplePaths {
-				return Pattern{}, fmt.Errorf("invalid path pattern: [%s], not allowed to have consecutive path segments with **: [%s]", pathPattern, segmentVal)
+			if lastSegmentMatchType == MatchTypeMultipleSegments && segmentMatchType == MatchTypeMultipleSegments {
+				return nil, fmt.Errorf("invalid path pattern: [%s], not allowed to have consecutive path segments with **: [%s]", pathPattern, segmentVal)
 			}
 			lastSegmentMatchType = segmentMatchType
 			if segmentMatchType > maxSegmentMatchType {
 				maxSegmentMatchType = segmentMatchType
 			}
 
-			segment := segment{
+			segment := &segment{
 				val:               segmentVal,
+				caseInsensitive:   caseInsensitive,
 				matchType:         segmentMatchType,
 				captureVarName:    "",
 				captureVarPattern: nil,
 			}
-			if segmentMatchType == MatchTypeWithCaptureVars {
+			if segmentMatchType == MatchTypeCaptureVar {
 				captureVarsLen++
 				segment.captureVarName = segmentVal[1 : len(segmentVal)-1]
-			} else if segmentMatchType == MatchTypeWithConstraintCaptureVars {
+			} else if segmentMatchType == MatchTypeConstraintCaptureVar {
 				captureVarsLen++
 				colonStartIndex := strings.IndexRune(segmentVal, ':')
 				regexPattern := segmentVal[colonStartIndex+1 : len(segmentVal)-1]
@@ -177,7 +151,7 @@ func ParsePattern(pathPattern string, caseInsensitive bool) (Pattern, error) {
 				}
 				regex, err := regexp.Compile(regexPattern)
 				if err != nil {
-					return Pattern{}, fmt.Errorf("invalid path pattern: [%s], failed to compile regex: [%s], err: %w", pathPattern, regexPattern, err)
+					return nil, fmt.Errorf("invalid path pattern: [%s], failed to compile regex: [%s], err: %w", pathPattern, regexPattern, err)
 				}
 				segment.captureVarName = segmentVal[1:colonStartIndex]
 				segment.captureVarPattern = regex
@@ -188,11 +162,11 @@ func ParsePattern(pathPattern string, caseInsensitive bool) (Pattern, error) {
 	}
 
 	maxMatchableSegments := pathSegmentsCount
-	if maxSegmentMatchType == MatchTypeMultiplePaths {
-		maxMatchableSegments = math.MaxInt
+	if maxSegmentMatchType == MatchTypeMultipleSegments {
+		maxMatchableSegments = greedyPatternMaxMatchableSegments
 	}
 	segments = segments[0:pathSegmentsCount]
-	return Pattern{
+	return &Pattern{
 		caseInsensitive:      caseInsensitive,
 		captureVarsLen:       captureVarsLen,
 		maxMatchableSegments: maxMatchableSegments,
@@ -297,18 +271,18 @@ func regexSegmentMatch(urlPathSegment string, patternSegment string, caseInsensi
 
 func determineMatchTypeForSegment(pathSegment string) MatchType {
 	if pathSegment == "*" {
-		return MatchTypeSinglePath
+		return MatchTypeSingleSegment
 	} else if pathSegment == "**" {
-		return MatchTypeMultiplePaths
+		return MatchTypeMultipleSegments
 	}
 	if pathSegment[0] == '{' && pathSegment[len(pathSegment)-1] == '}' {
 		for pos := 0; pos < len(pathSegment); pos++ {
 			ch := pathSegment[pos]
 			if ch == ':' {
-				return MatchTypeWithConstraintCaptureVars
+				return MatchTypeConstraintCaptureVar
 			}
 		}
-		return MatchTypeWithCaptureVars
+		return MatchTypeCaptureVar
 	}
 	for pos := 0; pos < len(pathSegment); pos++ {
 		ch := pathSegment[pos]

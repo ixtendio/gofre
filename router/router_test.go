@@ -212,8 +212,8 @@ func TestNewRouter(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			got := NewRouter(tt.args.caseInsensitivePathMatch, tt.args.errLogFunc)
 
-			if got.endpointMatcher == nil {
-				t.Fatal("NewRouter() got nil endpointMatcher")
+			if got.endpointMatchers == nil {
+				t.Fatal("NewRouter() got nil endpointMatchers")
 			}
 			if got.caseInsensitivePathMatch != tt.wantCaseInsensitivePathMatch {
 				t.Fatalf("NewRouter() got caseInsensitivePathMatch = %v, want caseInsensitivePathMatch = %v", got.caseInsensitivePathMatch, tt.wantCaseInsensitivePathMatch)
@@ -234,8 +234,8 @@ func TestNewRouterWithDefaultConfig(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got := NewRouterWithDefaultConfig()
-			if got.endpointMatcher == nil {
-				t.Fatal("NewRouterWithDefaultConfig() got nil endpointMatcher")
+			if got.endpointMatchers == nil {
+				t.Fatal("NewRouterWithDefaultConfig() got nil endpointMatchers")
 			}
 			if got.caseInsensitivePathMatch != false {
 				t.Fatalf("NewRouterWithDefaultConfig() got caseInsensitivePathMatch = %v, want caseInsensitivePathMatch = %v", got.caseInsensitivePathMatch, false)

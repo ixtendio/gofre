@@ -1,19 +1,27 @@
 package request
 
 import (
+	"github.com/ixtendio/gofre/internal/path"
 	"net/http"
 )
 
 type HttpRequest struct {
 	R        *http.Request
-	pathVars map[string]string
+	pathVars []path.CaptureVar
 }
 
 func (r *HttpRequest) PathVar(varName string) string {
-	if r.pathVars != nil {
-		return r.pathVars[varName]
+	for i := 0; i < len(r.pathVars); i++ {
+		pv := &r.pathVars[i]
+		if pv.Name == varName {
+			return pv.Value
+		}
 	}
 	return ""
+}
+
+func (r *HttpRequest) PathVars() []path.CaptureVar {
+	return r.pathVars
 }
 
 func NewHttpRequest(r *http.Request) HttpRequest {
@@ -22,9 +30,9 @@ func NewHttpRequest(r *http.Request) HttpRequest {
 	}
 }
 
-func NewHttpRequestWithPathVars(r *http.Request, uriVars map[string]string) HttpRequest {
+func NewHttpRequestWithPathVars(r *http.Request, pathVars []path.CaptureVar) HttpRequest {
 	return HttpRequest{
 		R:        r,
-		pathVars: uriVars,
+		pathVars: pathVars,
 	}
 }

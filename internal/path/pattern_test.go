@@ -64,37 +64,37 @@ package path
 //		rawValue                       string
 //		captureVars                    []captureVar
 //	}
-//	type args struct {
+//	type patterns struct {
 //		pathPattern     string
 //		caseInsensitive bool
 //	}
 //	tests := []struct {
 //		name    string
-//		args    args
+//		patterns    patterns
 //		want    want
 //		wantErr bool
 //	}{
 //		{
 //			name:    "path only with greedy matchType",
-//			args:    args{pathPattern: "/**/**"},
+//			patterns:    patterns{pathPattern: "/**/**"},
 //			want:    want{},
 //			wantErr: true,
 //		},
 //		{
 //			name:    "path with consecutive greedy matchType segments",
-//			args:    args{pathPattern: "/**/a/**/**/b"},
+//			patterns:    patterns{pathPattern: "/**/a/**/**/b"},
 //			want:    want{},
 //			wantErr: true,
 //		},
 //		{
 //			name:    "path that not starts with slash",
-//			args:    args{pathPattern: "abc/"},
+//			patterns:    patterns{pathPattern: "abc/"},
 //			want:    want{},
 //			wantErr: true,
 //		},
 //		{
 //			name: "path with capture variable without regex",
-//			args: args{pathPattern: "/abc/{id}"},
+//			patterns: patterns{pathPattern: "/abc/{id}"},
 //			want: want{
 //				segmentsCount:                  2,
 //				maxMatchableSegment:            2,
@@ -110,7 +110,7 @@ package path
 //		},
 //		{
 //			name: "path with capture variable and regex",
-//			args: args{pathPattern: "/abc/{id:\\d}"},
+//			patterns: patterns{pathPattern: "/abc/{id:\\d}"},
 //			want: want{
 //				segmentsCount:                  2,
 //				maxMatchableSegment:            2,
@@ -126,7 +126,7 @@ package path
 //		},
 //		{
 //			name: "root path",
-//			args: args{pathPattern: "/"},
+//			patterns: patterns{pathPattern: "/"},
 //			want: want{
 //				segmentsCount:                  0,
 //				maxMatchableSegment:            0,
@@ -138,19 +138,19 @@ package path
 //		},
 //		{
 //			name:    "root path with double slash",
-//			args:    args{pathPattern: "//"},
+//			patterns:    patterns{pathPattern: "//"},
 //			want:    want{},
 //			wantErr: true,
 //		},
 //		{
 //			name:    "path with many slash",
-//			args:    args{pathPattern: "/abc///cde////"},
+//			patterns:    patterns{pathPattern: "/abc///cde////"},
 //			want:    want{},
 //			wantErr: true,
 //		},
 //		{
 //			name: "path with single asterix",
-//			args: args{pathPattern: "/a/*"},
+//			patterns: patterns{pathPattern: "/a/*"},
 //			want: want{
 //				segmentsCount:                  2,
 //				maxMatchableSegment:            2,
@@ -161,7 +161,7 @@ package path
 //			wantErr: false,
 //		}, {
 //			name: "path with max segments",
-//			args: args{pathPattern: "/a/*/b/{q}/{y:[a-z]+}/?as*/d/e/f/g/{t}/i/j/k/l/m/n/o/{w:[a-z]+}"},
+//			patterns: patterns{pathPattern: "/a/*/b/{q}/{y:[a-z]+}/?as*/d/e/f/g/{t}/i/j/k/l/m/n/o/{w:[a-z]+}"},
 //			want: want{
 //				segmentsCount:                  19,
 //				maxMatchableSegment:            19,
@@ -187,7 +187,7 @@ package path
 //		},
 //		{
 //			name: "path with double asterix at start",
-//			args: args{pathPattern: "/**/a"},
+//			patterns: patterns{pathPattern: "/**/a"},
 //			want: want{
 //				segmentsCount:                  2,
 //				maxMatchableSegment:            math.MaxInt,
@@ -199,7 +199,7 @@ package path
 //		},
 //		{
 //			name: "path with double asterix at the end",
-//			args: args{pathPattern: "/a/**"},
+//			patterns: patterns{pathPattern: "/a/**"},
 //			want: want{
 //				segmentsCount:                  2,
 //				maxMatchableSegment:            math.MaxInt,
@@ -211,7 +211,7 @@ package path
 //		},
 //		{
 //			name: "path with double asterix in the middle",
-//			args: args{pathPattern: "/a/**/b"},
+//			patterns: patterns{pathPattern: "/a/**/b"},
 //			want: want{
 //				segmentsCount:                  3,
 //				maxMatchableSegment:            math.MaxInt,
@@ -223,7 +223,7 @@ package path
 //		},
 //		{
 //			name: "path with multiple double asterix segments",
-//			args: args{pathPattern: "/a/**/b/**/c/**/d/**/e/**/f/g/h"},
+//			patterns: patterns{pathPattern: "/a/**/b/**/c/**/d/**/e/**/f/g/h"},
 //			want: want{
 //				segmentsCount:                  13,
 //				maxMatchableSegment:            math.MaxInt,
@@ -236,7 +236,7 @@ package path
 //	}
 //	for _, tt := range tests {
 //		t.Run(tt.name, func(t *testing.T) {
-//			p, err := ParsePattern(tt.args.pathPattern, tt.args.caseInsensitive)
+//			p, err := ParsePattern(tt.patterns.pathPattern, tt.patterns.caseInsensitive)
 //			var captureVars []captureVar
 //			for _, cp := range p.captureVars {
 //				var hasPattern bool
@@ -447,24 +447,24 @@ package path
 //		want        MatchType
 //	}{
 //		{
-//			name:        "MatchTypeSinglePath",
+//			name:        "MatchTypeSingleSegment",
 //			pathSegment: "*",
-//			want:        MatchTypeSinglePath,
+//			want:        MatchTypeSingleSegment,
 //		},
 //		{
-//			name:        "MatchTypeMultiplePaths",
+//			name:        "MatchTypeMultipleSegments",
 //			pathSegment: "**",
-//			want:        MatchTypeMultiplePaths,
+//			want:        MatchTypeMultipleSegments,
 //		},
 //		{
-//			name:        "MatchTypeWithConstraintCaptureVars",
+//			name:        "MatchTypeConstraintCaptureVar",
 //			pathSegment: "{abc:[a-z]+}",
-//			want:        MatchTypeWithConstraintCaptureVars,
+//			want:        MatchTypeConstraintCaptureVar,
 //		},
 //		{
-//			name:        "MatchTypeWithCaptureVars",
+//			name:        "MatchTypeCaptureVar",
 //			pathSegment: "{abc}",
-//			want:        MatchTypeWithCaptureVars,
+//			want:        MatchTypeCaptureVar,
 //		},
 //		{
 //			name:        "MatchTypeRegex ?",
@@ -514,19 +514,19 @@ package path
 //			name:         "index 18",
 //			pattern:      "/a/*/b/{q}/{y:[a-z]+}/?as*/d/e/f/g/{t}/i/j/k/l/m/n/o/{w:[a-z]+}",
 //			segmentIndex: 18,
-//			want:         MatchTypeWithConstraintCaptureVars,
+//			want:         MatchTypeConstraintCaptureVar,
 //		},
 //		{
 //			name:         "index 3",
 //			pattern:      "/a/*/b/{q}/{y:[a-z]+}/?as*/d/e/f/g/{t}/i/j/k/l/m/n/o/{w:[a-z]+}",
 //			segmentIndex: 3,
-//			want:         MatchTypeWithCaptureVars,
+//			want:         MatchTypeCaptureVar,
 //		},
 //		{
 //			name:         "index 4",
 //			pattern:      "/a/**/b/**/{c}/**/d/**/e/**/f/g/h",
 //			segmentIndex: 4,
-//			want:         MatchTypeWithCaptureVars,
+//			want:         MatchTypeCaptureVar,
 //		},
 //	}
 //	for _, tt := range tests {
@@ -543,7 +543,7 @@ package path
 //}
 //
 //func TestPattern_DeterminePathSegmentMatchType(t *testing.T) {
-//	type args struct {
+//	type patterns struct {
 //		pathPattern     string
 //		caseInsensitive bool
 //		urlPathSegment  string
@@ -551,29 +551,29 @@ package path
 //	}
 //	tests := []struct {
 //		name string
-//		args args
+//		patterns patterns
 //		want MatchType
 //	}{
 //		{
 //			name: "single path matchType:",
-//			args: args{
+//			patterns: patterns{
 //				pathPattern:    "/a/*/b",
 //				urlPathSegment: "agdg",
 //				segmentIndex:   1,
 //			},
-//			want: MatchTypeSinglePath,
+//			want: MatchTypeSingleSegment,
 //		}, {
 //			name: "capture var path matchType:",
-//			args: args{
+//			patterns: patterns{
 //				pathPattern:    "/a/{a}/b",
 //				urlPathSegment: "agdg",
 //				segmentIndex:   1,
 //			},
-//			want: MatchTypeWithCaptureVars,
+//			want: MatchTypeCaptureVar,
 //		},
 //		{
 //			name: "literal matchType: first segment",
-//			args: args{
+//			patterns: patterns{
 //				pathPattern:    "/a/c/b",
 //				urlPathSegment: "a",
 //				segmentIndex:   0,
@@ -582,7 +582,7 @@ package path
 //		},
 //		{
 //			name: "literal matchType: last segment",
-//			args: args{
+//			patterns: patterns{
 //				pathPattern:    "/a/c/b",
 //				urlPathSegment: "b",
 //				segmentIndex:   2,
@@ -591,7 +591,7 @@ package path
 //		},
 //		{
 //			name: "literal matchType: case-sensitive",
-//			args: args{
+//			patterns: patterns{
 //				pathPattern:     "/a/c/b",
 //				caseInsensitive: true,
 //				urlPathSegment:  "C",
@@ -601,7 +601,7 @@ package path
 //		},
 //		{
 //			name: "literal matchType: case-sensitive fails",
-//			args: args{
+//			patterns: patterns{
 //				pathPattern:    "/a/c/b",
 //				urlPathSegment: "C",
 //				segmentIndex:   1,
@@ -610,35 +610,35 @@ package path
 //		},
 //		{
 //			name: "constraint capture var matchType: first segment",
-//			args: args{
+//			patterns: patterns{
 //				pathPattern:    "/{a:\\d+}/c/b",
 //				urlPathSegment: "123",
 //				segmentIndex:   0,
 //			},
-//			want: MatchTypeWithConstraintCaptureVars,
+//			want: MatchTypeConstraintCaptureVar,
 //		},
 //		{
 //			name: "constraint capture var matchType: last segment",
-//			args: args{
+//			patterns: patterns{
 //				pathPattern:    "/a/c/{b:\\d+}",
 //				urlPathSegment: "012",
 //				segmentIndex:   2,
 //			},
-//			want: MatchTypeWithConstraintCaptureVars,
+//			want: MatchTypeConstraintCaptureVar,
 //		},
 //		{
 //			name: "constraint capture var matchType: case-sensitive",
-//			args: args{
+//			patterns: patterns{
 //				pathPattern:     "/a/{c:[a-c]{2}}/b",
 //				caseInsensitive: true,
 //				urlPathSegment:  "AC",
 //				segmentIndex:    1,
 //			},
-//			want: MatchTypeWithConstraintCaptureVars,
+//			want: MatchTypeConstraintCaptureVar,
 //		},
 //		{
 //			name: "constraint capture var matchType: case-sensitive fails",
-//			args: args{
+//			patterns: patterns{
 //				pathPattern:    "/a/{c:[a-c]{2}}/b",
 //				urlPathSegment: "AC",
 //				segmentIndex:   1,
@@ -647,7 +647,7 @@ package path
 //		},
 //		{
 //			name: "constraint capture var matchType: does not matchType",
-//			args: args{
+//			patterns: patterns{
 //				pathPattern:    "/a/{c:[a-c]{2}}/b",
 //				urlPathSegment: "xy",
 //				segmentIndex:   1,
@@ -656,25 +656,25 @@ package path
 //		},
 //		{
 //			name: "greedy matchType: simple case",
-//			args: args{
+//			patterns: patterns{
 //				pathPattern:    "/a/**",
 //				urlPathSegment: "g",
 //				segmentIndex:   1,
 //			},
-//			want: MatchTypeMultiplePaths,
+//			want: MatchTypeMultipleSegments,
 //		},
 //		{
 //			name: "greedy matchType: when next segment matches the current one",
-//			args: args{
+//			patterns: patterns{
 //				pathPattern:    "/a/**/g",
 //				urlPathSegment: "g",
 //				segmentIndex:   1,
 //			},
-//			want: MatchTypeMultiplePaths,
+//			want: MatchTypeMultipleSegments,
 //		},
 //		{
 //			name: "regex matchType: simple case",
-//			args: args{
+//			patterns: patterns{
 //				pathPattern:    "/a/a*d/c",
 //				urlPathSegment: "abcd",
 //				segmentIndex:   1,
@@ -683,7 +683,7 @@ package path
 //		},
 //		{
 //			name: "regex matchType: last segment",
-//			args: args{
+//			patterns: patterns{
 //				pathPattern:    "/a/a*d",
 //				urlPathSegment: "abcd",
 //				segmentIndex:   1,
@@ -692,7 +692,7 @@ package path
 //		},
 //		{
 //			name: "regex matchType: does not matchType",
-//			args: args{
+//			patterns: patterns{
 //				pathPattern:    "/a/a?d",
 //				urlPathSegment: "abcd",
 //				segmentIndex:   1,
@@ -702,11 +702,11 @@ package path
 //	}
 //	for _, tt := range tests {
 //		t.Run(tt.name, func(t *testing.T) {
-//			p, err := ParsePattern(tt.args.pathPattern, tt.args.caseInsensitive)
+//			p, err := ParsePattern(tt.patterns.pathPattern, tt.patterns.caseInsensitive)
 //			if err != nil {
 //				t.Fatalf("determinePathSegmentMatchType() got err: %v", err)
 //			}
-//			got := p.determinePathSegmentMatchType(tt.args.urlPathSegment, tt.args.segmentIndex)
+//			got := p.determinePathSegmentMatchType(tt.patterns.urlPathSegment, tt.patterns.segmentIndex)
 //			if !reflect.DeepEqual(got, tt.want) {
 //				t.Errorf("determinePathSegmentMatchType() got: %v, want: %v", got, tt.want)
 //			}
@@ -715,19 +715,19 @@ package path
 //}
 //
 //func Test_regexSegmentsMatch(t *testing.T) {
-//	type args struct {
+//	type patterns struct {
 //		urlPathSegment  string
 //		patternSegment  string
 //		caseInsensitive bool
 //	}
 //	tests := []struct {
 //		name string
-//		args args
+//		patterns patterns
 //		want bool
 //	}{
 //		{
 //			name: "single char matchType and multiple",
-//			args: args{
+//			patterns: patterns{
 //				urlPathSegment:  "aabdd",
 //				patternSegment:  "a?b*d",
 //				caseInsensitive: false,
@@ -736,7 +736,7 @@ package path
 //		},
 //		{
 //			name: "single char matchType and multiple char matchType",
-//			args: args{
+//			patterns: patterns{
 //				urlPathSegment:  "aabddcddce",
 //				patternSegment:  "a?b*ddce",
 //				caseInsensitive: false,
@@ -745,7 +745,7 @@ package path
 //		},
 //		{
 //			name: "single char matchType and many consecutive *",
-//			args: args{
+//			patterns: patterns{
 //				urlPathSegment:  "aabddcddce",
 //				patternSegment:  "a?b*****ddce",
 //				caseInsensitive: false,
@@ -754,7 +754,7 @@ package path
 //		},
 //		{
 //			name: "multiple *",
-//			args: args{
+//			patterns: patterns{
 //				urlPathSegment:  "aabwwqq",
 //				patternSegment:  "a?b*w*q",
 //				caseInsensitive: false,
@@ -763,7 +763,7 @@ package path
 //		},
 //		{
 //			name: "end with *",
-//			args: args{
+//			patterns: patterns{
 //				urlPathSegment:  "aabwwqq",
 //				patternSegment:  "a?b*",
 //				caseInsensitive: false,
@@ -772,7 +772,7 @@ package path
 //		},
 //		{
 //			name: "starts with *",
-//			args: args{
+//			patterns: patterns{
 //				urlPathSegment:  "awwq",
 //				patternSegment:  "*w?q",
 //				caseInsensitive: false,
@@ -781,7 +781,7 @@ package path
 //		},
 //		{
 //			name: "single char matchType and multiple char matchType returns false",
-//			args: args{
+//			patterns: patterns{
 //				urlPathSegment:  "aabddcddc",
 //				patternSegment:  "a?b*ddce",
 //				caseInsensitive: false,
@@ -790,7 +790,7 @@ package path
 //		},
 //		{
 //			name: "non greedy matchType: same length returns true",
-//			args: args{
+//			patterns: patterns{
 //				urlPathSegment:  "aabddcddc",
 //				patternSegment:  "a??d?cdd?",
 //				caseInsensitive: false,
@@ -798,7 +798,7 @@ package path
 //			want: true,
 //		}, {
 //			name: "non greedy matchType: same length returns false",
-//			args: args{
+//			patterns: patterns{
 //				urlPathSegment:  "aabddcdcc",
 //				patternSegment:  "a??d?dd?",
 //				caseInsensitive: false,
@@ -806,7 +806,7 @@ package path
 //			want: false,
 //		}, {
 //			name: "non greedy matchType: different length",
-//			args: args{
+//			patterns: patterns{
 //				urlPathSegment:  "aabddcdc",
 //				patternSegment:  "a??d?dd?",
 //				caseInsensitive: false,
@@ -816,7 +816,7 @@ package path
 //	}
 //	for _, tt := range tests {
 //		t.Run(tt.name, func(t *testing.T) {
-//			if got := regexSegmentMatch(tt.args.urlPathSegment, tt.args.patternSegment, tt.args.caseInsensitive); got != tt.want {
+//			if got := regexSegmentMatch(tt.patterns.urlPathSegment, tt.patterns.patternSegment, tt.patterns.caseInsensitive); got != tt.want {
 //				t.Errorf("regexSegmentMatch() = %v, want %v", got, tt.want)
 //			}
 //		})

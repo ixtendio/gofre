@@ -8,6 +8,7 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"strings"
 )
 
 var defaultErrLogFunc = func(err error) {
@@ -16,7 +17,7 @@ var defaultErrLogFunc = func(err error) {
 
 type Router struct {
 	caseInsensitivePathMatch bool
-	endpointMatcher          *matcher
+	endpointMatchers         map[string]*path.Matcher
 	errLogFunc               func(err error)
 }
 
@@ -29,29 +30,50 @@ func NewRouter(caseInsensitivePathMatch bool, errLogFunc func(err error)) *Route
 	}
 	return &Router{
 		caseInsensitivePathMatch: caseInsensitivePathMatch,
-		endpointMatcher:          newMatcher(),
+		endpointMatchers:         make(map[string]*path.Matcher, 9),
 		errLogFunc:               errLogFunc,
 	}
 }
 
 // Handle register a new handler or panic if the handler can not be registered
 // This method returns the router so that chain handler registration to be possible
-func (r *Router) Handle(method string, pathPattern string, handler handler.Handler) *Router {
-	if err := r.endpointMatcher.addEndpoint(method, pathPattern, r.caseInsensitivePathMatch, handler); err != nil {
-		panic(fmt.Sprintf("failed to register the path pattern: %s, err: %v", pathPattern, err))
+func (r *Router) Handle(httpMethod string, pathPattern string, handler handler.Handler) *Router {
+	pattern, err := path.ParsePattern(pathPattern, r.caseInsensitivePathMatch)
+	if err != nil {
+		panic(fmt.Sprintf("failed to parse match pattern: %s:%s, err: %v", httpMethod, pathPattern, err))
+	}
+	pattern.Attachment = handler
+	httpMethod = strings.ToUpper(httpMethod)
+	matcher := r.endpointMatchers[httpMethod]
+	if matcher == nil {
+		matcher = path.NewMatcher()
+		r.endpointMatchers[httpMethod] = matcher
+	}
+	if err := matcher.AddPattern(pattern); err != nil {
+		panic(fmt.Sprintf("failed to register match pattern: %s:%s, err: %v", httpMethod, pathPattern, err))
 	}
 	return r
 }
 
 // MatchRequest returns the first handler that matches the request, together with the path variables if exists
-func (r *Router) MatchRequest(req *http.Request) (handler.Handler, map[string]string) {
+func (r *Router) MatchRequest(req *http.Request) (handler.Handler, []path.CaptureVar) {
 	return r.Match(req.Method, req.URL)
 }
 
 // Match returns the first handler that matches the http method and the url, together with the path variables if exists
-func (r *Router) Match(httpMethod string, url *url.URL) (handler.Handler, map[string]string) {
+func (r *Router) Match(httpMethod string, url *url.URL) (handler.Handler, []path.CaptureVar) {
 	mc := path.ParseURLPath(url)
-	return r.endpointMatcher.match(httpMethod, mc)
+	httpMethod = strings.ToUpper(httpMethod)
+	matcher := r.endpointMatchers[httpMethod]
+	if matcher == nil {
+		return nil, nil
+	}
+	pattern := matcher.Match(&mc)
+	if pattern == nil {
+		return nil, nil
+	}
+	//todo compute var args
+	return pattern.Attachment.(handler.Handler), mc.CaptureVars()
 }
 
 // ServeHTTP implements the http.Handler interface.

@@ -1,25 +1,25 @@
 package path
 
-type MatchType int
+type MatchType uint8
 
 const (
-	maxPathSegments                    = 19
-	MatchTypeUnknown                   = MatchType(0)
-	MatchTypeLiteral                   = MatchType(1)
-	MatchTypeWithConstraintCaptureVars = MatchType(2)
-	MatchTypeWithCaptureVars           = MatchType(3)
-	MatchTypeRegex                     = MatchType(4)
-	MatchTypeSinglePath                = MatchType(5)
-	MatchTypeMultiplePaths             = MatchType(6)
+	maxPathSegments               = 19
+	MatchTypeUnknown              = MatchType(0)
+	MatchTypeLiteral              = MatchType(1)
+	MatchTypeConstraintCaptureVar = MatchType(2)
+	MatchTypeCaptureVar           = MatchType(3)
+	MatchTypeRegex                = MatchType(4)
+	MatchTypeSingleSegment        = MatchType(5)
+	MatchTypeMultipleSegments     = MatchType(6)
 )
 
-func computePriority(segments []segment) uint64 {
+func computePriority(segments []*segment) uint64 {
 	var priority uint64
 	var multiplePathsMatcherSegmentsCount int
 	digitsCount := len(segments)
 	for i := 0; i < digitsCount; i++ {
 		mt := segments[i].matchType
-		if mt == MatchTypeMultiplePaths {
+		if mt == MatchTypeMultipleSegments {
 			multiplePathsMatcherSegmentsCount++
 		}
 		priority = priority*10 + uint64(mt)
@@ -35,7 +35,7 @@ func computePriority(segments []segment) uint64 {
 			var splitIndex int
 			m := getDecimalDivider(dividerDigits)
 			for n := nr; n > 0; n = n / m {
-				if MatchType(n%10) == MatchTypeMultiplePaths {
+				if MatchType(n%10) == MatchTypeMultipleSegments {
 					break
 				}
 				splitIndex++
@@ -55,7 +55,7 @@ func computePriority(segments []segment) uint64 {
 			}
 
 			for j := 0; j < digitsToAdd; j++ {
-				n = n*10 + uint64(MatchTypeMultiplePaths)
+				n = n*10 + uint64(MatchTypeMultipleSegments)
 			}
 			priority = n*m + r
 			dividerDigits = splitIndex + digitsToAdd
