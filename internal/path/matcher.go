@@ -164,7 +164,7 @@ func (m *Matcher) matchPattern(mc *MatchingContext) *Pattern {
 	var treeDepth int
 	urlLen := uint8(len(mc.pathSegments))
 	nodeStack := make([]stackSegment, maxPathSegments)
-	urlSegmentMatchTypeStack := make([]MatchType, urlLen)
+	urlSegmentMatchTypeStack := make([]MatchType, maxPathSegments)
 	currentNode := m.trieRoot
 	var urlSegmentIndex uint8
 	for urlSegmentIndex < urlLen {
