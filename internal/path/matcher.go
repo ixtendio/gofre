@@ -10,7 +10,7 @@ type node struct {
 	val                  string
 	maxMatchableSegments uint8
 	priority             uint64
-	segment              *segment
+	segment              *Segment
 	pattern              *Pattern
 	parent               *node
 	children             []*node
@@ -29,12 +29,16 @@ func (n *node) String() string {
 }
 
 type Matcher struct {
+	caseInsensitive bool
 	rootPathMatcher *Pattern
 	trieRoot        *node
 }
 
-func NewMatcher() *Matcher {
-	return &Matcher{trieRoot: &node{val: "/"}}
+func NewMatcher(caseInsensitive bool) *Matcher {
+	return &Matcher{
+		caseInsensitive: caseInsensitive,
+		trieRoot:        &node{val: "/"},
+	}
 }
 
 func (m *Matcher) AddPattern(pattern *Pattern) error {
@@ -53,13 +57,6 @@ func (m *Matcher) AddPattern(pattern *Pattern) error {
 
 	for segmentIndex := 0; segmentIndex < segmentsLength; segmentIndex++ {
 		segment := pattern.segments[segmentIndex]
-		nodeVal := segment.val
-		if segment.matchType == MatchTypeCaptureVar {
-			nodeVal = "{}"
-		} else if segment.matchType == MatchTypeConstraintCaptureVar {
-			nodeVal = segment.captureVarPattern.String()
-		}
-
 		var found bool
 		var maxMatchableSegments uint8
 		if pattern.isGreedy() {
@@ -70,16 +67,33 @@ func (m *Matcher) AddPattern(pattern *Pattern) error {
 		children := currentNode.children
 		for i := 0; i < len(children); i++ {
 			child := children[i]
-			if child.segment.matchType == segment.matchType && child.val == nodeVal {
-				if child.maxMatchableSegments < maxMatchableSegments {
-					child.maxMatchableSegments = maxMatchableSegments
+			if child.segment.matchType == segment.matchType {
+				var hasSameVal bool
+				if child.segment.matchType == MatchTypeCaptureVar ||
+					child.segment.matchType == MatchTypeSingleSegment ||
+					child.segment.matchType == MatchTypeMultipleSegments {
+					hasSameVal = true
+				} else if child.segment.matchType == MatchTypeConstraintCaptureVar {
+					hasSameVal = segment.captureVarPattern.String() == child.segment.val
+				} else {
+					if m.caseInsensitive {
+						hasSameVal = strings.EqualFold(segment.val, child.segment.val)
+					} else {
+						hasSameVal = segment.val == child.segment.val
+					}
 				}
-				currentNode = child
-				found = true
-				if currentNode.parent != nil {
-					trieDepth++
+
+				if hasSameVal {
+					if child.maxMatchableSegments < maxMatchableSegments {
+						child.maxMatchableSegments = maxMatchableSegments
+					}
+					currentNode = child
+					found = true
+					if currentNode.parent != nil {
+						trieDepth++
+					}
+					break
 				}
-				break
 			}
 		}
 
@@ -106,55 +120,61 @@ func (m *Matcher) AddPattern(pattern *Pattern) error {
 			})
 			currentNode.children = children
 			currentNode = newNode
-			//we update the maxMatchableSegments field only for the non leafs nodes
-			//if !currentNode.isLeaf() {
 			newNode.maxMatchableSegments = maxMatchableSegments
-			//}
 			inserted = true
+		} else {
+			if segmentIndex == segmentsLength-1 {
+				if currentNode.isLeaf() {
+					return errors.New("duplicated pattern detected: '" + pattern.String() + "'")
+				}
+				currentNode.pattern = pattern
+				inserted = true
+			}
 		}
 	}
 
-	if !inserted && currentNode.pattern != nil {
+	if !inserted && currentNode.isLeaf() {
 		return errors.New("duplicated pattern detected: '" + pattern.String() + "'")
 	}
 	return nil
 }
 
-func (m *Matcher) Match(mc *MatchingContext) *Pattern {
-	p := m.matchPattern(mc)
-	if p != nil && p.captureVarsLen > 0 {
-		mc.captureVars = make([]CaptureVar, p.captureVarsLen)
-		patternSegmentsLen := len(p.segments)
-		var psi int
-		var captureVarsIndex int
-		for i := 0; i < len(mc.pathSegments); i++ {
-			urlSegment := &mc.pathSegments[i]
-			if urlSegment.matchType == MatchTypeCaptureVar ||
-				urlSegment.matchType == MatchTypeConstraintCaptureVar {
-				for ; psi < patternSegmentsLen; psi++ {
-					patternSegment := p.segments[psi]
-					if patternSegment.matchType == MatchTypeCaptureVar ||
-						patternSegment.matchType == MatchTypeConstraintCaptureVar {
-						mc.captureVars[captureVarsIndex] = CaptureVar{
-							Name:  patternSegment.captureVarName,
-							Value: urlSegment.val,
-						}
-						captureVarsIndex++
-						psi++
-						break
+func (m *Matcher) CaptureVars(matchingPath string, p *Pattern, mc *MatchingContext) []CaptureVar {
+	if p == nil || p.captureVarsLen == 0 {
+		return nil
+	}
+	captureVars := make([]CaptureVar, p.captureVarsLen)
+	patternSegmentsLen := len(p.segments)
+	var psi int
+	var captureVarsIndex int
+	for i := 0; i < len(mc.PathSegments); i++ {
+		urlSegment := &mc.PathSegments[i]
+		if urlSegment.matchType == MatchTypeCaptureVar ||
+			urlSegment.matchType == MatchTypeConstraintCaptureVar {
+			for ; psi < patternSegmentsLen; psi++ {
+				patternSegment := p.segments[psi]
+				if patternSegment.matchType == MatchTypeCaptureVar ||
+					patternSegment.matchType == MatchTypeConstraintCaptureVar {
+					captureVars[captureVarsIndex] = CaptureVar{
+						Name:  patternSegment.captureVarName,
+						Value: matchingPath[urlSegment.startIndex:urlSegment.endIndex],
 					}
+					captureVarsIndex++
+					psi++
+					break
 				}
 			}
 		}
 	}
-	return p
+
+	return captureVars
 }
 
-func (m *Matcher) matchPattern(mc *MatchingContext) *Pattern {
-	if len(mc.pathSegments) > maxPathSegments {
+func (m *Matcher) Match(urlPath string, mc *MatchingContext) *Pattern {
+	if len(mc.PathSegments) > MaxPathSegments {
 		return nil
 	}
-	if len(mc.pathSegments) == 0 && m.rootPathMatcher != nil {
+	if len(mc.PathSegments) == 0 && m.rootPathMatcher != nil {
 		return m.rootPathMatcher
 	}
 	type stackSegment struct {
@@ -162,14 +182,15 @@ func (m *Matcher) matchPattern(mc *MatchingContext) *Pattern {
 		urlSegmentIndex     uint8
 	}
 	var treeDepth int
-	urlLen := uint8(len(mc.pathSegments))
-	nodeStack := make([]stackSegment, maxPathSegments)
-	urlSegmentMatchTypeStack := make([]MatchType, maxPathSegments)
+	urlLen := uint8(len(mc.PathSegments))
+	nodeStack := make([]stackSegment, MaxPathSegments)
+	urlSegmentMatchTypeStack := make([]MatchType, MaxPathSegments)
 	currentNode := m.trieRoot
 	var urlSegmentIndex uint8
 	for urlSegmentIndex < urlLen {
 		var matched bool
-		urlSegment := &mc.pathSegments[urlSegmentIndex]
+		urlSegment := &mc.PathSegments[urlSegmentIndex]
+		//urlSegmentVal := urlPath[urlSegment.startIndex:urlSegment.endIndex]
 		if urlSegmentMatchTypeStack[urlSegmentIndex] != 0 {
 			urlSegment.matchType = urlSegmentMatchTypeStack[urlSegmentIndex]
 		}
@@ -181,24 +202,24 @@ func (m *Matcher) matchPattern(mc *MatchingContext) *Pattern {
 			if !childNode.canMatchPathWithLength(urlLen - urlSegmentIndex) {
 				continue
 			}
-			urlSegmentMatchType := childNode.segment.matchUrlPathSegment(urlSegment)
+			urlSegmentMatchType := childNode.segment.matchUrlPathSegment(urlPath, urlSegment, m.caseInsensitive)
 			if urlSegmentMatchType == MatchTypeMultipleSegments {
 				greedyChildren := childNode.children
 				greedyChildrenLen := len(greedyChildren)
 				if greedyChildrenLen == 0 && childNode.isLeaf() {
 					//fill until the end the remained URL segments with MatchTypeMultipleSegments match type
 					for i := urlSegmentIndex; i < urlLen; i++ {
-						urlSegment := &mc.pathSegments[i]
+						urlSegment := &mc.PathSegments[i]
 						urlSegment.matchType = MatchTypeMultipleSegments
 					}
 					return childNode.pattern
 				}
 				for urlSegmentIndex < urlLen {
-					urlSegment := &mc.pathSegments[urlSegmentIndex]
+					urlSegment := &mc.PathSegments[urlSegmentIndex]
 					urlSegment.matchType = MatchTypeMultipleSegments
 					for gci := 0; gci < greedyChildrenLen; gci++ {
 						greedyChildNode := greedyChildren[gci]
-						if greedyChildNode.segment.matchUrlPathSegment(urlSegment) != MatchTypeUnknown {
+						if greedyChildNode.segment.matchUrlPathSegment(urlPath, urlSegment, m.caseInsensitive) != MatchTypeUnknown {
 							nodeStack[treeDepth] = stackSegment{
 								currentNodeChildren: ci,
 								urlSegmentIndex:     urlSegmentIndex + 1,

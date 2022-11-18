@@ -168,40 +168,6 @@ var (
 		"/progs/update.bash"}
 )
 
-func Benchmark_ParseURLPath(b *testing.B) {
-	url := mustParseURL("https://example.com/a/b/c/d/e/f/g/h/i/j/k/def?q=morefoo%25bar")
-	b.ReportAllocs()
-	for i := 0; i < b.N; i++ {
-		ParseURLPath(url)
-	}
-}
-
-//func Benchmark_MatchPattern(b *testing.B) {
-//	mc := ParseURLPath(mustParseURL("https://www.domain.com/gopher/pencil/gopherhelmet.jpg"))
-//	var patterns []*Pattern
-//	for _, ps := range literalPaterns {
-//		p, err := ParsePattern(ps, false)
-//		if err != nil {
-//			b.Fatalf("MatchPatterns() pattern: [%s] parse error: %v", ps, err)
-//		}
-//		patterns = append(patterns, &p)
-//	}
-//	sort.SliceStable(patterns, func(i, j int) bool {
-//		return patterns[i].HighPriorityThan(patterns[j])
-//	})
-//
-//	b.ReportAllocs()
-//	for i := 0; i < b.N; i++ {
-//		if p, found := mc.MatchPatterns(patterns); found {
-//			useFoundPatter(p)
-//		}
-//	}
-//}
-
-func useFoundPatter(p Pattern) {
-
-}
-
 func TestParseURLPath(t *testing.T) {
 	tests := []struct {
 		name       string
@@ -212,467 +178,111 @@ func TestParseURLPath(t *testing.T) {
 			name:       "parse empty",
 			requestUrl: mustParseURL("https://example.com"),
 			want: MatchingContext{
-				originalPath: "",
-				pathSegments: nil,
+				PathSegments: nil,
 			},
 		},
 		{
 			name:       "/",
 			requestUrl: mustParseURL("https://example.com/?q=morefoo%25bar"),
 			want: MatchingContext{
-				originalPath: "/",
-				pathSegments: nil,
+				PathSegments: nil,
 			},
 		},
 		{
 			name:       "/abc",
 			requestUrl: mustParseURL("https://example.com/abc?q=morefoo%25bar"),
 			want: MatchingContext{
-				originalPath: "/abc",
-				pathSegments: []segment{{val: "abc"}},
+				PathSegments: []UrlSegment{{startIndex: 1, endIndex: 4}},
 			},
 		},
 		{
 			name:       "//",
 			requestUrl: mustParseURL("https://example.com//?q=morefoo%25bar"),
 			want: MatchingContext{
-				originalPath: "//",
-				pathSegments: nil,
+				PathSegments: nil,
 			},
 		},
 		{
 			name:       "//abc",
 			requestUrl: mustParseURL("https://example.com//abc?q=morefoo%25bar"),
 			want: MatchingContext{
-				originalPath: "//abc",
-				pathSegments: []segment{{val: "abc"}},
+				PathSegments: []UrlSegment{{startIndex: 2, endIndex: 5}},
 			},
 		},
 		{
 			name:       "/abc/",
 			requestUrl: mustParseURL("https://example.com/abc/?q=morefoo%25bar"),
 			want: MatchingContext{
-				originalPath: "/abc/",
-				pathSegments: []segment{{val: "abc"}},
+				PathSegments: []UrlSegment{{startIndex: 1, endIndex: 4}},
 			},
 		},
 		{
 			name:       "/abc//def",
 			requestUrl: mustParseURL("https://example.com/abc//def?q=morefoo%25bar"),
 			want: MatchingContext{
-				originalPath: "/abc//def",
-				pathSegments: []segment{{val: "abc"}, {val: "def"}},
+				PathSegments: []UrlSegment{{startIndex: 1, endIndex: 4}, {startIndex: 6, endIndex: 9}},
 			},
 		},
 		{
 			name:       "/foo%25fbar",
 			requestUrl: mustParseURL("https://example.com/foo%25fbar?q=morefoo%25bar"),
 			want: MatchingContext{
-				originalPath: "/foo%fbar",
-				pathSegments: []segment{{val: "foo%fbar"}},
+				PathSegments: []UrlSegment{{startIndex: 1, endIndex: 9}},
 			},
 		},
 		{
 			name:       "/foo%2fbar",
 			requestUrl: mustParseURL("https://example.com/foo%2fbar?q=morefoo%25bar"),
 			want: MatchingContext{
-				originalPath: "/foo/bar",
-				pathSegments: []segment{{val: "foo"}, {val: "bar"}},
+				PathSegments: []UrlSegment{{startIndex: 1, endIndex: 4}, {startIndex: 5, endIndex: 8}},
 			},
 		},
 		{
 			name:       "/path/to/new/../file",
 			requestUrl: mustParseURL("https://example.com/path/to/new/../file"),
 			want: MatchingContext{
-				originalPath: "/path/to/new/../file",
-				pathSegments: []segment{{val: "path"}, {val: "to"}, {val: "file"}},
+				PathSegments: []UrlSegment{{startIndex: 1, endIndex: 5}, {startIndex: 6, endIndex: 8}, {startIndex: 16, endIndex: 20}},
 			},
 		},
 		{
 			name:       "/foo/../../bar",
 			requestUrl: mustParseURL("https://example.com/foo/../../bar"),
 			want: MatchingContext{
-				originalPath: "/foo/../../bar",
-				pathSegments: []segment{{val: "bar"}},
+				PathSegments: []UrlSegment{{startIndex: 11, endIndex: 14}},
 			},
 		},
 		{
 			name:       "/foo/../..",
 			requestUrl: mustParseURL("https://example.com/foo/../.."),
 			want: MatchingContext{
-				originalPath: "/foo/../..",
-				pathSegments: nil,
+				PathSegments: nil,
 			},
 		},
 		{
 			name:       "/foo/.%2e",
 			requestUrl: mustParseURL("https://example.com/foo/.%2e"),
 			want: MatchingContext{
-				originalPath: "/foo/..",
-				pathSegments: nil,
+				PathSegments: nil,
 			},
 		},
 		{
 			name:       "/foo/%2e%2e",
 			requestUrl: mustParseURL("https://example.com/foo/%2e%2e"),
 			want: MatchingContext{
-				originalPath: "/foo/..",
-				pathSegments: nil,
+				PathSegments: nil,
 			},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := ParseURLPath(tt.requestUrl); !reflect.DeepEqual(got, tt.want) {
+			got := &MatchingContext{PathSegments: make([]UrlSegment, MaxPathSegments)}
+			ParseURLPath(tt.requestUrl, got)
+			if !reflect.DeepEqual(*got, tt.want) {
 				t.Errorf("ParseURLPath() = %v, want %v", got, tt.want)
 			}
 		})
 	}
 }
-
-//func TestMatchingContext_MatchPattern(t *testing.T) {
-//	type want struct {
-//		pattern         string
-//		urlPathSegments []segment
-//		captureVars     map[string]string
-//		found           bool
-//	}
-//	tests := []struct {
-//		name     string
-//		urlPath  string
-//		patterns []string
-//		want     want
-//	}{
-//		{
-//			name:     "no root pattern, matches /",
-//			urlPath:  "/",
-//			patterns: []string{"/a"},
-//			want: want{
-//				pattern: "",
-//				found:   false,
-//			},
-//		},
-//		{
-//			name:     "root pattern, matches /",
-//			urlPath:  "/",
-//			patterns: []string{"/"},
-//			want: want{
-//				pattern: "/",
-//				found:   true,
-//			},
-//		},
-//		{
-//			name:     "root pattern, matches / with back segments",
-//			urlPath:  "/a/../b/../",
-//			patterns: []string{"/"},
-//			want: want{
-//				pattern: "/",
-//				found:   true,
-//			},
-//		},
-//		{
-//			name:     "2 literal patterns, second should match",
-//			urlPath:  "/a/b/",
-//			patterns: []string{"/b/c", "/a/b"},
-//			want: want{
-//				pattern: "/a/b",
-//				urlPathSegments: []segment{
-//					{val: "a", matchType: MatchTypeLiteral},
-//					{val: "b", matchType: MatchTypeLiteral}},
-//				found: true,
-//			},
-//		},
-//		{
-//			name:     "2 literal patterns, none should match",
-//			urlPath:  "/a/r/",
-//			patterns: []string{"/b/c", "/a/b"},
-//			want: want{
-//				pattern: "",
-//				found:   false,
-//			},
-//		},
-//		{
-//			name:     "greedy pattern, matches /",
-//			urlPath:  "/",
-//			patterns: []string{"/**"},
-//			want: want{
-//				pattern: "/**",
-//				found:   true,
-//			},
-//		},
-//		{
-//			name:     "greedy pattern, matches / with back segments",
-//			urlPath:  "/a/../b/../",
-//			patterns: []string{"/**"},
-//			want: want{
-//				pattern: "/**",
-//				found:   true,
-//			},
-//		},
-//		{
-//			name:     "1 pattern, multiple greedy segments, different path segments",
-//			urlPath:  "/bla/testing/testing/bla/bla",
-//			patterns: []string{"/bla/**/testing/**/bla"},
-//			want: want{
-//				pattern: "/bla/**/testing/**/bla",
-//				urlPathSegments: []segment{
-//					{val: "bla", matchType: MatchTypeLiteral},
-//					{val: "testing", matchType: MatchTypeLiteral},
-//					{val: "testing", matchType: MatchTypeMultipleSegments},
-//					{val: "bla", matchType: MatchTypeMultipleSegments},
-//					{val: "bla", matchType: MatchTypeLiteral},
-//				},
-//				found: true,
-//			},
-//		},
-//		{
-//			name:     "1 pattern, multiple greedy segments, different path segments, should not match",
-//			urlPath:  "/bla/testing/testing/bla/blaa",
-//			patterns: []string{"/bla/**/testing/**/bla"},
-//			want: want{
-//				pattern: "",
-//				found:   false,
-//			},
-//		},
-//		{
-//			name:     "1 pattern, multiple greedy segments, same path segments",
-//			urlPath:  "/bla/bla/bla/bla/bla/bla",
-//			patterns: []string{"/bla/**/bla/**/bla"},
-//			want: want{
-//				pattern: "/bla/**/bla/**/bla",
-//				urlPathSegments: []segment{
-//					{val: "bla", matchType: MatchTypeLiteral},
-//					{val: "bla", matchType: MatchTypeLiteral},
-//					{val: "bla", matchType: MatchTypeMultipleSegments},
-//					{val: "bla", matchType: MatchTypeMultipleSegments},
-//					{val: "bla", matchType: MatchTypeMultipleSegments},
-//					{val: "bla", matchType: MatchTypeLiteral},
-//				},
-//				found: true,
-//			},
-//		},
-//		{
-//			name:     "2 pattern, with multiple greedy segments but the first one is more specific",
-//			urlPath:  "/bla/testing/testing/bla/bla",
-//			patterns: []string{"/bla/**/testing/**/bla", "/bla/**/bla"},
-//			want: want{
-//				pattern: "/bla/**/testing/**/bla",
-//				urlPathSegments: []segment{
-//					{val: "bla", matchType: MatchTypeLiteral},
-//					{val: "testing", matchType: MatchTypeLiteral},
-//					{val: "testing", matchType: MatchTypeMultipleSegments},
-//					{val: "bla", matchType: MatchTypeMultipleSegments},
-//					{val: "bla", matchType: MatchTypeLiteral},
-//				},
-//				found: true,
-//			},
-//		},
-//		{
-//			name:     "3 patterns, the same length greedy pattern should match",
-//			urlPath:  "/a/b/e",
-//			patterns: []string{"/a/b/c", "/a/*/d", "/a/**"},
-//			want: want{
-//				pattern: "/a/**",
-//				urlPathSegments: []segment{
-//					{val: "a", matchType: MatchTypeLiteral},
-//					{val: "b", matchType: MatchTypeMultipleSegments},
-//					{val: "e", matchType: MatchTypeMultipleSegments},
-//				},
-//				found: true,
-//			},
-//		},
-//		{
-//			name:     "3 patterns, 2 with the same length greedy pattern should match",
-//			urlPath:  "/a/b/c/d/e/h",
-//			patterns: []string{"/a/b/c/d/e/f", "/a/*/c/d/e/g", "/a/**"},
-//			want: want{
-//				pattern: "/a/**",
-//				urlPathSegments: []segment{
-//					{val: "a", matchType: MatchTypeLiteral},
-//					{val: "b", matchType: MatchTypeMultipleSegments},
-//					{val: "c", matchType: MatchTypeMultipleSegments},
-//					{val: "d", matchType: MatchTypeMultipleSegments},
-//					{val: "e", matchType: MatchTypeMultipleSegments},
-//					{val: "h", matchType: MatchTypeMultipleSegments},
-//				},
-//				found: true,
-//			},
-//		},
-//		{
-//			name:     "3 patterns, greedy pattern should match",
-//			urlPath:  "/a/b/c/d/e",
-//			patterns: []string{"/a/b", "/a/*/*/d", "/a/**/e"},
-//			want: want{
-//				pattern: "/a/**/e",
-//				urlPathSegments: []segment{
-//					{val: "a", matchType: MatchTypeLiteral},
-//					{val: "b", matchType: MatchTypeMultipleSegments},
-//					{val: "c", matchType: MatchTypeMultipleSegments},
-//					{val: "d", matchType: MatchTypeMultipleSegments},
-//					{val: "e", matchType: MatchTypeLiteral},
-//				},
-//				found: true,
-//			},
-//		},
-//		{
-//			name:     "2 patterns, second should match",
-//			urlPath:  "/a/ab",
-//			patterns: []string{"/a/{b}", "/a/b"},
-//			want: want{
-//				pattern: "/a/{b}",
-//				urlPathSegments: []segment{
-//					{val: "a", matchType: MatchTypeLiteral},
-//					{val: "ab", matchType: MatchTypeCaptureVar},
-//				},
-//				captureVars: map[string]string{"b": "ab"},
-//				found:       true,
-//			},
-//		},
-//		{
-//			name:     "1 pattern, with regex and greedy match, the url is ending with with /",
-//			urlPath:  "/XXXblaXXXX/testing/testing/bla/testing/testing/",
-//			patterns: []string{"/*bla*/**/bla/**"},
-//			want: want{
-//				pattern: "/*bla*/**/bla/**",
-//				urlPathSegments: []segment{
-//					{val: "XXXblaXXXX", matchType: MatchTypeRegex},
-//					{val: "testing", matchType: MatchTypeMultipleSegments},
-//					{val: "testing", matchType: MatchTypeMultipleSegments},
-//					{val: "bla", matchType: MatchTypeLiteral},
-//					{val: "testing", matchType: MatchTypeMultipleSegments},
-//					{val: "testing", matchType: MatchTypeMultipleSegments},
-//				},
-//				found: true,
-//			},
-//		},
-//		{
-//			name:     "1 pattern, with regex and greedy match",
-//			urlPath:  "/XXXblaXXXX/testing/testing/bla/testing/testing.jpg",
-//			patterns: []string{"/*bla*/**/bla/**"},
-//			want: want{
-//				pattern: "/*bla*/**/bla/**",
-//				urlPathSegments: []segment{
-//					{val: "XXXblaXXXX", matchType: MatchTypeRegex},
-//					{val: "testing", matchType: MatchTypeMultipleSegments},
-//					{val: "testing", matchType: MatchTypeMultipleSegments},
-//					{val: "bla", matchType: MatchTypeLiteral},
-//					{val: "testing", matchType: MatchTypeMultipleSegments},
-//					{val: "testing.jpg", matchType: MatchTypeMultipleSegments},
-//				},
-//				found: true,
-//			},
-//		},
-//		{
-//			name:     "1 pattern, with capture var and greedy match",
-//			urlPath:  "/a/b/c/d/e/f/g/h",
-//			patterns: []string{"/a/{b}/{c}/**/g/h"},
-//			want: want{
-//				pattern: "/a/{b}/{c}/**/g/h",
-//				urlPathSegments: []segment{
-//					{val: "a", matchType: MatchTypeLiteral},
-//					{val: "b", matchType: MatchTypeCaptureVar},
-//					{val: "c", matchType: MatchTypeCaptureVar},
-//					{val: "d", matchType: MatchTypeMultipleSegments},
-//					{val: "e", matchType: MatchTypeMultipleSegments},
-//					{val: "f", matchType: MatchTypeMultipleSegments},
-//					{val: "g", matchType: MatchTypeLiteral},
-//					{val: "h", matchType: MatchTypeLiteral},
-//				},
-//				captureVars: map[string]string{"b": "b", "c": "c"},
-//				found:       true,
-//			},
-//		},
-//		{
-//			name:     "2 patterns, with capture var and greedy match",
-//			urlPath:  "/a/b/c/d/e/f/g",
-//			patterns: []string{"/a/{b}/{c}/*/f/g", "/a/{c}/{b}/**/f/g"},
-//			want: want{
-//				pattern: "/a/{c}/{b}/**/f/g",
-//				urlPathSegments: []segment{
-//					{val: "a", matchType: MatchTypeLiteral},
-//					{val: "b", matchType: MatchTypeCaptureVar},
-//					{val: "c", matchType: MatchTypeCaptureVar},
-//					{val: "d", matchType: MatchTypeMultipleSegments},
-//					{val: "e", matchType: MatchTypeMultipleSegments},
-//					{val: "f", matchType: MatchTypeLiteral},
-//					{val: "g", matchType: MatchTypeLiteral},
-//				},
-//				captureVars: map[string]string{"b": "c", "c": "b"},
-//				found:       true,
-//			},
-//		},
-//		{
-//			name:     "4 patterns, with capture var, regex and greedy match",
-//			urlPath:  "/a/b/c/d/e/f/g",
-//			patterns: []string{"/a/{b}/{c}/{d}/f/g", "/a/{c}/{b}/**/f/{d}", "/a/{c}/{b}/**/f/g", "/a/{c}/{b}/*/{d}/f/g"},
-//			want: want{
-//				pattern: "/a/{c}/{b}/*/{d}/f/g",
-//				urlPathSegments: []segment{
-//					{val: "a", matchType: MatchTypeLiteral},
-//					{val: "b", matchType: MatchTypeCaptureVar},
-//					{val: "c", matchType: MatchTypeCaptureVar},
-//					{val: "d", matchType: MatchTypeSingleSegment},
-//					{val: "e", matchType: MatchTypeCaptureVar},
-//					{val: "f", matchType: MatchTypeLiteral},
-//					{val: "g", matchType: MatchTypeLiteral},
-//				},
-//				captureVars: map[string]string{"b": "c", "c": "b", "d": "e"},
-//				found:       true,
-//			},
-//		},
-//		{
-//			name:     "4 patterns, with capture var, regex and greedy match should not match",
-//			urlPath:  "/a/b/c/d/e/f/h",
-//			patterns: []string{"/a/{b}/{c}/{d}/f/g", "/a/{c}/{b}/**/f/{d}/q", "/a/{c}/{b}/**/f/g", "/a/{c}/{b}/*/{d}/f/g"},
-//			want: want{
-//				pattern: "",
-//				found:   false,
-//			},
-//		},
-//		{
-//			name:     "literal patterns",
-//			urlPath:  "/gopher/pencil/gopherswrench.jpg",
-//			patterns: literalPaterns,
-//			want: want{
-//				pattern: "/gopher/pencil/gopherswrench.jpg",
-//				urlPathSegments: []segment{
-//					{val: "gopher", matchType: MatchTypeLiteral},
-//					{val: "pencil", matchType: MatchTypeLiteral},
-//					{val: "gopherswrench.jpg", matchType: MatchTypeLiteral},
-//				},
-//				found: true,
-//			},
-//		},
-//	}
-//	for _, tt := range tests {
-//		t.Run(tt.name, func(t *testing.T) {
-//			mc := ParseURLPath(mustParseURL("https://www.domain.com" + tt.urlPath))
-//			var patterns []*Pattern
-//			for _, ps := range tt.patterns {
-//				p, err := ParsePattern(ps, false)
-//				if err != nil {
-//					t.Fatalf("MatchPatterns() pattern: [%s] parse error: %v", ps, err)
-//				}
-//				patterns = append(patterns, &p)
-//			}
-//			sort.SliceStable(patterns, func(i, j int) bool {
-//				return patterns[i].HighPriorityThan(patterns[j])
-//			})
-//			p, found := mc.MatchPatterns(patterns)
-//			got := want{
-//				pattern:     p.RawValue,
-//				captureVars: mc.CaptureVars,
-//				found:       found,
-//			}
-//			if found {
-//				got.urlPathSegments = mc.pathSegments
-//			}
-//			if !reflect.DeepEqual(got, tt.want) {
-//				t.Errorf("MatchPatterns() got = %v, want %v", got, tt.want)
-//			}
-//		})
-//	}
-//}
 
 func mustParseURL(rawURL string) *url.URL {
 	u, err := url.Parse(rawURL)

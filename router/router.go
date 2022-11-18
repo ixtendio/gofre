@@ -7,7 +7,6 @@ import (
 	"github.com/ixtendio/gofre/request"
 	"log"
 	"net/http"
-	"net/url"
 	"strings"
 )
 
@@ -46,7 +45,7 @@ func (r *Router) Handle(httpMethod string, pathPattern string, handler handler.H
 	httpMethod = strings.ToUpper(httpMethod)
 	matcher := r.endpointMatchers[httpMethod]
 	if matcher == nil {
-		matcher = path.NewMatcher()
+		matcher = path.NewMatcher(r.caseInsensitivePathMatch)
 		r.endpointMatchers[httpMethod] = matcher
 	}
 	if err := matcher.AddPattern(pattern); err != nil {
@@ -57,35 +56,34 @@ func (r *Router) Handle(httpMethod string, pathPattern string, handler handler.H
 
 // MatchRequest returns the first handler that matches the request, together with the path variables if exists
 func (r *Router) MatchRequest(req *http.Request) (handler.Handler, []path.CaptureVar) {
-	return r.Match(req.Method, req.URL)
-}
-
-// Match returns the first handler that matches the http method and the url, together with the path variables if exists
-func (r *Router) Match(httpMethod string, url *url.URL) (handler.Handler, []path.CaptureVar) {
-	mc := path.ParseURLPath(url)
+	httpMethod := req.Method
+	urlPath := req.URL.Path
+	mc := &path.MatchingContext{PathSegments: make([]path.UrlSegment, path.MaxPathSegments)}
+	path.ParseURLPath(req.URL, mc)
 	httpMethod = strings.ToUpper(httpMethod)
 	matcher := r.endpointMatchers[httpMethod]
 	if matcher == nil {
 		return nil, nil
 	}
-	pattern := matcher.Match(&mc)
+	pattern := matcher.Match(urlPath, mc)
 	if pattern == nil {
 		return nil, nil
 	}
-	//todo compute var args
-	return pattern.Attachment.(handler.Handler), mc.CaptureVars()
+	return pattern.Attachment.(handler.Handler), matcher.CaptureVars(urlPath, pattern, mc)
 }
 
 // ServeHTTP implements the http.Handler interface.
 // It's the entry point for all http traffic
 func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	matchedHandler, capturedVars := r.MatchRequest(req)
+
 	if matchedHandler == nil {
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
 
 	httpRequest := request.NewHttpRequestWithPathVars(req, capturedVars)
+
 	// Call the wrapped handler functions.
 	resp, err := matchedHandler(req.Context(), httpRequest)
 	if err != nil {

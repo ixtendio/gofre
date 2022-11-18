@@ -27,7 +27,7 @@ func TestMatcher_AddPattern(t *testing.T) {
 			wantErr:  true,
 		},
 		{
-			name:     "2 literal patterns with one segment, that are the same",
+			name:     "2 literal patterns with one Segment, that are the same",
 			patterns: []string{"/a", "/a"},
 			wantErr:  true,
 			want:     "R=>(a:1)",
@@ -35,12 +35,12 @@ func TestMatcher_AddPattern(t *testing.T) {
 		{
 			name:     "1 literal pattern",
 			patterns: []string{"/a"},
-			want:     "R=>(a:1)",
+			want:     "R=>(a:1L)",
 		},
 		{
-			name:     "2 literal patterns with one segment, that are different",
+			name:     "2 literal patterns with one Segment, that are different",
 			patterns: []string{"/a", "/b"},
-			want:     "R=>(a:1 b:1)",
+			want:     "R=>(a:1L b:1L)",
 		},
 		{
 			name:     "2 literal patterns with multiple segments, that are the same",
@@ -50,41 +50,46 @@ func TestMatcher_AddPattern(t *testing.T) {
 		{
 			name:     "2 literal patterns with multiple segments, that are different",
 			patterns: []string{"/a/b/c/d/e", "/a/b/c/d/f"},
-			want:     "R=>(a:5=>(b:4=>(c:3=>(d:2=>(e:1 f:1)))))",
+			want:     "R=>(a:5=>(b:4=>(c:3=>(d:2=>(e:1L f:1L)))))",
+		},
+		{
+			name:     "2 literal patterns with multiple segments, second one is substring of the first one",
+			patterns: []string{"/a/b/c", "/a/b"},
+			want:     "R=>(a:3=>(b:2L=>(c:1L)))",
 		},
 		{
 			name:     "2 literal patterns with multiple segments, all segments the same",
 			patterns: []string{"/a/a/a/a/a"},
-			want:     "R=>(a:5=>(a:4=>(a:3=>(a:2=>(a:1)))))",
+			want:     "R=>(a:5=>(a:4=>(a:3=>(a:2=>(a:1L)))))",
 		},
 		{
 			name:     "4 literal patterns with multiple segments, 3 of them have common prefix",
 			patterns: []string{"/a/b/c", "/a/b/d", "/a/b/d/e", "/b/d"},
-			want:     "R=>(b:2=>(d:1) a:4=>(b:3=>(c:1 d:2=>(e:1))))",
+			want:     "R=>(b:2=>(d:1L) a:4=>(b:3=>(c:1L d:2L=>(e:1L))))",
 		},
 		{
 			name:     "1 literal, 1 var capture, all of them have common prefix",
 			patterns: []string{"/a/{b}", "/a"},
-			want:     "R=>(a:2=>({b}:1))",
+			want:     "R=>(a:2L=>({b}:1L))",
 		},
 		{
 			name:     "1 literal, 1 var capture and 1 var capture with constraint patterns with multiple segments, all of them have common prefix",
 			patterns: []string{"/a/b/c", "/a/{b}/c", "/a/{b:[a-z]+}/d/e"},
-			want:     "R=>(a:4=>(b:2=>(c:1) {b:[a-z]+}:3=>(d:2=>(e:1)) {b}:2=>(c:1)))",
+			want:     "R=>(a:4=>(b:2=>(c:1L) {b:[a-z]+}:3=>(d:2=>(e:1L)) {b}:2=>(c:1L)))",
 		},
 		{
 			name:     "1 literal, 1 regex 1 var capture and 1 greedy patterns with multiple segments, all of them have common prefix",
 			patterns: []string{"/a/**/c/e", "/a/b/c", "/a/a?c*/c/f"},
-			want:     "R=>(a:255=>(b:2=>(c:1) a?c*:3=>(c:2=>(f:1)) **:255=>(c:255=>(e:255))))",
+			want:     "R=>(a:255=>(b:2=>(c:1L) a?c*:3=>(c:2=>(f:1L)) **:255=>(c:255=>(e:255L))))",
 		},
 		{
 			name:     "2 greedy patterns with multiple segments, all of them have common prefix",
 			patterns: []string{"/a/**/c", "/a/**/b"},
-			want:     "R=>(a:255=>(**:255=>(b:255 c:255)))",
+			want:     "R=>(a:255=>(**:255=>(b:255L c:255L)))",
 		},
 	}
 	for _, tt := range tests {
-		mc := NewMatcher()
+		mc := NewMatcher(false)
 		t.Run(tt.name, func(t *testing.T) {
 			var err error
 			for _, ps := range tt.patterns {
@@ -278,7 +283,7 @@ func TestMatcher_Match(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		m := NewMatcher()
+		m := NewMatcher(false)
 		t.Run(tt.name, func(t *testing.T) {
 			reqUrl, err := url.Parse("https://www.domain.com" + tt.args)
 			if err != nil {
@@ -291,14 +296,15 @@ func TestMatcher_Match(t *testing.T) {
 				}
 			}
 			var got want
-			mc := ParseURLPath(reqUrl)
-			if p := m.Match(&mc); p != nil {
+			mc := &MatchingContext{PathSegments: make([]UrlSegment, MaxPathSegments)}
+			ParseURLPath(reqUrl, mc)
+			if p := m.Match(reqUrl.Path, mc); p != nil {
 				got.matchedPattern = p.RawValue
-				got.captureVars = mc.captureVars
+				got.captureVars = m.CaptureVars(reqUrl.Path, p, mc)
 			}
 			if len(tt.want.matchedPattern) > 0 {
 				var urlSegmentsMatchType int
-				for _, t := range mc.pathSegments {
+				for _, t := range mc.PathSegments {
 					urlSegmentsMatchType = urlSegmentsMatchType*10 + int(t.matchType)
 				}
 				got.urlSegmentsMatchType = urlSegmentsMatchType
@@ -330,6 +336,9 @@ func trieToString(mc *Matcher, children []*node, sb *strings.Builder) {
 		sb.WriteString(child.val)
 		sb.WriteString(":")
 		sb.WriteString(strconv.Itoa(int(child.maxMatchableSegments)))
+		if child.isLeaf() {
+			sb.WriteString("L")
+		}
 		trieToString(mc, child.children, sb)
 	}
 	sb.WriteString(")")

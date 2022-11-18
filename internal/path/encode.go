@@ -3,7 +3,7 @@ package path
 type MatchType uint8
 
 const (
-	maxPathSegments               = 19
+	MaxPathSegments               = 19
 	MatchTypeUnknown              = MatchType(0)
 	MatchTypeLiteral              = MatchType(1)
 	MatchTypeConstraintCaptureVar = MatchType(2)
@@ -13,7 +13,7 @@ const (
 	MatchTypeMultipleSegments     = MatchType(6)
 )
 
-func computePriority(segments []*segment) uint64 {
+func computePriority(segments []*Segment) uint64 {
 	var priority uint64
 	var multiplePathsMatcherSegmentsCount int
 	digitsCount := len(segments)
@@ -26,10 +26,10 @@ func computePriority(segments []*segment) uint64 {
 	}
 
 	if multiplePathsMatcherSegmentsCount == 0 {
-		return priority * getDecimalDivider(maxPathSegments-digitsCount)
+		return priority * getDecimalDivider(MaxPathSegments-digitsCount)
 	} else {
-		digitsPerSegmentToAdd := (maxPathSegments - digitsCount) / multiplePathsMatcherSegmentsCount
-		digitsPerSegmentReminderToAdd := (maxPathSegments - digitsCount) % multiplePathsMatcherSegmentsCount
+		digitsPerSegmentToAdd := (MaxPathSegments - digitsCount) / multiplePathsMatcherSegmentsCount
+		digitsPerSegmentReminderToAdd := (MaxPathSegments - digitsCount) % multiplePathsMatcherSegmentsCount
 
 		var getSplitIndex = func(nr uint64, dividerDigits int) int {
 			var splitIndex int

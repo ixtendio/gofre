@@ -13,44 +13,28 @@ func (cv *CaptureVar) String() string {
 	return cv.Name + "=" + cv.Value
 }
 
+type UrlSegment struct {
+	startIndex uint16
+	endIndex   uint16
+	matchType  MatchType
+}
+
 type MatchingContext struct {
-	// The original request path
-	originalPath string
-	// The non-empty path segments where the double slashes were removed
-	pathSegments []segment
-	// The capture vars, if exists
-	captureVars []CaptureVar
+	PathSegments []UrlSegment
 }
 
-func (mc *MatchingContext) CaptureVars() []CaptureVar {
-	return mc.captureVars
-}
-
-func (mc *MatchingContext) String() string {
-	return mc.originalPath
-}
-
-func ParseURLPath(requestUrl *url.URL) MatchingContext {
+func ParseURLPath(requestUrl *url.URL, mc *MatchingContext) {
 	requestPath := requestUrl.Path
 	if len(requestPath) == 0 || requestPath == "/" {
-		return MatchingContext{
-			originalPath: requestPath,
-			pathSegments: nil,
-		}
+		mc.PathSegments = nil
+		return
 	}
 
 	pathLen := len(requestPath)
-	var maxSegmentsSize int
-	for pos := 0; pos < pathLen; pos++ {
-		if requestPath[pos] == '/' {
-			maxSegmentsSize++
-		}
-	}
-
 	var segmentsIndex int
-	segments := make([]segment, maxSegmentsSize)
 	segmentStartPos := -1
-	addSegment := func(seg string) {
+	addSegment := func(startIndex int, endIndex int) bool {
+		seg := requestPath[segmentStartPos:endIndex]
 		if len(seg) > 0 {
 			if seg == ".." {
 				segmentsIndex--
@@ -58,35 +42,41 @@ func ParseURLPath(requestUrl *url.URL) MatchingContext {
 					segmentsIndex = 0
 				}
 			} else {
-				segments[segmentsIndex] = segment{
-					val: seg,
+				if segmentsIndex >= MaxPathSegments {
+					return false
+				}
+
+				mc.PathSegments[segmentsIndex] = UrlSegment{
+					startIndex: uint16(startIndex),
+					endIndex:   uint16(endIndex),
 				}
 				segmentsIndex++
 			}
 		}
+		return true
 	}
 
 	for pos := 0; pos < pathLen; pos++ {
 		ch := requestPath[pos]
 		if ch == '/' {
 			if segmentStartPos != -1 {
-				addSegment(requestPath[segmentStartPos:pos])
+				if !addSegment(segmentStartPos, pos) {
+					mc.PathSegments = nil
+					return
+				}
 			}
 			segmentStartPos = pos + 1
 		}
 	}
 
 	if segmentStartPos != -1 && segmentStartPos < pathLen {
-		addSegment(requestPath[segmentStartPos:pathLen])
-	}
-	if segmentsIndex == 0 {
-		return MatchingContext{
-			originalPath: requestPath,
-			pathSegments: nil,
+		if !addSegment(segmentStartPos, pathLen) {
+			mc.PathSegments = nil
+			return
 		}
 	}
-	return MatchingContext{
-		originalPath: requestPath,
-		pathSegments: segments[0:segmentsIndex],
+	if segmentsIndex == 0 {
+		mc.PathSegments = nil
 	}
+	mc.PathSegments = mc.PathSegments[0:segmentsIndex]
 }

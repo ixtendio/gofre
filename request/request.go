@@ -7,6 +7,7 @@ import (
 
 type HttpRequest struct {
 	R        *http.Request
+	MC       path.MatchingContext
 	pathVars []path.CaptureVar
 }
 
@@ -23,6 +24,14 @@ func (r *HttpRequest) PathVar(varName string) string {
 func (r *HttpRequest) PathVars() []path.CaptureVar {
 	return r.pathVars
 }
+
+//func NewHttpRequest1(r *http.Request, mp *path.Pattern, pathSegments []path.UrlSegment) HttpRequest {
+//	return HttpRequest{
+//		R:            r,
+//		matchPattern: mp,
+//		pathSegments: pathSegments,
+//	}
+//}
 
 func NewHttpRequest(r *http.Request) HttpRequest {
 	return HttpRequest{

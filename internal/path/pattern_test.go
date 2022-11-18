@@ -98,7 +98,7 @@ package path
 //			want: want{
 //				segmentsCount:                  2,
 //				maxMatchableSegment:            2,
-//				pathSegmentsMatchTypesEncoding: encode{val: 1300000000000000000, len: maxPathSegments},
+//				pathSegmentsMatchTypesEncoding: encode{val: 1300000000000000000, len: MaxPathSegments},
 //				rawValue:                       "/abc/{id}",
 //				captureVars: []captureVar{{
 //					segmentIndex: 1,
@@ -114,7 +114,7 @@ package path
 //			want: want{
 //				segmentsCount:                  2,
 //				maxMatchableSegment:            2,
-//				pathSegmentsMatchTypesEncoding: encode{val: 1200000000000000000, len: maxPathSegments},
+//				pathSegmentsMatchTypesEncoding: encode{val: 1200000000000000000, len: MaxPathSegments},
 //				rawValue:                       "/abc/{id:\\d}",
 //				captureVars: []captureVar{{
 //					segmentIndex: 1,
@@ -154,7 +154,7 @@ package path
 //			want: want{
 //				segmentsCount:                  2,
 //				maxMatchableSegment:            2,
-//				pathSegmentsMatchTypesEncoding: encode{val: 1500000000000000000, len: maxPathSegments},
+//				pathSegmentsMatchTypesEncoding: encode{val: 1500000000000000000, len: MaxPathSegments},
 //				rawValue:                       "/a/*",
 //				captureVars:                    nil,
 //			},
@@ -165,7 +165,7 @@ package path
 //			want: want{
 //				segmentsCount:                  19,
 //				maxMatchableSegment:            19,
-//				pathSegmentsMatchTypesEncoding: encode{val: 1513241111311111112, len: maxPathSegments},
+//				pathSegmentsMatchTypesEncoding: encode{val: 1513241111311111112, len: MaxPathSegments},
 //				rawValue:                       "/a/*/b/{q}/{y:[a-z]+}/?as*/d/e/f/g/{t}/i/j/k/l/m/n/o/{w:[a-z]+}",
 //				captureVars: []captureVar{{
 //					segmentIndex: 3,
@@ -191,7 +191,7 @@ package path
 //			want: want{
 //				segmentsCount:                  2,
 //				maxMatchableSegment:            math.MaxInt,
-//				pathSegmentsMatchTypesEncoding: encode{val: 6666666666666666661, len: maxPathSegments},
+//				pathSegmentsMatchTypesEncoding: encode{val: 6666666666666666661, len: MaxPathSegments},
 //				rawValue:                       "/**/a",
 //				captureVars:                    nil,
 //			},
@@ -203,7 +203,7 @@ package path
 //			want: want{
 //				segmentsCount:                  2,
 //				maxMatchableSegment:            math.MaxInt,
-//				pathSegmentsMatchTypesEncoding: encode{val: 1666666666666666666, len: maxPathSegments},
+//				pathSegmentsMatchTypesEncoding: encode{val: 1666666666666666666, len: MaxPathSegments},
 //				rawValue:                       "/a/**",
 //				captureVars:                    nil,
 //			},
@@ -215,7 +215,7 @@ package path
 //			want: want{
 //				segmentsCount:                  3,
 //				maxMatchableSegment:            math.MaxInt,
-//				pathSegmentsMatchTypesEncoding: encode{val: 1666666666666666661, len: maxPathSegments},
+//				pathSegmentsMatchTypesEncoding: encode{val: 1666666666666666661, len: MaxPathSegments},
 //				rawValue:                       "/a/**/b",
 //				captureVars:                    nil,
 //			},
@@ -227,7 +227,7 @@ package path
 //			want: want{
 //				segmentsCount:                  13,
 //				maxMatchableSegment:            math.MaxInt,
-//				pathSegmentsMatchTypesEncoding: encode{val: 1666166166166166111, len: maxPathSegments},
+//				pathSegmentsMatchTypesEncoding: encode{val: 1666166166166166111, len: MaxPathSegments},
 //				rawValue:                       "/a/**/b/**/c/**/d/**/e/**/f/g/h",
 //				captureVars:                    nil,
 //			},
@@ -316,22 +316,22 @@ package path
 //			wantErr:     true,
 //		},
 //		{
-//			name:        "path segment with triple asterix",
+//			name:        "path Segment with triple asterix",
 //			pathSegment: "***",
 //			wantErr:     true,
 //		},
 //		{
-//			name:        "path segment with double asterix and another text at start",
+//			name:        "path Segment with double asterix and another text at start",
 //			pathSegment: "**abc",
 //			wantErr:     true,
 //		},
 //		{
-//			name:        "path segment with double asterix and another text",
+//			name:        "path Segment with double asterix and another text",
 //			pathSegment: "abc**def",
 //			wantErr:     true,
 //		},
 //		{
-//			name:        "path segment with double asterix and another text at the end",
+//			name:        "path Segment with double asterix and another text at the end",
 //			pathSegment: "bla**",
 //			wantErr:     true,
 //		},
@@ -351,31 +351,31 @@ package path
 //			wantErr:     false,
 //		},
 //		{
-//			name:        "valid path segment with regex ?",
+//			name:        "valid path Segment with regex ?",
 //			pathSegment: "?asd",
 //			wantErr:     false,
 //		},
 //		{
-//			name:        "valid path segment with regex * at beginning",
+//			name:        "valid path Segment with regex * at beginning",
 //			pathSegment: "*asd",
 //			wantErr:     false,
 //		},
 //		{
-//			name:        "valid path segment with regex *",
+//			name:        "valid path Segment with regex *",
 //			pathSegment: "a*sd",
 //			wantErr:     false,
 //		}, {
-//			name:        "valid path segment with regex * at the end",
+//			name:        "valid path Segment with regex * at the end",
 //			pathSegment: "asd*",
 //			wantErr:     false,
 //		},
 //		{
-//			name:        "valid path segment with one asterix",
+//			name:        "valid path Segment with one asterix",
 //			pathSegment: "*",
 //			wantErr:     false,
 //		},
 //		{
-//			name:        "valid path segment with double asterix",
+//			name:        "valid path Segment with double asterix",
 //			pathSegment: "**",
 //			wantErr:     false,
 //		},
@@ -572,7 +572,7 @@ package path
 //			want: MatchTypeCaptureVar,
 //		},
 //		{
-//			name: "literal matchType: first segment",
+//			name: "literal matchType: first Segment",
 //			patterns: patterns{
 //				pathPattern:    "/a/c/b",
 //				urlPathSegment: "a",
@@ -581,7 +581,7 @@ package path
 //			want: MatchTypeLiteral,
 //		},
 //		{
-//			name: "literal matchType: last segment",
+//			name: "literal matchType: last Segment",
 //			patterns: patterns{
 //				pathPattern:    "/a/c/b",
 //				urlPathSegment: "b",
@@ -609,7 +609,7 @@ package path
 //			want: MatchTypeUnknown,
 //		},
 //		{
-//			name: "constraint capture var matchType: first segment",
+//			name: "constraint capture var matchType: first Segment",
 //			patterns: patterns{
 //				pathPattern:    "/{a:\\d+}/c/b",
 //				urlPathSegment: "123",
@@ -618,7 +618,7 @@ package path
 //			want: MatchTypeConstraintCaptureVar,
 //		},
 //		{
-//			name: "constraint capture var matchType: last segment",
+//			name: "constraint capture var matchType: last Segment",
 //			patterns: patterns{
 //				pathPattern:    "/a/c/{b:\\d+}",
 //				urlPathSegment: "012",
@@ -664,7 +664,7 @@ package path
 //			want: MatchTypeMultipleSegments,
 //		},
 //		{
-//			name: "greedy matchType: when next segment matches the current one",
+//			name: "greedy matchType: when next Segment matches the current one",
 //			patterns: patterns{
 //				pathPattern:    "/a/**/g",
 //				urlPathSegment: "g",
@@ -682,7 +682,7 @@ package path
 //			want: MatchTypeRegex,
 //		},
 //		{
-//			name: "regex matchType: last segment",
+//			name: "regex matchType: last Segment",
 //			patterns: patterns{
 //				pathPattern:    "/a/a*d",
 //				urlPathSegment: "abcd",

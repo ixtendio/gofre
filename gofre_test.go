@@ -882,7 +882,7 @@ package gofre
 //		want want
 //	}{
 //		{
-//			name: "using a single provider and fetching user details",
+//			name: "using a singleRoute provider and fetching user details",
 //			args: args{
 //				providers:        []oauth.Provider{captureOAUTHProvider{name: "ixtendio"}},
 //				websiteUrl:       "https://www.domain.com",
