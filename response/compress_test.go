@@ -3,7 +3,8 @@ package response
 import (
 	"compress/flate"
 	"compress/gzip"
-	"github.com/ixtendio/gofre/request"
+	"github.com/ixtendio/gofre/router/path"
+
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -79,7 +80,7 @@ func TestHttpCompressResponse_Write(t *testing.T) {
 				compressionLevel: gzip.DefaultCompression,
 				httpResponse:     PlainTextHttpResponseOK(bigText),
 			}
-			if err := r.Write(tt.args.w, request.NewHttpRequest(tt.args.req)); err != nil {
+			if err := r.Write(tt.args.w, path.MatchingContext{R: tt.args.req}); err != nil {
 				t.Fatalf("Write() returned error: %v", err)
 			}
 			decompressedValue, err := decompress(tt.wantCompressionType, tt.args.w.Body)

@@ -13,7 +13,7 @@ const (
 	MatchTypeMultipleSegments     = MatchType(6)
 )
 
-func computePriority(segments []*Segment) uint64 {
+func computePriority(segments []*segment) uint64 {
 	var priority uint64
 	var multiplePathsMatcherSegmentsCount int
 	digitsCount := len(segments)

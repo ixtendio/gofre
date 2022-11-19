@@ -2,7 +2,8 @@ package response
 
 import (
 	"fmt"
-	"github.com/ixtendio/gofre/request"
+	"github.com/ixtendio/gofre/router/path"
+
 	"io"
 	"net/http"
 )
@@ -12,7 +13,7 @@ type HttpStreamResponse struct {
 	Reader io.Reader
 }
 
-func (r *HttpStreamResponse) Write(w http.ResponseWriter, req request.HttpRequest) error {
+func (r *HttpStreamResponse) Write(w http.ResponseWriter, req path.MatchingContext) error {
 	// write the headers
 	if err := r.HttpHeadersResponse.Write(w, req); err != nil {
 		return err
@@ -31,26 +32,26 @@ func StreamHttpResponse(contentType string, reader io.Reader) *HttpStreamRespons
 }
 
 // StreamHttpResponseWithHeaders creates a 200 success reader response with custom headers
-func StreamHttpResponseWithHeaders(statusCode int, contentType string, headers http.Header, reader io.Reader) *HttpStreamResponse {
+// The headers, if present, once will be written to output will be added in the pool for re-use
+func StreamHttpResponseWithHeaders(statusCode int, contentType string, headers HttpHeaders, reader io.Reader) *HttpStreamResponse {
 	return StreamHttpResponseWithHeadersAndCookies(statusCode, contentType, headers, nil, reader)
 }
 
 // StreamHttpResponseWithCookies creates a 200 success reader response with custom cookies
-func StreamHttpResponseWithCookies(statusCode int, contentType string, cookies []http.Cookie, reader io.Reader) *HttpStreamResponse {
+// The cookies, if present, once will be written to output will be added in the pool for re-use
+func StreamHttpResponseWithCookies(statusCode int, contentType string, cookies HttpCookies, reader io.Reader) *HttpStreamResponse {
 	return StreamHttpResponseWithHeadersAndCookies(statusCode, contentType, nil, cookies, reader)
 }
 
 // StreamHttpResponseWithHeadersAndCookies creates a 200 success reader response with custom headers and cookies
-func StreamHttpResponseWithHeadersAndCookies(statusCode int, contentType string, headers http.Header, cookies []http.Cookie, reader io.Reader) *HttpStreamResponse {
-	if headers == nil {
-		headers = make(http.Header, 1)
-	}
-	headers.Set("Content-Type", contentType)
+// The headers and cookies, if present, once will be written to output will be added in the pool for re-use
+func StreamHttpResponseWithHeadersAndCookies(statusCode int, contentType string, headers HttpHeaders, cookies HttpCookies, reader io.Reader) *HttpStreamResponse {
 	return &HttpStreamResponse{
 		HttpHeadersResponse: HttpHeadersResponse{
 			HttpStatusCode: statusCode,
 			HttpHeaders:    headers,
-			HttpCookies:    NewHttpCookies(cookies),
+			ContentType:    contentType,
+			HttpCookies:    cookies,
 		},
 		Reader: reader,
 	}

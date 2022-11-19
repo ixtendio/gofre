@@ -4,7 +4,8 @@ import (
 	"compress/flate"
 	"compress/gzip"
 	"errors"
-	"github.com/ixtendio/gofre/request"
+	"github.com/ixtendio/gofre/router/path"
+
 	"net/http"
 	"strings"
 )
@@ -33,7 +34,7 @@ func (r *HttpCompressResponse) StatusCode() int {
 	return r.httpResponse.StatusCode()
 }
 
-func (r *HttpCompressResponse) Headers() http.Header {
+func (r *HttpCompressResponse) Headers() HttpHeaders {
 	return r.httpResponse.Headers()
 }
 
@@ -41,14 +42,14 @@ func (r *HttpCompressResponse) Cookies() HttpCookies {
 	return r.httpResponse.Cookies()
 }
 
-func (r *HttpCompressResponse) Write(w http.ResponseWriter, req request.HttpRequest) error {
+func (r *HttpCompressResponse) Write(w http.ResponseWriter, req path.MatchingContext) error {
 	// detect what compression algorithm to use
 	compressAlg := getCompressionAlgorithmFromHeaderValue(req.R.Header.Get(acceptEncodingHeaderName))
 
 	if compressAlg == "gzip" {
 		cw, err := gzip.NewWriterLevel(w, r.compressionLevel)
 		if err == nil {
-			r.Headers().Del(acceptEncodingHeaderName)
+			delete(r.Headers(), acceptEncodingHeaderName)
 			w.Header().Set(contentEncodingHeaderName, compressAlg)
 			w = &compressResponseWriter{
 				origResponseWriter: w,
@@ -59,7 +60,7 @@ func (r *HttpCompressResponse) Write(w http.ResponseWriter, req request.HttpRequ
 	} else if compressAlg == "deflate" {
 		cw, err := flate.NewWriter(w, r.compressionLevel)
 		if err == nil {
-			r.Headers().Del(acceptEncodingHeaderName)
+			delete(r.Headers(), acceptEncodingHeaderName)
 			w.Header().Set(contentEncodingHeaderName, compressAlg)
 			w = &compressResponseWriter{
 				origResponseWriter: w,

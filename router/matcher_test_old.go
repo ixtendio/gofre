@@ -6,7 +6,7 @@ package router
 //	"fmt"
 //	handler2 "github.com/ixtendio/gofre/handler"
 //	"github.com/ixtendio/gofre/internal/path"
-//	"github.com/ixtendio/gofre/request"
+//
 //	"github.com/ixtendio/gofre/response"
 //	"net/url"
 //	"reflect"
@@ -420,7 +420,7 @@ package router
 //}
 //
 //func Test_trieNode_sortChildren(t *testing.T) {
-//	nilHandler := func(ctx context.Context, r *request.HttpRequest) (response.HttpResponse, error) {
+//	nilHandler := func(ctx context.Context, r path.MatchingContext) (response.HttpResponse, error) {
 //		return nil, nil
 //	}
 //	type fields struct {
@@ -556,7 +556,7 @@ package router
 //}
 //
 //func Test_trieNode_addChild(t *testing.T) {
-//	nilHandler := func(ctx context.Context, r *request.HttpRequest) (response.HttpResponse, error) {
+//	nilHandler := func(ctx context.Context, r path.MatchingContext) (response.HttpResponse, error) {
 //		return nil, nil
 //	}
 //	type parentNode struct {
@@ -812,7 +812,7 @@ package router
 //}
 //
 //func Test_trieNode_addLeaf(t *testing.T) {
-//	nilHandler := func(ctx context.Context, r *request.HttpRequest) (response.HttpResponse, error) {
+//	nilHandler := func(ctx context.Context, r path.MatchingContext) (response.HttpResponse, error) {
 //		return nil, nil
 //	}
 //	type parentNodeFields struct {
@@ -916,13 +916,13 @@ package router
 //}
 //
 //func errorHandler(msg string) handler2.Handler {
-//	return func(ctx context.Context, r *request.HttpRequest) (response.HttpResponse, error) {
+//	return func(ctx context.Context, r path.MatchingContext) (response.HttpResponse, error) {
 //		return nil, fmt.Errorf(msg)
 //	}
 //}
 //
 //func emptyHandler() handler2.Handler {
-//	return func(ctx context.Context, r *request.HttpRequest) (response.HttpResponse, error) {
+//	return func(ctx context.Context, r path.MatchingContext) (response.HttpResponse, error) {
 //		return nil, nil
 //	}
 //}

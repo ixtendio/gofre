@@ -4,7 +4,8 @@ import (
 	"context"
 	"github.com/ixtendio/gofre/errors"
 	"github.com/ixtendio/gofre/handler"
-	"github.com/ixtendio/gofre/request"
+	"github.com/ixtendio/gofre/router/path"
+
 	"github.com/ixtendio/gofre/response"
 	"net/http"
 	"net/url"
@@ -87,7 +88,7 @@ const (
 // This function is a transcription of Java code org.apache.catalina.filters.CorsFilter
 func Cors(config CorsConfig) Middleware {
 	return func(handler handler.Handler) handler.Handler {
-		return func(ctx context.Context, req request.HttpRequest) (response.HttpResponse, error) {
+		return func(ctx context.Context, req path.MatchingContext) (response.HttpResponse, error) {
 			httpResponse, err := handler(ctx, req)
 			if err != nil {
 				return nil, err
@@ -113,7 +114,7 @@ func Cors(config CorsConfig) Middleware {
 	}
 }
 
-func addSimpleCorsHeaders(r *http.Request, responseHeaders http.Header, config CorsConfig) error {
+func addSimpleCorsHeaders(r *http.Request, responseHeaders response.HttpHeaders, config CorsConfig) error {
 	method := r.Method
 	origin := r.Header.Get(requestHeaderOrigin)
 
@@ -130,7 +131,7 @@ func addSimpleCorsHeaders(r *http.Request, responseHeaders http.Header, config C
 	return nil
 }
 
-func addPreFlightCorsHeaders(r *http.Request, responseHeaders http.Header, config CorsConfig) error {
+func addPreFlightCorsHeaders(r *http.Request, responseHeaders response.HttpHeaders, config CorsConfig) error {
 	origin := r.Header.Get(requestHeaderOrigin)
 
 	// Section 6.2.2
@@ -162,7 +163,7 @@ func addPreFlightCorsHeaders(r *http.Request, responseHeaders http.Header, confi
 	return nil
 }
 
-func addStandardCorsHeaders(r *http.Request, responseHeaders http.Header, config CorsConfig) {
+func addStandardCorsHeaders(r *http.Request, responseHeaders response.HttpHeaders, config CorsConfig) {
 	method := r.Method
 	origin := r.Header.Get(requestHeaderOrigin)
 
@@ -199,13 +200,11 @@ func addStandardCorsHeaders(r *http.Request, responseHeaders http.Header, config
 	}
 }
 
-func addVaryHeader(responseHeaders http.Header, name string) {
+func addVaryHeader(responseHeaders response.HttpHeaders, name string) {
 	var varyHeaders []string
-	for _, vh := range responseHeaders.Values(varyHeader) {
-		if vh != "" {
-			for _, v := range strings.Split(vh, ",") {
-				varyHeaders = append(varyHeaders, strings.TrimSpace(v))
-			}
+	if vh, found := responseHeaders[varyHeader]; found && len(vh) > 0 {
+		for _, v := range strings.Split(vh, ",") {
+			varyHeaders = append(varyHeaders, strings.TrimSpace(v))
 		}
 	}
 	if name == "*" || len(varyHeaders) == 0 {

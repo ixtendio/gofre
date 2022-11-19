@@ -3,7 +3,8 @@ package response
 import (
 	"context"
 	"errors"
-	"github.com/ixtendio/gofre/request"
+	"github.com/ixtendio/gofre/router/path"
+
 	"net/http"
 	"strconv"
 	"strings"
@@ -64,7 +65,7 @@ type HttpSSEResponse struct {
 	EventGenerator EventGenerator
 }
 
-func (r *HttpSSEResponse) Write(w http.ResponseWriter, req request.HttpRequest) error {
+func (r *HttpSSEResponse) Write(w http.ResponseWriter, req path.MatchingContext) error {
 	if req.R.ProtoMajor != 2 {
 		w.WriteHeader(http.StatusInternalServerError)
 		return ErrNotHttp2Request
@@ -74,6 +75,10 @@ func (r *HttpSSEResponse) Write(w http.ResponseWriter, req request.HttpRequest) 
 	if err := r.HttpHeadersResponse.Write(w, req); err != nil {
 		return err
 	}
+
+	header := w.Header()
+	header.Set("Cache-Control", "no-cache")
+	header.Set("Connection", "keep-alive")
 
 	defer r.flushResponse(w)
 	// get the last event id that was sent
@@ -86,7 +91,7 @@ func (r *HttpSSEResponse) Write(w http.ResponseWriter, req request.HttpRequest) 
 		case <-reqCtx.Done():
 			return nil
 		default:
-			if _, err := w.Write([]byte(evt.String())); err != nil {
+			if err := writeTextResponse(w, evt.String()); err != nil {
 				return nil
 			}
 			r.flushResponse(w)
@@ -108,23 +113,19 @@ func SSEHttpResponse(ew EventGenerator) *HttpSSEResponse {
 }
 
 // SSEHttpResponseWithHeaders creates a SSE response with custom headers
-func SSEHttpResponseWithHeaders(ew EventGenerator, headers http.Header) *HttpSSEResponse {
+func SSEHttpResponseWithHeaders(ew EventGenerator, headers HttpHeaders) *HttpSSEResponse {
 	return SSEHttpResponseWithHeadersAndCookies(ew, headers, nil)
 }
 
 // SSEHttpResponseWithHeadersAndCookies creates a SSE response with custom headers and cookies
-func SSEHttpResponseWithHeadersAndCookies(ew EventGenerator, headers http.Header, cookies []http.Cookie) *HttpSSEResponse {
-	if headers == nil {
-		headers = make(http.Header, 1)
-	}
-	headers.Set("Content-Type", eventStreamContentType)
-	headers.Set("Cache-Control", "no-cache")
-	headers.Set("Connection", "keep-alive")
+// The headers and cookies, if present, once will be written to output will be added in the pool for re-use
+func SSEHttpResponseWithHeadersAndCookies(ew EventGenerator, headers HttpHeaders, cookies HttpCookies) *HttpSSEResponse {
 	return &HttpSSEResponse{
 		HttpHeadersResponse: HttpHeadersResponse{
 			HttpStatusCode: http.StatusOK,
+			ContentType:    eventStreamContentType,
 			HttpHeaders:    headers,
-			HttpCookies:    NewHttpCookies(cookies),
+			HttpCookies:    cookies,
 		},
 		EventGenerator: ew,
 	}

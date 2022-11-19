@@ -1,12 +1,12 @@
 package response
 
 import (
-	"github.com/ixtendio/gofre/request"
+	"github.com/ixtendio/gofre/router/path"
 	"net/http"
 )
 
 type HttpHandlerAdaptorResponse struct {
-	headers http.Header
+	headers HttpHeaders
 	cookies HttpCookies
 	handler http.Handler
 }
@@ -15,9 +15,9 @@ func (r *HttpHandlerAdaptorResponse) StatusCode() int {
 	return 0
 }
 
-func (r *HttpHandlerAdaptorResponse) Headers() http.Header {
+func (r *HttpHandlerAdaptorResponse) Headers() HttpHeaders {
 	if r.headers == nil {
-		r.headers = http.Header{}
+		r.headers = HttpHeaders{}
 	}
 	return r.headers
 }
@@ -29,24 +29,23 @@ func (r *HttpHandlerAdaptorResponse) Cookies() HttpCookies {
 	return r.cookies
 }
 
-func (r *HttpHandlerAdaptorResponse) Write(w http.ResponseWriter, responseContext request.HttpRequest) error {
+func (r *HttpHandlerAdaptorResponse) Write(w http.ResponseWriter, req path.MatchingContext) error {
 	// Write custom cookies
 	if r.cookies != nil {
 		for _, cookie := range r.cookies {
-			http.SetCookie(w, &cookie)
+			http.SetCookie(w, cookie)
 		}
 	}
 
+	headers := w.Header()
 	// Write custom headers
 	if r.headers != nil {
 		for k, v := range r.headers {
-			for _, e := range v {
-				w.Header().Add(k, e)
-			}
+			headers.Set(k, v)
 		}
 	}
 
-	r.handler.ServeHTTP(w, responseContext.R)
+	r.handler.ServeHTTP(w, req.R)
 	return nil
 }
 

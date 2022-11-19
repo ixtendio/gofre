@@ -4,7 +4,8 @@ import (
 	"context"
 	"github.com/ixtendio/gofre/errors"
 	"github.com/ixtendio/gofre/handler"
-	"github.com/ixtendio/gofre/request"
+	"github.com/ixtendio/gofre/router/path"
+
 	"github.com/ixtendio/gofre/response"
 	"log"
 	"net/http"
@@ -336,69 +337,69 @@ func Test_isOriginAllowed(t *testing.T) {
 
 func Test_addVaryHeader(t *testing.T) {
 	type args struct {
-		responseHeaders http.Header
+		responseHeaders response.HttpHeaders
 		name            string
 	}
 	tests := []struct {
 		name string
 		args args
-		want http.Header
+		want response.HttpHeaders
 	}{
 		{
 			name: "add *",
 			args: args{
-				responseHeaders: http.Header{},
+				responseHeaders: response.HttpHeaders{},
 				name:            "*",
 			},
-			want: http.Header{"Vary": {"*"}},
+			want: response.HttpHeaders{"Vary": "*"},
 		},
 		{
 			name: "add when header not exists",
 			args: args{
-				responseHeaders: http.Header{},
+				responseHeaders: response.HttpHeaders{},
 				name:            "val",
 			},
-			want: http.Header{"Vary": {"val"}},
+			want: response.HttpHeaders{"Vary": "val"},
 		},
 		{
 			name: "add when header has no value",
 			args: args{
-				responseHeaders: http.Header{"Vary": {}},
+				responseHeaders: response.HttpHeaders{"Vary": ""},
 				name:            "val",
 			},
-			want: http.Header{"Vary": {"val"}},
+			want: response.HttpHeaders{"Vary": "val"},
 		},
 		{
 			name: "should not add when header is *",
 			args: args{
-				responseHeaders: http.Header{"Vary": {"*"}},
+				responseHeaders: response.HttpHeaders{"Vary": "*"},
 				name:            "val",
 			},
-			want: http.Header{"Vary": {"*"}},
+			want: response.HttpHeaders{"Vary": "*"},
 		},
 		{
 			name: "add * when vary exists",
 			args: args{
-				responseHeaders: http.Header{"Vary": {"val1, val2"}},
+				responseHeaders: response.HttpHeaders{"Vary": "val1, val2"},
 				name:            "*",
 			},
-			want: http.Header{"Vary": {"*"}},
+			want: response.HttpHeaders{"Vary": "*"},
 		},
 		{
 			name: "set single * when vary * exists",
 			args: args{
-				responseHeaders: http.Header{"Vary": {"val1, val2, *"}},
+				responseHeaders: response.HttpHeaders{"Vary": "val1, val2, *"},
 				name:            "val3",
 			},
-			want: http.Header{"Vary": {"*"}},
+			want: response.HttpHeaders{"Vary": "*"},
 		},
 		{
 			name: "add new value when vary exists",
 			args: args{
-				responseHeaders: http.Header{"Vary": {"val1, val2"}},
+				responseHeaders: response.HttpHeaders{"Vary": "val1, val2"},
 				name:            "val3",
 			},
-			want: http.Header{"Vary": {"val1,val2,val3"}},
+			want: response.HttpHeaders{"Vary": "val1,val2,val3"},
 		},
 	}
 	for _, tt := range tests {
@@ -414,19 +415,19 @@ func Test_addVaryHeader(t *testing.T) {
 func Test_addStandardCorsHeaders(t *testing.T) {
 	type args struct {
 		r               *http.Request
-		responseHeaders http.Header
+		responseHeaders response.HttpHeaders
 		config          CorsConfig
 	}
 	tests := []struct {
 		name string
 		args args
-		want http.Header
+		want response.HttpHeaders
 	}{
 		{
 			name: "all headers should pe present",
 			args: args{
 				r:               &http.Request{Method: http.MethodOptions, Header: http.Header{requestHeaderOrigin: {"orig"}}},
-				responseHeaders: http.Header{},
+				responseHeaders: response.HttpHeaders{},
 				config: CorsConfig{
 					AnyOriginAllowed:       true,
 					SupportsCredentials:    true,
@@ -436,38 +437,38 @@ func Test_addStandardCorsHeaders(t *testing.T) {
 					AllowedHttpHeaders:     []string{"allowedHeader1", "allowedHeader2"},
 				},
 			},
-			want: http.Header{
-				responseHeaderAccessControlAllowOrigin:      {"*"},
-				responseHeaderAccessControlAllowCredentials: {"true"},
-				responseHeaderAccessControlExposeHeaders:    {"header1,header2"},
-				responseHeaderAccessControlMaxAge:           {"10"},
-				responseHeaderAccessControlAllowMethods:     {"post,put"},
-				responseHeaderAccessControlAllowHeaders:     {"allowedHeader1,allowedHeader2"},
-				varyHeader:                                  {requestHeaderAccessControlRequestMethod + "," + requestHeaderAccessControlRequestHeaders},
+			want: response.HttpHeaders{
+				responseHeaderAccessControlAllowOrigin:      "*",
+				responseHeaderAccessControlAllowCredentials: "true",
+				responseHeaderAccessControlExposeHeaders:    "header1,header2",
+				responseHeaderAccessControlMaxAge:           "10",
+				responseHeaderAccessControlAllowMethods:     "post,put",
+				responseHeaderAccessControlAllowHeaders:     "allowedHeader1,allowedHeader2",
+				varyHeader:                                  requestHeaderAccessControlRequestMethod + "," + requestHeaderAccessControlRequestHeaders,
 			},
 		},
 		{
 			name: "headers for empty config",
 			args: args{
 				r:               &http.Request{Method: http.MethodOptions, Header: http.Header{requestHeaderOrigin: {"orig"}}},
-				responseHeaders: http.Header{},
+				responseHeaders: response.HttpHeaders{},
 				config:          CorsConfig{},
 			},
-			want: http.Header{
-				responseHeaderAccessControlAllowOrigin: {"orig"},
-				varyHeader:                             {requestHeaderOrigin + "," + requestHeaderAccessControlRequestMethod + "," + requestHeaderAccessControlRequestHeaders},
+			want: response.HttpHeaders{
+				responseHeaderAccessControlAllowOrigin: "orig",
+				varyHeader:                             requestHeaderOrigin + "," + requestHeaderAccessControlRequestMethod + "," + requestHeaderAccessControlRequestHeaders,
 			},
 		},
 		{
 			name: "empty headers and method not OPTIONS",
 			args: args{
 				r:               &http.Request{Method: http.MethodGet, Header: http.Header{requestHeaderOrigin: {"orig"}}},
-				responseHeaders: http.Header{},
+				responseHeaders: response.HttpHeaders{},
 				config:          CorsConfig{},
 			},
-			want: http.Header{
-				responseHeaderAccessControlAllowOrigin: {"orig"},
-				varyHeader:                             {requestHeaderOrigin},
+			want: response.HttpHeaders{
+				responseHeaderAccessControlAllowOrigin: "orig",
+				varyHeader:                             requestHeaderOrigin,
 			},
 		},
 	}
@@ -484,7 +485,7 @@ func Test_addStandardCorsHeaders(t *testing.T) {
 func Test_addPreFlightCorsHeaders(t *testing.T) {
 	type args struct {
 		r               *http.Request
-		responseHeaders http.Header
+		responseHeaders response.HttpHeaders
 		config          CorsConfig
 	}
 	tests := []struct {
@@ -496,7 +497,7 @@ func Test_addPreFlightCorsHeaders(t *testing.T) {
 			name: "origin not allowed",
 			args: args{
 				r:               &http.Request{Header: http.Header{requestHeaderOrigin: {"orig"}}},
-				responseHeaders: http.Header{},
+				responseHeaders: response.HttpHeaders{},
 				config:          CorsConfig{},
 			},
 			wantErr: errors.ErrAccessDenied,
@@ -505,7 +506,7 @@ func Test_addPreFlightCorsHeaders(t *testing.T) {
 			name: "Access-Control-Request-Method header not found",
 			args: args{
 				r:               &http.Request{Header: http.Header{requestHeaderOrigin: {"orig"}}},
-				responseHeaders: http.Header{},
+				responseHeaders: response.HttpHeaders{},
 				config:          CorsConfig{AllowedOrigins: []string{"orig"}},
 			},
 			wantErr: errors.ErrAccessDenied,
@@ -514,7 +515,7 @@ func Test_addPreFlightCorsHeaders(t *testing.T) {
 			name: "Access-Control-Request-Method header not allowed",
 			args: args{
 				r:               &http.Request{Header: http.Header{requestHeaderOrigin: {"orig"}, requestHeaderAccessControlRequestMethod: {"post"}}},
-				responseHeaders: http.Header{},
+				responseHeaders: response.HttpHeaders{},
 				config:          CorsConfig{AllowedOrigins: []string{"orig"}},
 			},
 			wantErr: errors.ErrAccessDenied,
@@ -523,7 +524,7 @@ func Test_addPreFlightCorsHeaders(t *testing.T) {
 			name: "Access-Control-Request-Headers header is empty",
 			args: args{
 				r:               &http.Request{Header: http.Header{requestHeaderOrigin: {"orig"}, requestHeaderAccessControlRequestMethod: {"post"}}},
-				responseHeaders: http.Header{},
+				responseHeaders: response.HttpHeaders{},
 				config:          CorsConfig{AllowedOrigins: []string{"orig"}, AllowedHttpMethods: []string{"post"}},
 			},
 			wantErr: nil,
@@ -536,7 +537,7 @@ func Test_addPreFlightCorsHeaders(t *testing.T) {
 					requestHeaderAccessControlRequestMethod:  {"post"},
 					requestHeaderAccessControlRequestHeaders: {"header1"},
 				}},
-				responseHeaders: http.Header{},
+				responseHeaders: response.HttpHeaders{},
 				config: CorsConfig{
 					AllowedOrigins:     []string{"orig"},
 					AllowedHttpMethods: []string{"post"},
@@ -552,7 +553,7 @@ func Test_addPreFlightCorsHeaders(t *testing.T) {
 					requestHeaderAccessControlRequestMethod:  {"post"},
 					requestHeaderAccessControlRequestHeaders: {"header1"},
 				}},
-				responseHeaders: http.Header{},
+				responseHeaders: response.HttpHeaders{},
 				config: CorsConfig{
 					AllowedOrigins:     []string{"orig"},
 					AllowedHttpMethods: []string{"post"},
@@ -574,7 +575,7 @@ func Test_addPreFlightCorsHeaders(t *testing.T) {
 func Test_addSimpleCorsHeaders(t *testing.T) {
 	type args struct {
 		r               *http.Request
-		responseHeaders http.Header
+		responseHeaders response.HttpHeaders
 		config          CorsConfig
 	}
 	tests := []struct {
@@ -586,7 +587,7 @@ func Test_addSimpleCorsHeaders(t *testing.T) {
 			name: "Origin not allowed",
 			args: args{
 				r:               &http.Request{Header: http.Header{requestHeaderOrigin: {"origin"}}},
-				responseHeaders: http.Header{},
+				responseHeaders: response.HttpHeaders{},
 				config:          CorsConfig{},
 			},
 			wantErr: errors.ErrAccessDenied,
@@ -595,7 +596,7 @@ func Test_addSimpleCorsHeaders(t *testing.T) {
 			name: "HTTP method not allowed",
 			args: args{
 				r:               &http.Request{Method: http.MethodPut, Header: http.Header{requestHeaderOrigin: {"origin"}}},
-				responseHeaders: http.Header{},
+				responseHeaders: response.HttpHeaders{},
 				config: CorsConfig{
 					AllowedOrigins: []string{"origin"},
 				},
@@ -606,7 +607,7 @@ func Test_addSimpleCorsHeaders(t *testing.T) {
 			name: "origin and HTTP method allowed",
 			args: args{
 				r:               &http.Request{Method: http.MethodPut, Header: http.Header{requestHeaderOrigin: {"origin"}}},
-				responseHeaders: http.Header{},
+				responseHeaders: response.HttpHeaders{},
 				config: CorsConfig{
 					AllowedOrigins:     []string{"origin"},
 					AllowedHttpMethods: []string{"put"},
@@ -634,7 +635,7 @@ func TestCors(t *testing.T) {
 		args                args
 		handler             handler.Handler
 		wantError           error
-		wantResponseHeaders http.Header
+		wantResponseHeaders response.HttpHeaders
 	}{
 		{
 			name: "simpleCorsRequestType success flow",
@@ -649,14 +650,13 @@ func TestCors(t *testing.T) {
 					Header: http.Header{requestHeaderOrigin: {"https://domain.com"}},
 				},
 			},
-			handler: func(ctx context.Context, r request.HttpRequest) (response.HttpResponse, error) {
+			handler: func(ctx context.Context, r path.MatchingContext) (response.HttpResponse, error) {
 				return response.PlainTextHttpResponseOK("ok"), nil
 			},
 			wantError: nil,
-			wantResponseHeaders: http.Header{
-				responseHeaderAccessControlAllowOrigin: {"https://domain.com"},
-				"Content-Type":                         {"text/plain; charset=utf-8"},
-				varyHeader:                             {"Origin"}},
+			wantResponseHeaders: response.HttpHeaders{
+				responseHeaderAccessControlAllowOrigin: "https://domain.com",
+				varyHeader:                             "Origin"},
 		},
 		{
 			name: "actualCorsRequestType success flow",
@@ -671,15 +671,14 @@ func TestCors(t *testing.T) {
 					Header: http.Header{requestHeaderOrigin: {"https://domain.com"}},
 				},
 			},
-			handler: func(ctx context.Context, r request.HttpRequest) (response.HttpResponse, error) {
+			handler: func(ctx context.Context, r path.MatchingContext) (response.HttpResponse, error) {
 				return response.PlainTextHttpResponseOK("ok"), nil
 			},
 			wantError: nil,
-			wantResponseHeaders: http.Header{
-				responseHeaderAccessControlAllowOrigin:  {"https://domain.com"},
-				responseHeaderAccessControlAllowMethods: {"options,get"},
-				"Content-Type":                          {"text/plain; charset=utf-8"},
-				varyHeader:                              {"Origin,Access-Control-Request-Method,Access-Control-Request-Headers"}},
+			wantResponseHeaders: response.HttpHeaders{
+				responseHeaderAccessControlAllowOrigin:  "https://domain.com",
+				responseHeaderAccessControlAllowMethods: "options,get",
+				varyHeader:                              "Origin,Access-Control-Request-Method,Access-Control-Request-Headers"},
 		},
 		{
 			name: "preFlightCorsRequestType success flow",
@@ -694,15 +693,14 @@ func TestCors(t *testing.T) {
 					Header: http.Header{requestHeaderOrigin: {"https://domain.com"}, requestHeaderAccessControlRequestMethod: {"get"}},
 				},
 			},
-			handler: func(ctx context.Context, r request.HttpRequest) (response.HttpResponse, error) {
+			handler: func(ctx context.Context, r path.MatchingContext) (response.HttpResponse, error) {
 				return response.PlainTextHttpResponseOK("ok"), nil
 			},
 			wantError: nil,
-			wantResponseHeaders: http.Header{
-				responseHeaderAccessControlAllowOrigin:  {"https://domain.com"},
-				responseHeaderAccessControlAllowMethods: {"options,get"},
-				"Content-Type":                          {"text/plain; charset=utf-8"},
-				varyHeader:                              {"Origin,Access-Control-Request-Method,Access-Control-Request-Headers"}},
+			wantResponseHeaders: response.HttpHeaders{
+				responseHeaderAccessControlAllowOrigin:  "https://domain.com",
+				responseHeaderAccessControlAllowMethods: "options,get",
+				varyHeader:                              "Origin,Access-Control-Request-Method,Access-Control-Request-Headers"},
 		},
 		{
 			name: "notCorsRequestType success flow",
@@ -717,14 +715,13 @@ func TestCors(t *testing.T) {
 					Header: http.Header{requestHeaderOrigin: {"https://domain.com"}},
 				},
 			},
-			handler: func(ctx context.Context, r request.HttpRequest) (response.HttpResponse, error) {
+			handler: func(ctx context.Context, r path.MatchingContext) (response.HttpResponse, error) {
 				return response.PlainTextHttpResponseOK("ok"), nil
 			},
 			wantError: nil,
-			wantResponseHeaders: http.Header{
-				responseHeaderAccessControlAllowOrigin: {"https://domain.com"},
-				"Content-Type":                         {"text/plain; charset=utf-8"},
-				varyHeader:                             {"Origin"}},
+			wantResponseHeaders: response.HttpHeaders{
+				responseHeaderAccessControlAllowOrigin: "https://domain.com",
+				varyHeader:                             "Origin"},
 		},
 		{
 			name: "invalid cors returns error",
@@ -739,7 +736,7 @@ func TestCors(t *testing.T) {
 					Header: http.Header{requestHeaderOrigin: {"https://domain.com"}, requestHeaderContentType: {""}},
 				},
 			},
-			handler: func(ctx context.Context, r request.HttpRequest) (response.HttpResponse, error) {
+			handler: func(ctx context.Context, r path.MatchingContext) (response.HttpResponse, error) {
 				return response.PlainTextHttpResponseOK("ok"), nil
 			},
 			wantError:           errors.ErrAccessDenied,
@@ -749,13 +746,13 @@ func TestCors(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			m := Cors(tt.args.config)
-			resp, err := m(tt.handler)(context.Background(), request.HttpRequest{R: tt.args.req})
+			resp, err := m(tt.handler)(context.Background(), path.MatchingContext{R: tt.args.req})
 			if err != tt.wantError {
 				t.Fatalf("Cors() error = %v, want %v", err, tt.wantError)
 			}
 
 			if tt.wantError == nil && !reflect.DeepEqual(resp.Headers(), tt.wantResponseHeaders) {
-				t.Fatalf("Cors() response headers = %v, want = %v", resp.Headers(), tt.wantResponseHeaders)
+				t.Fatalf("Cors() response headers \ngot: %v, \nwant: %v", resp.Headers(), tt.wantResponseHeaders)
 			}
 		})
 	}

@@ -2,7 +2,8 @@ package response
 
 import (
 	"errors"
-	"github.com/ixtendio/gofre/request"
+	"github.com/ixtendio/gofre/router/path"
+
 	"net/http"
 	"net/http/httptest"
 	"reflect"
@@ -10,11 +11,11 @@ import (
 )
 
 func TestHttpJsonResponse_Write(t *testing.T) {
-	req := request.HttpRequest{R: &http.Request{}}
+	req := path.MatchingContext{R: &http.Request{}}
 	type args struct {
 		httpStatusCode int
-		httpHeaders    http.Header
-		httpCookies    []http.Cookie
+		httpHeaders    HttpHeaders
+		httpCookies    HttpCookies
 		payload        any
 	}
 	type want struct {
@@ -70,7 +71,7 @@ func TestHttpJsonResponse_Write(t *testing.T) {
 			name: "with custom headers",
 			args: args{
 				httpStatusCode: 202,
-				httpHeaders:    http.Header{"Content-Type": {jsonContentType}},
+				httpHeaders:    HttpHeaders{"Content-Type": jsonContentType},
 			},
 			want: want{
 				httpCode:    202,
@@ -83,13 +84,13 @@ func TestHttpJsonResponse_Write(t *testing.T) {
 			name: "with custom cookies",
 			args: args{
 				httpStatusCode: 202,
-				httpCookies: []http.Cookie{{
+				httpCookies: NewHttpCookie(&http.Cookie{
 					Name:  "cookie1",
 					Value: "val1",
-				}, {
+				}, &http.Cookie{
 					Name:  "cookie2",
 					Value: "val2",
-				}},
+				}),
 			},
 			want: want{
 				httpCode:    202,
@@ -103,11 +104,11 @@ func TestHttpJsonResponse_Write(t *testing.T) {
 			args: args{
 				httpStatusCode: 202,
 				payload:        map[string]string{"userId": "123"},
-				httpHeaders:    http.Header{"header1": {"val1"}},
-				httpCookies: []http.Cookie{{
+				httpHeaders:    HttpHeaders{"header1": "val1"},
+				httpCookies: NewHttpCookie(&http.Cookie{
 					Name:  "cookie3",
 					Value: "val3",
-				}},
+				}),
 			},
 			want: want{
 				httpCode:    202,
@@ -129,18 +130,10 @@ func TestHttpJsonResponse_Write(t *testing.T) {
 			resp := &HttpJsonResponse{
 				HttpHeadersResponse: HttpHeadersResponse{
 					HttpStatusCode: tt.args.httpStatusCode,
+					HttpHeaders:    tt.args.httpHeaders,
+					HttpCookies:    tt.args.httpCookies,
 				},
 				Payload: tt.args.payload,
-			}
-			if tt.args.httpHeaders != nil {
-				for k, v := range tt.args.httpHeaders {
-					for _, e := range v {
-						resp.Headers().Add(k, e)
-					}
-				}
-			}
-			for _, k := range tt.args.httpCookies {
-				resp.Cookies().Add(k)
 			}
 			responseRecorder := httptest.NewRecorder()
 			err := resp.Write(responseRecorder, req)
@@ -177,8 +170,7 @@ func TestJsonHttpResponseOK(t *testing.T) {
 			want: &HttpJsonResponse{
 				HttpHeadersResponse: HttpHeadersResponse{
 					HttpStatusCode: http.StatusOK,
-					HttpHeaders:    http.Header{"Content-Type": {jsonContentType}},
-					HttpCookies:    NewHttpCookies(nil),
+					ContentType:    jsonContentType,
 				},
 				Payload: "hello",
 			},
@@ -212,8 +204,7 @@ func TestJsonHttpResponse(t *testing.T) {
 			want: &HttpJsonResponse{
 				HttpHeadersResponse: HttpHeadersResponse{
 					HttpStatusCode: 203,
-					HttpHeaders:    http.Header{"Content-Type": {"application/json"}},
-					HttpCookies:    NewHttpCookies(nil),
+					ContentType:    jsonContentType,
 				},
 				Payload: "hello",
 			},
@@ -229,10 +220,17 @@ func TestJsonHttpResponse(t *testing.T) {
 }
 
 func TestJsonHttpResponseWithCookies(t *testing.T) {
+	cookies := NewHttpCookie(&http.Cookie{
+		Name:  "cookie1",
+		Value: "val1",
+	}, &http.Cookie{
+		Name:  "cookie2",
+		Value: "val2",
+	})
 	type args struct {
 		statusCode int
 		payload    any
-		cookies    []http.Cookie
+		cookies    HttpCookies
 	}
 	tests := []struct {
 		name string
@@ -244,25 +242,13 @@ func TestJsonHttpResponseWithCookies(t *testing.T) {
 			args: args{
 				statusCode: 202,
 				payload:    "hello",
-				cookies: []http.Cookie{{
-					Name:  "cookie1",
-					Value: "val1",
-				}, {
-					Name:  "cookie2",
-					Value: "val2",
-				}},
+				cookies:    cookies,
 			},
 			want: &HttpJsonResponse{
 				HttpHeadersResponse: HttpHeadersResponse{
 					HttpStatusCode: 202,
-					HttpHeaders:    http.Header{"Content-Type": {jsonContentType}},
-					HttpCookies: NewHttpCookies([]http.Cookie{{
-						Name:  "cookie1",
-						Value: "val1",
-					}, {
-						Name:  "cookie2",
-						Value: "val2",
-					}}),
+					ContentType:    jsonContentType,
+					HttpCookies:    cookies,
 				},
 				Payload: "hello",
 			},
@@ -281,7 +267,7 @@ func TestJsonHttpResponseWithHeaders(t *testing.T) {
 	type args struct {
 		statusCode int
 		payload    any
-		headers    http.Header
+		headers    HttpHeaders
 	}
 	tests := []struct {
 		name string
@@ -293,13 +279,13 @@ func TestJsonHttpResponseWithHeaders(t *testing.T) {
 			args: args{
 				statusCode: 202,
 				payload:    "hello",
-				headers:    http.Header{"x-Header1": {"val1"}, "x-Header2": {"val2"}},
+				headers:    HttpHeaders{"x-Header1": "val1", "x-Header2": "val2"},
 			},
 			want: &HttpJsonResponse{
 				HttpHeadersResponse: HttpHeadersResponse{
 					HttpStatusCode: 202,
-					HttpHeaders:    http.Header{"Content-Type": {"application/json"}, "x-Header1": {"val1"}, "x-Header2": {"val2"}},
-					HttpCookies:    NewHttpCookies(nil),
+					ContentType:    jsonContentType,
+					HttpHeaders:    HttpHeaders{"x-Header1": "val1", "x-Header2": "val2"},
 				},
 				Payload: "hello",
 			},
@@ -315,11 +301,18 @@ func TestJsonHttpResponseWithHeaders(t *testing.T) {
 }
 
 func TestJsonHttpResponseWithHeadersAndCookies(t *testing.T) {
+	cookies := NewHttpCookie(&http.Cookie{
+		Name:  "cookie11",
+		Value: "val1",
+	}, &http.Cookie{
+		Name:  "cookie22",
+		Value: "val2",
+	})
 	type args struct {
 		statusCode int
 		payload    any
-		headers    http.Header
-		cookies    []http.Cookie
+		headers    HttpHeaders
+		cookies    HttpCookies
 	}
 	tests := []struct {
 		name string
@@ -332,8 +325,7 @@ func TestJsonHttpResponseWithHeadersAndCookies(t *testing.T) {
 			want: &HttpJsonResponse{
 				HttpHeadersResponse: HttpHeadersResponse{
 					HttpStatusCode: 0,
-					HttpHeaders:    http.Header{"Content-Type": {"application/json"}},
-					HttpCookies:    NewHttpCookies(nil),
+					ContentType:    jsonContentType,
 				},
 				Payload: nil,
 			},
@@ -343,26 +335,15 @@ func TestJsonHttpResponseWithHeadersAndCookies(t *testing.T) {
 			args: args{
 				statusCode: 205,
 				payload:    "test1",
-				headers:    http.Header{"x-cust-val1": {"val1"}, "x-cust-val2": {"val2"}},
-				cookies: []http.Cookie{{
-					Name:  "cookie11",
-					Value: "val1",
-				}, {
-					Name:  "cookie22",
-					Value: "val2",
-				}},
+				headers:    HttpHeaders{"x-cust-val1": "val1", "x-cust-val2": "val2"},
+				cookies:    cookies,
 			},
 			want: &HttpJsonResponse{
 				HttpHeadersResponse: HttpHeadersResponse{
 					HttpStatusCode: 205,
-					HttpHeaders:    http.Header{"Content-Type": {"application/json"}, "x-cust-val1": {"val1"}, "x-cust-val2": {"val2"}},
-					HttpCookies: NewHttpCookies([]http.Cookie{{
-						Name:  "cookie11",
-						Value: "val1",
-					}, {
-						Name:  "cookie22",
-						Value: "val2",
-					}}),
+					ContentType:    jsonContentType,
+					HttpHeaders:    HttpHeaders{"x-cust-val1": "val1", "x-cust-val2": "val2"},
+					HttpCookies:    cookies,
 				},
 				Payload: "test1",
 			},
@@ -396,8 +377,7 @@ func TestJsonErrorHttpResponse(t *testing.T) {
 			want: &HttpJsonResponse{
 				HttpHeadersResponse: HttpHeadersResponse{
 					HttpStatusCode: 400,
-					HttpHeaders:    http.Header{"Content-Type": {"application/json"}},
-					HttpCookies:    NewHttpCookies(nil),
+					ContentType:    jsonContentType,
 				},
 				Payload: map[string]string{"error": "An error"},
 			},
@@ -411,8 +391,7 @@ func TestJsonErrorHttpResponse(t *testing.T) {
 			want: &HttpJsonResponse{
 				HttpHeadersResponse: HttpHeadersResponse{
 					HttpStatusCode: 400,
-					HttpHeaders:    http.Header{"Content-Type": {"application/json"}},
-					HttpCookies:    NewHttpCookies(nil),
+					ContentType:    jsonContentType,
 				},
 				Payload: map[string]string{"error": ""},
 			},
@@ -428,10 +407,17 @@ func TestJsonErrorHttpResponse(t *testing.T) {
 }
 
 func TestJsonErrorHttpResponseWithCookies(t *testing.T) {
+	cookies := NewHttpCookie(&http.Cookie{
+		Name:  "cookie11",
+		Value: "val1",
+	}, &http.Cookie{
+		Name:  "cookie22",
+		Value: "val2",
+	})
 	type args struct {
 		statusCode int
 		err        error
-		cookies    []http.Cookie
+		cookies    HttpCookies
 	}
 	tests := []struct {
 		name string
@@ -443,25 +429,13 @@ func TestJsonErrorHttpResponseWithCookies(t *testing.T) {
 			args: args{
 				statusCode: 400,
 				err:        errors.New("an error"),
-				cookies: []http.Cookie{{
-					Name:  "cookie11",
-					Value: "val1",
-				}, {
-					Name:  "cookie22",
-					Value: "val2",
-				}},
+				cookies:    cookies,
 			},
 			want: &HttpJsonResponse{
 				HttpHeadersResponse: HttpHeadersResponse{
 					HttpStatusCode: 400,
-					HttpHeaders:    http.Header{"Content-Type": {"application/json"}},
-					HttpCookies: NewHttpCookies([]http.Cookie{{
-						Name:  "cookie11",
-						Value: "val1",
-					}, {
-						Name:  "cookie22",
-						Value: "val2",
-					}}),
+					ContentType:    jsonContentType,
+					HttpCookies:    cookies,
 				},
 				Payload: map[string]string{"error": "An error"},
 			},
@@ -480,7 +454,7 @@ func TestJsonErrorHttpResponseWithHeaders(t *testing.T) {
 	type args struct {
 		statusCode int
 		err        error
-		headers    http.Header
+		headers    HttpHeaders
 	}
 	tests := []struct {
 		name string
@@ -492,13 +466,13 @@ func TestJsonErrorHttpResponseWithHeaders(t *testing.T) {
 			args: args{
 				statusCode: 400,
 				err:        errors.New("an error"),
-				headers:    http.Header{"x-cust-val3": {"val3"}},
+				headers:    HttpHeaders{"x-cust-val3": "val3"},
 			},
 			want: &HttpJsonResponse{
 				HttpHeadersResponse: HttpHeadersResponse{
 					HttpStatusCode: 400,
-					HttpHeaders:    http.Header{"Content-Type": {"application/json"}, "x-cust-val3": {"val3"}},
-					HttpCookies:    NewHttpCookies(nil),
+					ContentType:    jsonContentType,
+					HttpHeaders:    HttpHeaders{"x-cust-val3": "val3"},
 				},
 				Payload: map[string]string{"error": "An error"},
 			},
@@ -514,11 +488,21 @@ func TestJsonErrorHttpResponseWithHeaders(t *testing.T) {
 }
 
 func TestJsonErrorHttpResponseWithHeadersAndCookies(t *testing.T) {
+	cookies := NewHttpCookie(&http.Cookie{
+		Name:  "cookie11",
+		Value: "val1",
+	}, &http.Cookie{
+		Name:  "cookie22",
+		Value: "val2",
+	}, &http.Cookie{
+		Name:  "cookie23",
+		Value: "val3",
+	})
 	type args struct {
 		statusCode int
 		err        error
-		headers    http.Header
-		cookies    []http.Cookie
+		headers    HttpHeaders
+		cookies    HttpCookies
 	}
 	tests := []struct {
 		name string
@@ -531,8 +515,7 @@ func TestJsonErrorHttpResponseWithHeadersAndCookies(t *testing.T) {
 			want: &HttpJsonResponse{
 				HttpHeadersResponse: HttpHeadersResponse{
 					HttpStatusCode: 0,
-					HttpHeaders:    http.Header{"Content-Type": {"application/json"}},
-					HttpCookies:    NewHttpCookies(nil),
+					ContentType:    jsonContentType,
 				},
 				Payload: map[string]string{"error": ""},
 			},
@@ -542,32 +525,15 @@ func TestJsonErrorHttpResponseWithHeadersAndCookies(t *testing.T) {
 			args: args{
 				statusCode: 500,
 				err:        errors.New("another error"),
-				headers:    http.Header{"x-cust-val12": {"val12"}},
-				cookies: []http.Cookie{{
-					Name:  "cookie11",
-					Value: "val1",
-				}, {
-					Name:  "cookie22",
-					Value: "val2",
-				}, {
-					Name:  "cookie23",
-					Value: "val3",
-				}},
+				headers:    HttpHeaders{"x-cust-val12": "val12"},
+				cookies:    cookies,
 			},
 			want: &HttpJsonResponse{
 				HttpHeadersResponse: HttpHeadersResponse{
 					HttpStatusCode: 500,
-					HttpHeaders:    http.Header{"Content-Type": {"application/json"}, "x-cust-val12": {"val12"}},
-					HttpCookies: NewHttpCookies([]http.Cookie{{
-						Name:  "cookie11",
-						Value: "val1",
-					}, {
-						Name:  "cookie22",
-						Value: "val2",
-					}, {
-						Name:  "cookie23",
-						Value: "val3",
-					}}),
+					ContentType:    jsonContentType,
+					HttpHeaders:    HttpHeaders{"x-cust-val12": "val12"},
+					HttpCookies:    cookies,
 				},
 				Payload: map[string]string{"error": "Another error"},
 			},

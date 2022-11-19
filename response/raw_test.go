@@ -1,7 +1,7 @@
 package response
 
 import (
-	"github.com/ixtendio/gofre/request"
+	"github.com/ixtendio/gofre/router/path"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -32,8 +32,7 @@ func TestRawWriterHttpResponse(t *testing.T) {
 			want: &HttpRawResponse{
 				HttpHeadersResponse: HttpHeadersResponse{
 					HttpStatusCode: 200,
-					HttpHeaders:    http.Header{"Content-Type": {"bytes"}},
-					HttpCookies:    nil,
+					ContentType:    "bytes",
 				},
 				WriteFunc: testRawWriterFunc,
 			},
@@ -56,7 +55,7 @@ func TestRawWriterHttpResponseWithHeaders(t *testing.T) {
 	type args struct {
 		statusCode  int
 		contentType string
-		headers     http.Header
+		headers     HttpHeaders
 		writeFunc   RawWriterFunc
 	}
 	tests := []struct {
@@ -70,13 +69,13 @@ func TestRawWriterHttpResponseWithHeaders(t *testing.T) {
 				statusCode:  201,
 				writeFunc:   testRawWriterFunc,
 				contentType: "bytes",
-				headers:     http.Header{"h1": {"v1"}},
+				headers:     HttpHeaders{"h1": "v1"},
 			},
 			want: &HttpRawResponse{
 				HttpHeadersResponse: HttpHeadersResponse{
 					HttpStatusCode: 201,
-					HttpHeaders:    http.Header{"Content-Type": {"bytes"}, "h1": {"v1"}},
-					HttpCookies:    nil,
+					ContentType:    "bytes",
+					HttpHeaders:    HttpHeaders{"h1": "v1"},
 				},
 				WriteFunc: testRawWriterFunc,
 			},
@@ -96,10 +95,14 @@ func TestRawWriterHttpResponseWithHeaders(t *testing.T) {
 }
 
 func TestRawWriterHttpResponseWithCookies(t *testing.T) {
+	cookies := NewHttpCookie(&http.Cookie{
+		Name:  "cookie3",
+		Value: "val3",
+	})
 	type args struct {
 		statusCode  int
 		contentType string
-		cookies     []http.Cookie
+		cookies     HttpCookies
 		writeFunc   RawWriterFunc
 	}
 	tests := []struct {
@@ -113,19 +116,13 @@ func TestRawWriterHttpResponseWithCookies(t *testing.T) {
 				statusCode:  201,
 				writeFunc:   testRawWriterFunc,
 				contentType: "bytes",
-				cookies: []http.Cookie{{
-					Name:  "cookie3",
-					Value: "val3",
-				}},
+				cookies:     cookies,
 			},
 			want: &HttpRawResponse{
 				HttpHeadersResponse: HttpHeadersResponse{
 					HttpStatusCode: 201,
-					HttpHeaders:    http.Header{"Content-Type": {"bytes"}},
-					HttpCookies: NewHttpCookies([]http.Cookie{{
-						Name:  "cookie3",
-						Value: "val3",
-					}}),
+					ContentType:    "bytes",
+					HttpCookies:    cookies,
 				},
 				WriteFunc: testRawWriterFunc,
 			},
@@ -145,11 +142,15 @@ func TestRawWriterHttpResponseWithCookies(t *testing.T) {
 }
 
 func TestRawWriterHttpResponseWithHeadersAndCookies(t *testing.T) {
+	cookies := NewHttpCookie(&http.Cookie{
+		Name:  "cookie4",
+		Value: "val4",
+	})
 	type args struct {
 		statusCode  int
 		contentType string
-		headers     http.Header
-		cookies     []http.Cookie
+		headers     HttpHeaders
+		cookies     HttpCookies
 		writeFunc   RawWriterFunc
 	}
 	tests := []struct {
@@ -163,20 +164,15 @@ func TestRawWriterHttpResponseWithHeadersAndCookies(t *testing.T) {
 				statusCode:  201,
 				writeFunc:   testRawWriterFunc,
 				contentType: "bytes",
-				headers:     http.Header{"h2": {"v2"}},
-				cookies: []http.Cookie{{
-					Name:  "cookie4",
-					Value: "val4",
-				}},
+				headers:     HttpHeaders{"h2": "v2"},
+				cookies:     cookies,
 			},
 			want: &HttpRawResponse{
 				HttpHeadersResponse: HttpHeadersResponse{
 					HttpStatusCode: 201,
-					HttpHeaders:    http.Header{"Content-Type": {"bytes"}, "h2": {"v2"}},
-					HttpCookies: NewHttpCookies([]http.Cookie{{
-						Name:  "cookie4",
-						Value: "val4",
-					}}),
+					ContentType:    "bytes",
+					HttpHeaders:    HttpHeaders{"h2": "v2"},
+					HttpCookies:    cookies,
 				},
 				WriteFunc: testRawWriterFunc,
 			},
@@ -196,11 +192,11 @@ func TestRawWriterHttpResponseWithHeadersAndCookies(t *testing.T) {
 }
 
 func TestHttpRawResponse_Write(t *testing.T) {
-	req := request.HttpRequest{R: &http.Request{}}
+	req := path.MatchingContext{R: &http.Request{}}
 	type args struct {
 		httpStatusCode int
-		httpHeaders    http.Header
-		httpCookies    []http.Cookie
+		httpHeaders    HttpHeaders
+		httpCookies    HttpCookies
 		writeFunc      RawWriterFunc
 	}
 	type want struct {
@@ -249,14 +245,14 @@ func TestHttpRawResponse_Write(t *testing.T) {
 			name: "with body headers and cookies",
 			args: args{
 				httpStatusCode: 201,
-				httpHeaders:    http.Header{"Content-Type": {"bytes"}},
-				httpCookies: []http.Cookie{{
+				httpHeaders:    HttpHeaders{"Content-Type": "bytes"},
+				httpCookies: NewHttpCookie(&http.Cookie{
 					Name:  "cookie1",
 					Value: "val1",
-				}, {
+				}, &http.Cookie{
 					Name:  "cookie2",
 					Value: "val2",
-				}},
+				}),
 				writeFunc: func(w io.Writer) error {
 					_, err := w.Write([]byte("hello"))
 					if err != nil {
@@ -285,18 +281,10 @@ func TestHttpRawResponse_Write(t *testing.T) {
 			resp := &HttpRawResponse{
 				HttpHeadersResponse: HttpHeadersResponse{
 					HttpStatusCode: tt.args.httpStatusCode,
+					HttpHeaders:    tt.args.httpHeaders,
+					HttpCookies:    tt.args.httpCookies,
 				},
 				WriteFunc: tt.args.writeFunc,
-			}
-			if tt.args.httpHeaders != nil {
-				for k, v := range tt.args.httpHeaders {
-					for _, e := range v {
-						resp.Headers().Add(k, e)
-					}
-				}
-			}
-			for _, k := range tt.args.httpCookies {
-				resp.Cookies().Add(k)
 			}
 			responseRecorder := httptest.NewRecorder()
 			err := resp.Write(responseRecorder, req)

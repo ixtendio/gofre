@@ -7,8 +7,18 @@ import (
 )
 
 func TestHttpCookies_Add(t *testing.T) {
+	cookie1 := &http.Cookie{
+		Name:  "cookie1",
+		Value: "val1",
+	}
+	cookie2 := &http.Cookie{
+		Name:   "cookie2",
+		Value:  "val2",
+		Path:   "path2",
+		Domain: "domain2",
+	}
 	type args struct {
-		cookies []http.Cookie
+		cookies HttpCookies
 	}
 	tests := []struct {
 		name string
@@ -20,56 +30,25 @@ func TestHttpCookies_Add(t *testing.T) {
 			name: "add one cookie",
 			c:    HttpCookies{},
 			args: args{
-				cookies: []http.Cookie{{
-					Name:  "cookie1",
-					Value: "val1",
-				}},
+				cookies: NewHttpCookie(cookie1),
 			},
-			want: HttpCookies{"cookie1::": http.Cookie{
-				Name:  "cookie1",
-				Value: "val1",
-			}},
+			want: HttpCookies{"cookie1::": cookie1},
 		}, {
 			name: "add the same cookie twice",
 			c:    HttpCookies{},
 			args: args{
-				cookies: []http.Cookie{{
-					Name:  "cookie1",
-					Value: "val1",
-				}, {
-					Name:  "cookie1",
-					Value: "val1",
-				}},
+				cookies: NewHttpCookie(cookie1, cookie1),
 			},
-			want: HttpCookies{"cookie1::": http.Cookie{
-				Name:  "cookie1",
-				Value: "val1",
-			}},
+			want: HttpCookies{"cookie1::": cookie1},
 		}, {
 			name: "add two cookies",
 			c:    HttpCookies{},
 			args: args{
-				cookies: []http.Cookie{{
-					Name:  "cookie1",
-					Value: "val1",
-				}, {
-					Name:   "cookie2",
-					Value:  "val2",
-					Path:   "path2",
-					Domain: "domain2",
-				}},
+				cookies: NewHttpCookie(cookie1, cookie2),
 			},
 			want: HttpCookies{
-				"cookie1::": http.Cookie{
-					Name:  "cookie1",
-					Value: "val1",
-				},
-				"cookie2:path2:domain2": {
-					Name:   "cookie2",
-					Value:  "val2",
-					Path:   "path2",
-					Domain: "domain2",
-				}},
+				"cookie1::":             cookie1,
+				"cookie2:path2:domain2": cookie2},
 		},
 	}
 	for _, tt := range tests {
@@ -78,68 +57,26 @@ func TestHttpCookies_Add(t *testing.T) {
 				tt.c.Add(cookie)
 			}
 			if !reflect.DeepEqual(tt.c, tt.want) {
-				t.Errorf("NewHttpCookies.Add() got: %v, want: %v", tt.c, tt.want)
+				t.Errorf("NewEmptyHttpCookie.Add() got: %v, want: %v", tt.c, tt.want)
 			}
 		})
 	}
 }
 
 func TestNewHttpCookies(t *testing.T) {
-	type args struct {
-		cookiesArray []http.Cookie
-	}
 	tests := []struct {
 		name string
-		args args
 		want HttpCookies
 	}{
 		{
 			name: "construct with nil arg",
-			args: args{},
-			want: nil,
-		},
-		{
-			name: "construct with empty array arg",
-			args: args{
-				cookiesArray: []http.Cookie{},
-			},
-			want: nil,
-		},
-		{
-			name: "construct with array",
-			args: args{
-				cookiesArray: []http.Cookie{{
-					Name:   "cookie1",
-					Value:  "val1",
-					Path:   "path1",
-					Domain: "domain1",
-				}, {
-					Name:   "cookie2",
-					Value:  "val2",
-					Path:   "path2",
-					Domain: "domain2",
-				}},
-			},
-			want: HttpCookies{
-				"cookie1:path1:domain1": http.Cookie{
-					Name:   "cookie1",
-					Value:  "val1",
-					Path:   "path1",
-					Domain: "domain1",
-				},
-				"cookie2:path2:domain2": {
-					Name:   "cookie2",
-					Value:  "val2",
-					Path:   "path2",
-					Domain: "domain2",
-				},
-			},
+			want: HttpCookies{},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := NewHttpCookies(tt.args.cookiesArray); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("NewHttpCookies() = %v, want %v", got, tt.want)
+			if got := NewEmptyHttpCookie(); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("NewEmptyHttpCookie() = %v, want %v", got, tt.want)
 			}
 		})
 	}

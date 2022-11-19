@@ -3,7 +3,8 @@ package response
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/ixtendio/gofre/request"
+	"github.com/ixtendio/gofre/router/path"
+
 	"net/http"
 	"strings"
 )
@@ -17,7 +18,7 @@ type HttpJsonResponse struct {
 	Payload any
 }
 
-func (r *HttpJsonResponse) Write(w http.ResponseWriter, req request.HttpRequest) error {
+func (r *HttpJsonResponse) Write(w http.ResponseWriter, req path.MatchingContext) error {
 	// write the headers
 	if err := r.HttpHeadersResponse.Write(w, req); err != nil {
 		return err
@@ -52,26 +53,23 @@ func JsonHttpResponse(statusCode int, payload any) *HttpJsonResponse {
 }
 
 // JsonHttpResponseWithCookies creates a JSON response with a specific status code and cookies
-func JsonHttpResponseWithCookies(statusCode int, payload any, cookies []http.Cookie) *HttpJsonResponse {
+func JsonHttpResponseWithCookies(statusCode int, payload any, cookies HttpCookies) *HttpJsonResponse {
 	return JsonHttpResponseWithHeadersAndCookies(statusCode, payload, nil, cookies)
 }
 
 // JsonHttpResponseWithHeaders creates a JSON response with a specific status code and headers
-func JsonHttpResponseWithHeaders(statusCode int, payload any, headers http.Header) *HttpJsonResponse {
+func JsonHttpResponseWithHeaders(statusCode int, payload any, headers HttpHeaders) *HttpJsonResponse {
 	return JsonHttpResponseWithHeadersAndCookies(statusCode, payload, headers, nil)
 }
 
 // JsonHttpResponseWithHeadersAndCookies creates a JSON response with a specific status code, custom headers and cookies
-func JsonHttpResponseWithHeadersAndCookies(statusCode int, payload any, headers http.Header, cookies []http.Cookie) *HttpJsonResponse {
-	if headers == nil {
-		headers = make(http.Header, 1)
-	}
-	headers.Set("Content-Type", jsonContentType)
+func JsonHttpResponseWithHeadersAndCookies(statusCode int, payload any, headers HttpHeaders, cookies HttpCookies) *HttpJsonResponse {
 	return &HttpJsonResponse{
 		HttpHeadersResponse: HttpHeadersResponse{
 			HttpStatusCode: statusCode,
+			ContentType:    jsonContentType,
 			HttpHeaders:    headers,
-			HttpCookies:    NewHttpCookies(cookies),
+			HttpCookies:    cookies,
 		},
 		Payload: payload,
 	}
@@ -83,26 +81,26 @@ func JsonErrorHttpResponse(statusCode int, err error) *HttpJsonResponse {
 }
 
 // JsonErrorHttpResponseWithCookies creates an error JSON response with custom cookies
-func JsonErrorHttpResponseWithCookies(statusCode int, err error, cookies []http.Cookie) *HttpJsonResponse {
+// The cookies, if present, once will be written to output will be added in the pool for re-use
+func JsonErrorHttpResponseWithCookies(statusCode int, err error, cookies HttpCookies) *HttpJsonResponse {
 	return JsonErrorHttpResponseWithHeadersAndCookies(statusCode, err, nil, cookies)
 }
 
 // JsonErrorHttpResponseWithHeaders creates an error JSON response with custom headers
-func JsonErrorHttpResponseWithHeaders(statusCode int, err error, headers http.Header) *HttpJsonResponse {
+// The headers, if present, once will be written to output will be added in the pool for re-use
+func JsonErrorHttpResponseWithHeaders(statusCode int, err error, headers HttpHeaders) *HttpJsonResponse {
 	return JsonErrorHttpResponseWithHeadersAndCookies(statusCode, err, headers, nil)
 }
 
 // JsonErrorHttpResponseWithHeadersAndCookies creates an error JSON response with custom headers and cookies
-func JsonErrorHttpResponseWithHeadersAndCookies(statusCode int, err error, headers http.Header, cookies []http.Cookie) *HttpJsonResponse {
-	if headers == nil {
-		headers = make(http.Header, 1)
-	}
-	headers.Set("Content-Type", jsonContentType)
+// The headers and cookies, if present, once will be written to output will be added in the pool for re-use
+func JsonErrorHttpResponseWithHeadersAndCookies(statusCode int, err error, headers HttpHeaders, cookies HttpCookies) *HttpJsonResponse {
 	return &HttpJsonResponse{
 		HttpHeadersResponse: HttpHeadersResponse{
 			HttpStatusCode: statusCode,
+			ContentType:    jsonContentType,
 			HttpHeaders:    headers,
-			HttpCookies:    NewHttpCookies(cookies),
+			HttpCookies:    cookies,
 		},
 		Payload: map[string]string{"error": errorToString(err)},
 	}

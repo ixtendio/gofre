@@ -2,7 +2,8 @@ package middleware
 
 import (
 	"context"
-	"github.com/ixtendio/gofre/request"
+	"github.com/ixtendio/gofre/router/path"
+
 	"github.com/ixtendio/gofre/response"
 	"net/http"
 	"reflect"
@@ -17,12 +18,12 @@ func TestSecurityHeaders(t *testing.T) {
 	tests := []struct {
 		name                string
 		args                args
-		wantResponseHeaders http.Header
+		wantResponseHeaders response.HttpHeaders
 	}{
 		{
 			name:                "empty config",
 			args:                args{config: SecurityHeadersConfig{}, req: &http.Request{URL: mustParseURL("https://domain.com")}},
-			wantResponseHeaders: http.Header{"Content-Type": {"text/plain; charset=utf-8"}},
+			wantResponseHeaders: response.HttpHeaders{},
 		},
 		{
 			name: "HSTS config",
@@ -34,9 +35,8 @@ func TestSecurityHeaders(t *testing.T) {
 					Preload:           true,
 					headerValue:       "",
 				}}, req: &http.Request{URL: mustParseURL("https://domain.com")}},
-			wantResponseHeaders: http.Header{
-				"Content-Type": {"text/plain; charset=utf-8"},
-				stsHeaderName:  {"max-age=10;includeSubDomains;preload"},
+			wantResponseHeaders: response.HttpHeaders{
+				stsHeaderName: "max-age=10;includeSubDomains;preload",
 			},
 		},
 		{
@@ -49,9 +49,8 @@ func TestSecurityHeaders(t *testing.T) {
 					Preload:           true,
 					headerValue:       "stsHeaderValue1",
 				}}, req: &http.Request{URL: mustParseURL("https://domain.com")}},
-			wantResponseHeaders: http.Header{
-				"Content-Type": {"text/plain; charset=utf-8"},
-				stsHeaderName:  {"stsHeaderValue1"},
+			wantResponseHeaders: response.HttpHeaders{
+				stsHeaderName: "stsHeaderValue1",
 			},
 		},
 		{
@@ -65,9 +64,8 @@ func TestSecurityHeaders(t *testing.T) {
 					headerValue:             "",
 				},
 			}, req: &http.Request{URL: mustParseURL("https://domain.com")}},
-			wantResponseHeaders: http.Header{
-				"Content-Type":             {"text/plain; charset=utf-8"},
-				antiClickJackingHeaderName: {"XFrameOptionHeaderValue1 https://domain.com"},
+			wantResponseHeaders: response.HttpHeaders{
+				antiClickJackingHeaderName: "XFrameOptionHeaderValue1 https://domain.com",
 			},
 		},
 		{
@@ -81,9 +79,8 @@ func TestSecurityHeaders(t *testing.T) {
 					headerValue:             "ClickJackingCustomHeaderValue",
 				},
 			}, req: &http.Request{URL: mustParseURL("https://domain.com")}},
-			wantResponseHeaders: http.Header{
-				"Content-Type":             {"text/plain; charset=utf-8"},
-				antiClickJackingHeaderName: {"ClickJackingCustomHeaderValue"},
+			wantResponseHeaders: response.HttpHeaders{
+				antiClickJackingHeaderName: "ClickJackingCustomHeaderValue",
 			},
 		},
 		{
@@ -91,9 +88,8 @@ func TestSecurityHeaders(t *testing.T) {
 			args: args{config: SecurityHeadersConfig{
 				BlockContentSniffingEnabled: true,
 			}, req: &http.Request{URL: mustParseURL("https://domain.com")}},
-			wantResponseHeaders: http.Header{
-				"Content-Type":                     {"text/plain; charset=utf-8"},
-				blockContentTypeSniffingHeaderName: {blockContentTypeSniffingHeaderValue},
+			wantResponseHeaders: response.HttpHeaders{
+				blockContentTypeSniffingHeaderName: blockContentTypeSniffingHeaderValue,
 			},
 		},
 		{
@@ -101,9 +97,8 @@ func TestSecurityHeaders(t *testing.T) {
 			args: args{config: SecurityHeadersConfig{
 				XSSProtectionEnabled: true,
 			}, req: &http.Request{URL: mustParseURL("https://domain.com")}},
-			wantResponseHeaders: http.Header{
-				"Content-Type":          {"text/plain; charset=utf-8"},
-				xssProtectionHeaderName: {xssProtectionHeaderValue},
+			wantResponseHeaders: response.HttpHeaders{
+				xssProtectionHeaderName: xssProtectionHeaderValue,
 			},
 		},
 		{
@@ -126,21 +121,20 @@ func TestSecurityHeaders(t *testing.T) {
 				BlockContentSniffingEnabled: true,
 				XSSProtectionEnabled:        true,
 			}, req: &http.Request{URL: mustParseURL("https://domain.com")}},
-			wantResponseHeaders: http.Header{
-				"Content-Type":                     {"text/plain; charset=utf-8"},
-				stsHeaderName:                      {"max-age=10;includeSubDomains;preload"},
-				antiClickJackingHeaderName:         {"XFrameOptionHeaderValue1 https://domain.com"},
-				blockContentTypeSniffingHeaderName: {blockContentTypeSniffingHeaderValue},
-				xssProtectionHeaderName:            {xssProtectionHeaderValue},
+			wantResponseHeaders: response.HttpHeaders{
+				stsHeaderName:                      "max-age=10;includeSubDomains;preload",
+				antiClickJackingHeaderName:         "XFrameOptionHeaderValue1 https://domain.com",
+				blockContentTypeSniffingHeaderName: blockContentTypeSniffingHeaderValue,
+				xssProtectionHeaderName:            xssProtectionHeaderValue,
 			},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			m := SecurityHeaders(tt.args.config)
-			resp, err := m(func(ctx context.Context, r request.HttpRequest) (response.HttpResponse, error) {
+			resp, err := m(func(ctx context.Context, r path.MatchingContext) (response.HttpResponse, error) {
 				return response.PlainTextHttpResponseOK("ok"), nil
-			})(context.Background(), request.HttpRequest{R: tt.args.req})
+			})(context.Background(), path.MatchingContext{R: tt.args.req})
 
 			if err != nil {
 				t.Fatalf("SecurityHeaders() returned error: %v", err)

@@ -4,7 +4,8 @@ import (
 	"context"
 	"github.com/ixtendio/gofre/errors"
 	"github.com/ixtendio/gofre/handler"
-	"github.com/ixtendio/gofre/request"
+	"github.com/ixtendio/gofre/router/path"
+
 	"github.com/ixtendio/gofre/response"
 	"reflect"
 	"strings"
@@ -23,7 +24,7 @@ func TestPanicMiddleware(t *testing.T) {
 	}{
 		{
 			name: "error are returns",
-			handler: func(ctx context.Context, r request.HttpRequest) (response.HttpResponse, error) {
+			handler: func(ctx context.Context, r path.MatchingContext) (response.HttpResponse, error) {
 				return nil, errors.ErrWrongCredentials
 			},
 			want: want{
@@ -33,7 +34,7 @@ func TestPanicMiddleware(t *testing.T) {
 		},
 		{
 			name: "panic is handled and error returned",
-			handler: func(ctx context.Context, r request.HttpRequest) (response.HttpResponse, error) {
+			handler: func(ctx context.Context, r path.MatchingContext) (response.HttpResponse, error) {
 				panic("a panic message")
 			},
 			want: want{
@@ -43,7 +44,7 @@ func TestPanicMiddleware(t *testing.T) {
 		},
 		{
 			name: "error is nil",
-			handler: func(ctx context.Context, r request.HttpRequest) (response.HttpResponse, error) {
+			handler: func(ctx context.Context, r path.MatchingContext) (response.HttpResponse, error) {
 				return response.HtmlHttpResponseOK("ok"), nil
 			},
 			want: want{
@@ -55,7 +56,7 @@ func TestPanicMiddleware(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			m := PanicRecover()
-			resp, err := m(tt.handler)(context.Background(), request.HttpRequest{})
+			resp, err := m(tt.handler)(context.Background(), path.MatchingContext{})
 			if err != nil {
 				if strings.Index(err.Error(), tt.want.errMsgPrefix) != 0 {
 					t.Errorf("PanicRecover() = %v, want to start with: %v", err.Error(), tt.want.errMsgPrefix)

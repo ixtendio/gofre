@@ -6,11 +6,31 @@ import (
 	"strings"
 )
 
+/*
+	var nodeStackPool = sync.Pool{
+		New: func() interface{} {
+			arr := make([]stackSegment, MaxPathSegments)
+			return &arr
+		},
+	}
+
+	var urlSegmentMatchTypeStackPool = sync.Pool{
+		New: func() interface{} {
+			arr := make([]UrlSegment, MaxPathSegments)
+			return &arr
+		},
+	}
+*/
+type stackSegment struct {
+	currentNodeChildren uint16
+	urlSegmentIndex     uint8
+}
+
 type node struct {
 	val                  string
 	maxMatchableSegments uint8
 	priority             uint64
-	segment              *Segment
+	segment              *segment
 	pattern              *Pattern
 	parent               *node
 	children             []*node
@@ -176,10 +196,6 @@ func (m *Matcher) Match(urlPath string, mc *MatchingContext) *Pattern {
 	}
 	if len(mc.PathSegments) == 0 && m.rootPathMatcher != nil {
 		return m.rootPathMatcher
-	}
-	type stackSegment struct {
-		currentNodeChildren uint16
-		urlSegmentIndex     uint8
 	}
 	var treeDepth int
 	urlLen := uint8(len(mc.PathSegments))

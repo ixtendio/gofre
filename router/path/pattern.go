@@ -11,14 +11,14 @@ import (
 
 const greedyPatternMaxMatchableSegments = math.MaxUint8
 
-type Segment struct {
+type segment struct {
 	val               string
 	matchType         MatchType
 	captureVarName    string
 	captureVarPattern *regexp.Regexp
 }
 
-func (s *Segment) matchUrlPathSegment(urlPath string, urlSegment *UrlSegment, caseInsensitive bool) MatchType {
+func (s *segment) matchUrlPathSegment(urlPath string, urlSegment *UrlSegment, caseInsensitive bool) MatchType {
 	matchType := s.matchType
 	if matchType == MatchTypeLiteral {
 		urlSegmentVal := urlPath[urlSegment.startIndex:urlSegment.endIndex]
@@ -54,7 +54,7 @@ func (s *Segment) matchUrlPathSegment(urlPath string, urlSegment *UrlSegment, ca
 	return MatchTypeUnknown
 }
 
-func (s *Segment) String() string {
+func (s *segment) String() string {
 	return s.val
 }
 
@@ -63,7 +63,7 @@ type Pattern struct {
 	captureVarsLen       uint8
 	maxMatchableSegments uint8
 	priority             uint64
-	segments             []*Segment
+	segments             []*segment
 	RawValue             string
 	Attachment           any
 }
@@ -108,7 +108,7 @@ func ParsePattern(pathPattern string, caseInsensitive bool) (*Pattern, error) {
 	var captureVarsLen uint8
 	var lastSegmentMatchType MatchType
 	var maxSegmentMatchType MatchType
-	segments := make([]*Segment, maxSegmentsSize)
+	segments := make([]*segment, maxSegmentsSize)
 	pathPatternLen := len(pathPattern)
 
 	for pos := 1; pos < pathPatternLen; pos++ {
@@ -120,7 +120,7 @@ func ParsePattern(pathPattern string, caseInsensitive bool) (*Pattern, error) {
 				segmentVal = pathPattern[pathSegmentStart+1:]
 			}
 			if err := validatePathSegment(segmentVal); err != nil {
-				return nil, fmt.Errorf("invalid path pattern: [%s], failed path Segment validation: [%s], err: %w", pathPattern, segmentVal, err)
+				return nil, fmt.Errorf("invalid path pattern: [%s], failed path segment validation: [%s], err: %w", pathPattern, segmentVal, err)
 			}
 
 			pathSegmentStart = pos
@@ -133,7 +133,7 @@ func ParsePattern(pathPattern string, caseInsensitive bool) (*Pattern, error) {
 				maxSegmentMatchType = segmentMatchType
 			}
 
-			segment := &Segment{
+			segment := &segment{
 				val:               segmentVal,
 				matchType:         segmentMatchType,
 				captureVarName:    "",
@@ -296,7 +296,7 @@ func determineMatchTypeForSegment(pathSegment string) MatchType {
 func validatePathSegment(pathSegment string) error {
 	pathSegmentLen := len(pathSegment)
 	if pathSegmentLen == 0 {
-		return errors.New("empty path Segment")
+		return errors.New("empty path segment")
 	}
 
 	if pathSegment[0] == '{' && pathSegment[pathSegmentLen-1] != '}' {

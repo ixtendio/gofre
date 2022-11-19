@@ -1,7 +1,7 @@
 package response
 
 import (
-	"github.com/ixtendio/gofre/request"
+	"github.com/ixtendio/gofre/router/path"
 	"net/http"
 	"net/http/httptest"
 	"reflect"
@@ -17,10 +17,10 @@ func (f testHandlerFunc) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func TestHandlerAdaptor(t *testing.T) {
-	req := request.HttpRequest{R: &http.Request{}}
+	req := path.MatchingContext{R: &http.Request{}}
 	type args struct {
 		handler     http.Handler
-		httpHeaders http.Header
+		httpHeaders HttpHeaders
 	}
 	type want struct {
 		httpCode    int
@@ -58,7 +58,7 @@ func TestHandlerAdaptor(t *testing.T) {
 						w.Write([]byte("hello"))
 					},
 				},
-				httpHeaders: http.Header{"Content-Type": {"text/plain; charset=utf-8"}},
+				httpHeaders: HttpHeaders{"Content-Type": "text/plain; charset=utf-8"},
 			},
 			want: want{
 				httpCode:    201,
@@ -73,9 +73,7 @@ func TestHandlerAdaptor(t *testing.T) {
 			adaptor := HandlerAdaptor(tt.args.handler)
 			if tt.args.httpHeaders != nil {
 				for k, v := range tt.args.httpHeaders {
-					for _, e := range v {
-						adaptor.Headers().Add(k, e)
-					}
+					adaptor.Headers().Set(k, v)
 				}
 			}
 			adaptor.Write(responseRecorder, req)
@@ -92,11 +90,11 @@ func TestHandlerAdaptor(t *testing.T) {
 }
 
 func TestHandlerFuncAdaptor(t *testing.T) {
-	req := request.HttpRequest{R: &http.Request{}}
+	req := path.MatchingContext{R: &http.Request{}}
 	type args struct {
 		handler     http.HandlerFunc
-		httpHeaders http.Header
-		httpCookies []http.Cookie
+		httpHeaders HttpHeaders
+		httpCookies HttpCookies
 	}
 	type want struct {
 		httpCode    int
@@ -130,7 +128,7 @@ func TestHandlerFuncAdaptor(t *testing.T) {
 					w.WriteHeader(201)
 					w.Write([]byte("hello"))
 				},
-				httpHeaders: http.Header{"Content-Type": {"text/plain; charset=utf-8"}},
+				httpHeaders: HttpHeaders{"Content-Type": "text/plain; charset=utf-8"},
 			},
 			want: want{
 				httpCode:    201,
@@ -145,11 +143,11 @@ func TestHandlerFuncAdaptor(t *testing.T) {
 					w.WriteHeader(201)
 					w.Write([]byte("hello"))
 				},
-				httpHeaders: http.Header{"Content-Type": {"text/plain; charset=utf-8"}},
-				httpCookies: []http.Cookie{{
+				httpHeaders: HttpHeaders{"Content-Type": "text/plain; charset=utf-8"},
+				httpCookies: NewHttpCookie(&http.Cookie{
 					Name:  "cookie1",
 					Value: "val1",
-				}},
+				}),
 			},
 			want: want{
 				httpCode:    201,
@@ -164,9 +162,7 @@ func TestHandlerFuncAdaptor(t *testing.T) {
 			adaptor := HandlerFuncAdaptor(tt.args.handler)
 			if tt.args.httpHeaders != nil {
 				for k, v := range tt.args.httpHeaders {
-					for _, e := range v {
-						adaptor.Headers().Add(k, e)
-					}
+					adaptor.Headers().Set(k, v)
 				}
 			}
 

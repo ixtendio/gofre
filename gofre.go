@@ -9,7 +9,8 @@ import (
 	"github.com/ixtendio/gofre/errors"
 	"github.com/ixtendio/gofre/handler"
 	"github.com/ixtendio/gofre/middleware"
-	"github.com/ixtendio/gofre/request"
+	"github.com/ixtendio/gofre/router/path"
+
 	"github.com/ixtendio/gofre/response"
 	"github.com/ixtendio/gofre/router"
 	"html/template"
@@ -200,7 +201,7 @@ func (m *MuxHandler) HandleOAUTH2WithCustomPaths(initiatePath string,
 	cache := oauthConfig.CacheConfig.Cache
 	// initiate OAUTH flow handler
 	authorizationFlowBasePath := authorizeBasePath
-	m.HandleGet(initiatePath, func(ctx context.Context, r request.HttpRequest) (response.HttpResponse, error) {
+	m.HandleGet(initiatePath, func(ctx context.Context, r path.MatchingContext) (response.HttpResponse, error) {
 		var provider oauth.Provider
 		if len(oauthConfig.Providers) == 1 {
 			provider = oauthConfig.Providers[0]
@@ -226,7 +227,7 @@ func (m *MuxHandler) HandleOAUTH2WithCustomPaths(initiatePath string,
 	}, initiateMiddlewares...)
 
 	// authorize OAUTH flow handler
-	m.HandleGet(authorizationFlowBasePath+"/{providerName}", func(ctx context.Context, r request.HttpRequest) (response.HttpResponse, error) {
+	m.HandleGet(authorizationFlowBasePath+"/{providerName}", func(ctx context.Context, r path.MatchingContext) (response.HttpResponse, error) {
 		providerName := r.PathVar("providerName")
 		provider := oauthConfig.GetProviderByName(providerName)
 		if provider == nil {

@@ -3,12 +3,19 @@ package router
 import (
 	"fmt"
 	"github.com/ixtendio/gofre/handler"
-	"github.com/ixtendio/gofre/internal/path"
-	"github.com/ixtendio/gofre/request"
+	"github.com/ixtendio/gofre/router/path"
 	"log"
 	"net/http"
 	"strings"
+	"sync"
 )
+
+var urlPathSegmentsPool = sync.Pool{
+	New: func() interface{} {
+		arr := make([]path.UrlSegment, path.MaxPathSegments)
+		return &arr
+	},
+}
 
 var defaultErrLogFunc = func(err error) {
 	log.Printf("%v", err)
@@ -54,45 +61,44 @@ func (r *Router) Handle(httpMethod string, pathPattern string, handler handler.H
 	return r
 }
 
-// MatchRequest returns the first handler that matches the request, together with the path variables if exists
-func (r *Router) MatchRequest(req *http.Request) (handler.Handler, []path.CaptureVar) {
-	httpMethod := req.Method
-	urlPath := req.URL.Path
-	mc := &path.MatchingContext{PathSegments: make([]path.UrlSegment, path.MaxPathSegments)}
-	path.ParseURLPath(req.URL, mc)
-	httpMethod = strings.ToUpper(httpMethod)
-	matcher := r.endpointMatchers[httpMethod]
-	if matcher == nil {
-		return nil, nil
-	}
-	pattern := matcher.Match(urlPath, mc)
-	if pattern == nil {
-		return nil, nil
-	}
-	return pattern.Attachment.(handler.Handler), matcher.CaptureVars(urlPath, pattern, mc)
-}
-
 // ServeHTTP implements the http.Handler interface.
 // It's the entry point for all http traffic
 func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
-	matchedHandler, capturedVars := r.MatchRequest(req)
-
-	if matchedHandler == nil {
+	httpMethod := req.Method
+	urlPath := req.URL.Path
+	urlSegmentsPtr := urlPathSegmentsPool.Get().(*[]path.UrlSegment)
+	defer func() {
+		urlSegments := *urlSegmentsPtr
+		for i := 0; i < path.MaxPathSegments; i++ {
+			s := &urlSegments[i]
+			s.Reset()
+		}
+		urlPathSegmentsPool.Put(urlSegmentsPtr)
+	}()
+	mc := path.MatchingContext{R: req, PathSegments: *urlSegmentsPtr}
+	path.ParseURLPath(req.URL, &mc)
+	httpMethod = strings.ToUpper(httpMethod)
+	matcher := r.endpointMatchers[httpMethod]
+	if matcher == nil {
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
-
-	httpRequest := request.NewHttpRequestWithPathVars(req, capturedVars)
+	pattern := matcher.Match(urlPath, &mc)
+	if pattern == nil {
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
+	matchedHandler := pattern.Attachment.(handler.Handler)
 
 	// Call the wrapped handler functions.
-	resp, err := matchedHandler(req.Context(), httpRequest)
+	resp, err := matchedHandler(req.Context(), mc)
 	if err != nil {
 		r.errLogFunc(fmt.Errorf("uncaught error in GoFre framework, err: %w", err))
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
-	if err := resp.Write(w, httpRequest); err != nil {
+	if err := resp.Write(w, mc); err != nil {
 		r.errLogFunc(err)
 	}
 }

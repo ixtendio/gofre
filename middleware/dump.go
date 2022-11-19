@@ -5,7 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/ixtendio/gofre/handler"
-	"github.com/ixtendio/gofre/request"
+	"github.com/ixtendio/gofre/router/path"
+
 	"github.com/ixtendio/gofre/response"
 	"time"
 	"unsafe"
@@ -15,7 +16,7 @@ import (
 // It is especially useful in debugging problems.
 func RequestDumper(logger func(val string)) Middleware {
 	return func(handler handler.Handler) handler.Handler {
-		return func(ctx context.Context, req request.HttpRequest) (resp response.HttpResponse, err error) {
+		return func(ctx context.Context, req path.MatchingContext) (resp response.HttpResponse, err error) {
 			startTime := time.Now().UnixMilli()
 			// request logging
 			requestMap := map[string]any{}

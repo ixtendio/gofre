@@ -3,7 +3,8 @@ package middleware
 import (
 	"bytes"
 	"context"
-	"github.com/ixtendio/gofre/request"
+	"github.com/ixtendio/gofre/router/path"
+
 	"github.com/ixtendio/gofre/response"
 	"net/http"
 	"net/url"
@@ -41,9 +42,9 @@ func TestRequestDumper(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, err := RequestDumper(tt.args.logger)(func(ctx context.Context, r request.HttpRequest) (response.HttpResponse, error) {
+			_, err := RequestDumper(tt.args.logger)(func(ctx context.Context, r path.MatchingContext) (response.HttpResponse, error) {
 				return response.PlainTextHttpResponseOK(""), nil
-			})(context.Background(), request.NewHttpRequest(tt.args.req))
+			})(context.Background(), path.MatchingContext{R: tt.args.req})
 			if err != nil {
 				t.Fatalf("RequestDumper() got err: %v", err)
 			}

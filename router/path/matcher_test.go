@@ -27,7 +27,7 @@ func TestMatcher_AddPattern(t *testing.T) {
 			wantErr:  true,
 		},
 		{
-			name:     "2 literal patterns with one Segment, that are the same",
+			name:     "2 literal patterns with one segment, that are the same",
 			patterns: []string{"/a", "/a"},
 			wantErr:  true,
 			want:     "R=>(a:1)",
@@ -38,7 +38,7 @@ func TestMatcher_AddPattern(t *testing.T) {
 			want:     "R=>(a:1L)",
 		},
 		{
-			name:     "2 literal patterns with one Segment, that are different",
+			name:     "2 literal patterns with one segment, that are different",
 			patterns: []string{"/a", "/b"},
 			want:     "R=>(a:1L b:1L)",
 		},

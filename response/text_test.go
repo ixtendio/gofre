@@ -1,7 +1,7 @@
 package response
 
 import (
-	"github.com/ixtendio/gofre/request"
+	"github.com/ixtendio/gofre/router/path"
 	"net/http"
 	"net/http/httptest"
 	"reflect"
@@ -9,11 +9,11 @@ import (
 )
 
 func TestHttpTextResponse_Write(t *testing.T) {
-	req := request.HttpRequest{R: &http.Request{}}
+	req := path.MatchingContext{R: &http.Request{}}
 	type args struct {
 		httpStatusCode int
-		httpHeaders    http.Header
-		httpCookies    []http.Cookie
+		httpHeaders    HttpHeaders
+		httpCookies    HttpCookies
 		payload        string
 	}
 	type want struct {
@@ -56,11 +56,11 @@ func TestHttpTextResponse_Write(t *testing.T) {
 			name: "with custom headers",
 			args: args{
 				httpStatusCode: 202,
-				httpHeaders:    http.Header{"Content-Type": {plainTextContentType}},
+				httpHeaders:    HttpHeaders{"Content-Type": "test"},
 			},
 			want: want{
 				httpCode:    202,
-				httpHeaders: http.Header{"X-Content-Type-Options": {"nosniff"}, "Content-Type": {"text/plain; charset=utf-8"}},
+				httpHeaders: http.Header{"Content-Type": {"test"}, "X-Content-Type-Options": {"nosniff"}},
 				body:        nil,
 			},
 			wantErr: false,
@@ -69,13 +69,13 @@ func TestHttpTextResponse_Write(t *testing.T) {
 			name: "with custom cookies",
 			args: args{
 				httpStatusCode: 202,
-				httpCookies: []http.Cookie{{
+				httpCookies: NewHttpCookie(&http.Cookie{
 					Name:  "cookie1",
 					Value: "val1",
-				}, {
+				}, &http.Cookie{
 					Name:  "cookie2",
 					Value: "val2",
-				}},
+				}),
 			},
 			want: want{
 				httpCode:    202,
@@ -89,11 +89,11 @@ func TestHttpTextResponse_Write(t *testing.T) {
 			args: args{
 				httpStatusCode: 202,
 				payload:        "hello1",
-				httpHeaders:    http.Header{"header1": {"val1"}},
-				httpCookies: []http.Cookie{{
+				httpHeaders:    HttpHeaders{"header1": "val1"},
+				httpCookies: NewHttpCookie(&http.Cookie{
 					Name:  "cookie3",
 					Value: "val3",
-				}},
+				}),
 			},
 			want: want{
 				httpCode:    202,
@@ -115,18 +115,10 @@ func TestHttpTextResponse_Write(t *testing.T) {
 			resp := &HttpTextResponse{
 				HttpHeadersResponse: HttpHeadersResponse{
 					HttpStatusCode: tt.args.httpStatusCode,
+					HttpHeaders:    tt.args.httpHeaders,
+					HttpCookies:    tt.args.httpCookies,
 				},
 				Payload: tt.args.payload,
-			}
-			if tt.args.httpHeaders != nil {
-				for k, v := range tt.args.httpHeaders {
-					for _, e := range v {
-						resp.Headers().Add(k, e)
-					}
-				}
-			}
-			for _, k := range tt.args.httpCookies {
-				resp.Cookies().Add(k)
 			}
 			responseRecorder := httptest.NewRecorder()
 			err := resp.Write(responseRecorder, req)
@@ -167,8 +159,7 @@ func TestPlainTextHttpResponse(t *testing.T) {
 			want: &HttpTextResponse{
 				HttpHeadersResponse: HttpHeadersResponse{
 					HttpStatusCode: 201,
-					HttpHeaders:    http.Header{"Content-Type": {plainTextContentType}},
-					HttpCookies:    NewHttpCookies(nil),
+					ContentType:    plainTextContentType,
 				},
 				Payload: "test",
 			},
@@ -200,8 +191,7 @@ func TestPlainTextHttpResponseOK(t *testing.T) {
 			want: &HttpTextResponse{
 				HttpHeadersResponse: HttpHeadersResponse{
 					HttpStatusCode: 200,
-					HttpHeaders:    http.Header{"Content-Type": {plainTextContentType}},
-					HttpCookies:    NewHttpCookies(nil),
+					ContentType:    plainTextContentType,
 				},
 				Payload: "test",
 			},
@@ -220,7 +210,7 @@ func TestPlainTextHttpResponseWithHeaders(t *testing.T) {
 	type args struct {
 		statusCode int
 		payload    string
-		headers    http.Header
+		headers    HttpHeaders
 	}
 	tests := []struct {
 		name string
@@ -231,14 +221,14 @@ func TestPlainTextHttpResponseWithHeaders(t *testing.T) {
 			name: "construct",
 			args: args{
 				statusCode: 201,
-				headers:    http.Header{"x-Header1": {"val1"}, "x-Header2": {"val2"}},
+				headers:    HttpHeaders{"x-Header1": "val1", "x-Header2": "val2"},
 				payload:    "test",
 			},
 			want: &HttpTextResponse{
 				HttpHeadersResponse: HttpHeadersResponse{
 					HttpStatusCode: 201,
-					HttpHeaders:    http.Header{"Content-Type": {"text/plain; charset=utf-8"}, "x-Header1": {"val1"}, "x-Header2": {"val2"}},
-					HttpCookies:    NewHttpCookies(nil),
+					ContentType:    plainTextContentType,
+					HttpHeaders:    HttpHeaders{"x-Header1": "val1", "x-Header2": "val2"},
 				},
 				Payload: "test",
 			},
@@ -254,11 +244,18 @@ func TestPlainTextHttpResponseWithHeaders(t *testing.T) {
 }
 
 func TestPlainTextResponseWithHeadersAndCookies(t *testing.T) {
+	cookies := NewHttpCookie(&http.Cookie{
+		Name:  "cookie1",
+		Value: "val1",
+	}, &http.Cookie{
+		Name:  "cookie2",
+		Value: "val2",
+	})
 	type args struct {
 		statusCode int
 		payload    string
-		headers    http.Header
-		cookies    []http.Cookie
+		headers    HttpHeaders
+		cookies    HttpCookies
 	}
 	tests := []struct {
 		name string
@@ -269,27 +266,16 @@ func TestPlainTextResponseWithHeadersAndCookies(t *testing.T) {
 			name: "construct",
 			args: args{
 				statusCode: 201,
-				headers:    http.Header{"x-Header1": {"val1"}, "x-Header2": {"val2"}},
-				cookies: []http.Cookie{{
-					Name:  "cookie1",
-					Value: "val1",
-				}, {
-					Name:  "cookie2",
-					Value: "val2",
-				}},
-				payload: "test",
+				headers:    HttpHeaders{"x-Header1": "val1", "x-Header2": "val2"},
+				cookies:    cookies,
+				payload:    "test",
 			},
 			want: &HttpTextResponse{
 				HttpHeadersResponse: HttpHeadersResponse{
 					HttpStatusCode: 201,
-					HttpHeaders:    http.Header{"Content-Type": {"text/plain; charset=utf-8"}, "x-Header1": {"val1"}, "x-Header2": {"val2"}},
-					HttpCookies: NewHttpCookies([]http.Cookie{{
-						Name:  "cookie1",
-						Value: "val1",
-					}, {
-						Name:  "cookie2",
-						Value: "val2",
-					}}),
+					ContentType:    plainTextContentType,
+					HttpHeaders:    HttpHeaders{"x-Header1": "val1", "x-Header2": "val2"},
+					HttpCookies:    cookies,
 				},
 				Payload: "test",
 			},
@@ -319,8 +305,7 @@ func TestHtmlHttpResponseOK(t *testing.T) {
 			want: &HttpTextResponse{
 				HttpHeadersResponse: HttpHeadersResponse{
 					HttpStatusCode: http.StatusOK,
-					HttpHeaders:    http.Header{"Content-Type": {"text/html; charset=utf-8"}},
-					HttpCookies:    NewHttpCookies(nil),
+					ContentType:    htmlContentType,
 				},
 				Payload: "hello",
 			},
@@ -354,8 +339,7 @@ func TestHtmlHttpResponse(t *testing.T) {
 			want: &HttpTextResponse{
 				HttpHeadersResponse: HttpHeadersResponse{
 					HttpStatusCode: 400,
-					HttpHeaders:    http.Header{"Content-Type": {"text/html; charset=utf-8"}},
-					HttpCookies:    NewHttpCookies(nil),
+					ContentType:    htmlContentType,
 				},
 				Payload: "hello",
 			},
@@ -374,7 +358,7 @@ func TestHtmlHttpResponseWithHeaders(t *testing.T) {
 	type args struct {
 		statusCode int
 		payload    string
-		headers    http.Header
+		headers    HttpHeaders
 	}
 	tests := []struct {
 		name string
@@ -385,14 +369,14 @@ func TestHtmlHttpResponseWithHeaders(t *testing.T) {
 			name: "construct",
 			args: args{
 				statusCode: 201,
-				headers:    http.Header{"x-Header1": {"val1"}, "x-Header2": {"val2"}},
+				headers:    HttpHeaders{"x-Header1": "val1", "x-Header2": "val2"},
 				payload:    "test",
 			},
 			want: &HttpTextResponse{
 				HttpHeadersResponse: HttpHeadersResponse{
 					HttpStatusCode: 201,
-					HttpHeaders:    http.Header{"Content-Type": {"text/html; charset=utf-8"}, "x-Header1": {"val1"}, "x-Header2": {"val2"}},
-					HttpCookies:    NewHttpCookies(nil),
+					ContentType:    htmlContentType,
+					HttpHeaders:    HttpHeaders{"x-Header1": "val1", "x-Header2": "val2"},
 				},
 				Payload: "test",
 			},
@@ -408,11 +392,18 @@ func TestHtmlHttpResponseWithHeaders(t *testing.T) {
 }
 
 func TestHtmlResponseWithHeadersAndCookies(t *testing.T) {
+	cookies := NewHttpCookie(&http.Cookie{
+		Name:  "cookie1",
+		Value: "val1",
+	}, &http.Cookie{
+		Name:  "cookie2",
+		Value: "val2",
+	})
 	type args struct {
 		statusCode int
 		payload    string
-		headers    http.Header
-		cookies    []http.Cookie
+		headers    HttpHeaders
+		cookies    HttpCookies
 	}
 	tests := []struct {
 		name string
@@ -423,27 +414,16 @@ func TestHtmlResponseWithHeadersAndCookies(t *testing.T) {
 			name: "construct",
 			args: args{
 				statusCode: 201,
-				headers:    http.Header{"x-Header1": {"val1"}, "x-Header2": {"val2"}},
-				cookies: []http.Cookie{{
-					Name:  "cookie1",
-					Value: "val1",
-				}, {
-					Name:  "cookie2",
-					Value: "val2",
-				}},
-				payload: "test",
+				headers:    HttpHeaders{"x-Header1": "val1", "x-Header2": "val2"},
+				cookies:    cookies,
+				payload:    "test",
 			},
 			want: &HttpTextResponse{
 				HttpHeadersResponse: HttpHeadersResponse{
 					HttpStatusCode: 201,
-					HttpHeaders:    http.Header{"Content-Type": {"text/html; charset=utf-8"}, "x-Header1": {"val1"}, "x-Header2": {"val2"}},
-					HttpCookies: NewHttpCookies([]http.Cookie{{
-						Name:  "cookie1",
-						Value: "val1",
-					}, {
-						Name:  "cookie2",
-						Value: "val2",
-					}}),
+					ContentType:    htmlContentType,
+					HttpHeaders:    HttpHeaders{"x-Header1": "val1", "x-Header2": "val2"},
+					HttpCookies:    cookies,
 				},
 				Payload: "test",
 			},

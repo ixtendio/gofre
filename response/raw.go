@@ -2,7 +2,8 @@ package response
 
 import (
 	"fmt"
-	"github.com/ixtendio/gofre/request"
+	"github.com/ixtendio/gofre/router/path"
+
 	"io"
 	"net/http"
 )
@@ -14,7 +15,7 @@ type HttpRawResponse struct {
 	WriteFunc RawWriterFunc
 }
 
-func (r *HttpRawResponse) Write(w http.ResponseWriter, req request.HttpRequest) error {
+func (r *HttpRawResponse) Write(w http.ResponseWriter, req path.MatchingContext) error {
 	// write the headers
 	if err := r.HttpHeadersResponse.Write(w, req); err != nil {
 		return err
@@ -33,26 +34,26 @@ func RawWriterHttpResponse(contentType string, writeFunc RawWriterFunc) *HttpRaw
 }
 
 // RawWriterHttpResponseWithHeaders creates a 200 success reader response with custom headers
-func RawWriterHttpResponseWithHeaders(statusCode int, contentType string, headers http.Header, writeFunc RawWriterFunc) *HttpRawResponse {
+// The headers, if present, once will be written to output will be added in the pool for re-use
+func RawWriterHttpResponseWithHeaders(statusCode int, contentType string, headers HttpHeaders, writeFunc RawWriterFunc) *HttpRawResponse {
 	return RawWriterHttpResponseWithHeadersAndCookies(statusCode, contentType, headers, nil, writeFunc)
 }
 
 // RawWriterHttpResponseWithCookies creates a 200 success reader response with custom cookies
-func RawWriterHttpResponseWithCookies(statusCode int, contentType string, cookies []http.Cookie, writeFunc RawWriterFunc) *HttpRawResponse {
+// The cookies, if present, once will be written to output will be added in the pool for re-use
+func RawWriterHttpResponseWithCookies(statusCode int, contentType string, cookies HttpCookies, writeFunc RawWriterFunc) *HttpRawResponse {
 	return RawWriterHttpResponseWithHeadersAndCookies(statusCode, contentType, nil, cookies, writeFunc)
 }
 
 // RawWriterHttpResponseWithHeadersAndCookies creates a 200 success reader response with custom headers and cookies
-func RawWriterHttpResponseWithHeadersAndCookies(statusCode int, contentType string, headers http.Header, cookies []http.Cookie, writeFunc RawWriterFunc) *HttpRawResponse {
-	if headers == nil {
-		headers = make(http.Header, 1)
-	}
-	headers.Set("Content-Type", contentType)
+// The headers and cookies, if present, once will be written to output will be added in the pool for re-use
+func RawWriterHttpResponseWithHeadersAndCookies(statusCode int, contentType string, headers HttpHeaders, cookies HttpCookies, writeFunc RawWriterFunc) *HttpRawResponse {
 	return &HttpRawResponse{
 		HttpHeadersResponse: HttpHeadersResponse{
 			HttpStatusCode: statusCode,
+			ContentType:    contentType,
 			HttpHeaders:    headers,
-			HttpCookies:    NewHttpCookies(cookies),
+			HttpCookies:    cookies,
 		},
 		WriteFunc: writeFunc,
 	}

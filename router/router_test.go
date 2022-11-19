@@ -3,7 +3,8 @@ package router
 import (
 	"context"
 	"fmt"
-	"github.com/ixtendio/gofre/request"
+	"github.com/ixtendio/gofre/router/path"
+
 	"github.com/ixtendio/gofre/response"
 	"log"
 	"net/http"
@@ -51,12 +52,12 @@ func TestRouter_ServeHTTP(t *testing.T) {
 		responseData    string
 		responseHeaders http.Header
 	}
-	var gotRequest request.HttpRequest
-	okHandler := func(ctx context.Context, r request.HttpRequest) (response.HttpResponse, error) {
+	var gotRequest path.MatchingContext
+	okHandler := func(ctx context.Context, r path.MatchingContext) (response.HttpResponse, error) {
 		gotRequest = r
 		return response.PlainTextHttpResponseOK("ok"), nil
 	}
-	errorHandler := func(ctx context.Context, r request.HttpRequest) (response.HttpResponse, error) {
+	errorHandler := func(ctx context.Context, r path.MatchingContext) (response.HttpResponse, error) {
 		gotRequest = r
 		return nil, fmt.Errorf("a simple error")
 	}
@@ -149,7 +150,7 @@ func TestRouter_ServeHTTP(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		gotRequest = request.HttpRequest{}
+		gotRequest = path.MatchingContext{}
 		t.Run(tt.name, func(t *testing.T) {
 			tt.router.ServeHTTP(tt.args.writer, tt.args.req)
 			if tt.want.handlerInvoked {

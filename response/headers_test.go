@@ -1,7 +1,7 @@
 package response
 
 import (
-	"github.com/ixtendio/gofre/request"
+	"github.com/ixtendio/gofre/router/path"
 	"net/http"
 	"net/http/httptest"
 	"reflect"
@@ -9,11 +9,11 @@ import (
 )
 
 func TestHttpHeadersResponse_Write(t *testing.T) {
-	req := request.HttpRequest{R: &http.Request{}}
+	req := path.MatchingContext{R: &http.Request{}}
 	type args struct {
 		httpStatusCode int
-		httpHeaders    http.Header
-		httpCookies    []http.Cookie
+		httpHeaders    HttpHeaders
+		httpCookies    HttpCookies
 	}
 	type want struct {
 		httpCode    int
@@ -29,8 +29,7 @@ func TestHttpHeadersResponse_Write(t *testing.T) {
 			name: "without cookies",
 			args: args{
 				httpStatusCode: 200,
-				httpHeaders:    http.Header{"Content-Type": {"text/plain; charset=utf-8"}},
-				httpCookies:    nil,
+				httpHeaders:    HttpHeaders{"Content-Type": "text/plain; charset=utf-8"},
 			},
 			want: want{
 				httpCode:    200,
@@ -41,11 +40,11 @@ func TestHttpHeadersResponse_Write(t *testing.T) {
 			name: "with cookies",
 			args: args{
 				httpStatusCode: 200,
-				httpHeaders:    http.Header{"Content-Type": {"text/plain; charset=utf-8"}},
-				httpCookies: []http.Cookie{{
+				httpHeaders:    HttpHeaders{"Content-Type": "text/plain; charset=utf-8"},
+				httpCookies: NewHttpCookie(&http.Cookie{
 					Name:  "cookie1",
 					Value: "val1",
-				}},
+				}),
 			},
 			want: want{
 				httpCode:    200,
@@ -74,16 +73,8 @@ func TestHttpHeadersResponse_Write(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			resp := &HttpHeadersResponse{
 				HttpStatusCode: tt.args.httpStatusCode,
-			}
-			if tt.args.httpHeaders != nil {
-				for k, v := range tt.args.httpHeaders {
-					for _, e := range v {
-						resp.Headers().Add(k, e)
-					}
-				}
-			}
-			for _, k := range tt.args.httpCookies {
-				resp.Cookies().Add(k)
+				HttpHeaders:    tt.args.httpHeaders,
+				HttpCookies:    tt.args.httpCookies,
 			}
 			responseRecorder := httptest.NewRecorder()
 			err := resp.Write(responseRecorder, req)

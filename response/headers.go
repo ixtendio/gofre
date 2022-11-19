@@ -2,13 +2,14 @@ package response
 
 import (
 	"errors"
-	"github.com/ixtendio/gofre/request"
+	"github.com/ixtendio/gofre/router/path"
 	"net/http"
 )
 
 type HttpHeadersResponse struct {
 	HttpStatusCode int
-	HttpHeaders    http.Header
+	ContentType    string
+	HttpHeaders    HttpHeaders
 	HttpCookies    HttpCookies
 }
 
@@ -19,21 +20,30 @@ func (r *HttpHeadersResponse) StatusCode() int {
 	return r.HttpStatusCode
 }
 
-func (r *HttpHeadersResponse) Headers() http.Header {
+func (r *HttpHeadersResponse) Headers() HttpHeaders {
 	if r.HttpHeaders == nil {
-		r.HttpHeaders = http.Header{}
+		r.HttpHeaders = NewHttpHeaders()
 	}
 	return r.HttpHeaders
 }
 
 func (r *HttpHeadersResponse) Cookies() HttpCookies {
 	if r.HttpCookies == nil {
-		r.HttpCookies = HttpCookies{}
+		r.HttpCookies = NewEmptyHttpCookie()
 	}
 	return r.HttpCookies
 }
 
-func (r *HttpHeadersResponse) Write(w http.ResponseWriter, req request.HttpRequest) error {
+func (r *HttpHeadersResponse) Write(w http.ResponseWriter, req path.MatchingContext) error {
+	defer func() {
+		if r.HttpHeaders != nil {
+			r.HttpHeaders.Release()
+		}
+		if r.HttpCookies != nil {
+			r.HttpCookies.Release()
+		}
+	}()
+
 	statusCode := r.StatusCode()
 	if statusCode < 100 || statusCode > 999 {
 		return errors.New("http status code should be between 100 and 999")
@@ -42,18 +52,24 @@ func (r *HttpHeadersResponse) Write(w http.ResponseWriter, req request.HttpReque
 	// Write the cookies
 	if r.HttpCookies != nil {
 		for _, cookie := range r.HttpCookies {
-			http.SetCookie(w, &cookie)
+			http.SetCookie(w, cookie)
 		}
 	}
 
+	header := w.Header()
+
 	// Write the headers
-	w.Header().Set("X-Content-Type-Options", "nosniff")
 	if r.HttpHeaders != nil {
 		for k, v := range r.HttpHeaders {
-			for _, e := range v {
-				w.Header().Add(k, e)
-			}
+			header.Set(k, v)
 		}
+	}
+
+	if len(header.Get(HeaderContentType)) == 0 && len(r.ContentType) > 0 {
+		header.Set(HeaderContentType, r.ContentType)
+	}
+	if len(header.Get(HeaderContentTypeOptions)) == 0 {
+		header.Set(HeaderContentTypeOptions, "nosniff")
 	}
 
 	// Write the status code to the response.

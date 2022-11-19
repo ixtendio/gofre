@@ -1,6 +1,7 @@
 package path
 
 import (
+	"net/http"
 	"net/url"
 )
 
@@ -19,8 +20,19 @@ type UrlSegment struct {
 	matchType  MatchType
 }
 
+func (s *UrlSegment) Reset() {
+	s.startIndex = 0
+	s.endIndex = 0
+	s.matchType = 0
+}
+
 type MatchingContext struct {
+	R            *http.Request
 	PathSegments []UrlSegment
+}
+
+func (c *MatchingContext) PathVar(name string) string {
+	return ""
 }
 
 func ParseURLPath(requestUrl *url.URL, mc *MatchingContext) {

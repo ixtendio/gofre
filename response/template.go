@@ -2,7 +2,8 @@ package response
 
 import (
 	"fmt"
-	"github.com/ixtendio/gofre/request"
+	"github.com/ixtendio/gofre/router/path"
+
 	html "html/template"
 	"io"
 	"net/http"
@@ -34,7 +35,7 @@ type HttpTemplateResponse struct {
 	Data     any
 }
 
-func (r *HttpTemplateResponse) Write(w http.ResponseWriter, req request.HttpRequest) error {
+func (r *HttpTemplateResponse) Write(w http.ResponseWriter, req path.MatchingContext) error {
 	// write the headers
 	if err := r.HttpHeadersResponse.Write(w, req); err != nil {
 		return err
@@ -57,32 +58,36 @@ func TemplateHttpResponseNotFound(template ExecutableTemplate, templateName stri
 }
 
 // TemplateHttpResponseWithHeaders creates an HTML response with custom headers
-func TemplateHttpResponseWithHeaders(template ExecutableTemplate, statusCode int, templateName string, templateData any, headers http.Header) *HttpTemplateResponse {
+// The headers, if present, once will be written to output will be added in the pool for re-use
+func TemplateHttpResponseWithHeaders(template ExecutableTemplate, statusCode int, templateName string, templateData any, headers HttpHeaders) *HttpTemplateResponse {
 	return TemplateHttpResponseWithHeadersAndCookies(template, statusCode, templateName, templateData, headers, nil)
 }
 
 // TemplateHttpResponseWithCookies creates an HTML response with custom cookies
-func TemplateHttpResponseWithCookies(template ExecutableTemplate, statusCode int, templateName string, templateData any, cookies []http.Cookie) *HttpTemplateResponse {
+// The cookies, if present, once will be written to output will be added in the pool for re-use
+func TemplateHttpResponseWithCookies(template ExecutableTemplate, statusCode int, templateName string, templateData any, cookies HttpCookies) *HttpTemplateResponse {
 	return TemplateHttpResponseWithHeadersAndCookies(template, statusCode, templateName, templateData, nil, cookies)
 }
 
 // TemplateHttpResponseWithHeadersAndCookies creates an HTML response with custom headers and cookies
-func TemplateHttpResponseWithHeadersAndCookies(template ExecutableTemplate, statusCode int, templateName string, templateData any, headers http.Header, cookies []http.Cookie) *HttpTemplateResponse {
-	if headers == nil {
-		headers = make(http.Header, 1)
-	}
-	if len(headers.Get("Content-Type")) == 0 {
+// The headers and cookies, if present, once will be written to output will be added in the pool for re-use
+func TemplateHttpResponseWithHeadersAndCookies(template ExecutableTemplate, statusCode int, templateName string, templateData any, headers HttpHeaders, cookies HttpCookies) *HttpTemplateResponse {
+	var contentType string
+	if headers != nil && len(headers[HeaderContentType]) > 0 {
+		contentType = headers[HeaderContentType]
+	} else {
 		if _, ok := template.(*html.Template); ok {
-			headers.Set("Content-Type", htmlContentType)
+			contentType = htmlContentType
 		} else {
-			headers.Set("Content-Type", plainTextContentType)
+			contentType = plainTextContentType
 		}
 	}
 	return &HttpTemplateResponse{
 		HttpHeadersResponse: HttpHeadersResponse{
 			HttpStatusCode: statusCode,
+			ContentType:    contentType,
 			HttpHeaders:    headers,
-			HttpCookies:    NewHttpCookies(cookies),
+			HttpCookies:    cookies,
 		},
 		Template: template,
 		Name:     templateName,

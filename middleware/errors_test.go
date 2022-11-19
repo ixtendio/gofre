@@ -5,7 +5,8 @@ import (
 	goerrors "errors"
 	"github.com/ixtendio/gofre/errors"
 	"github.com/ixtendio/gofre/handler"
-	"github.com/ixtendio/gofre/request"
+	"github.com/ixtendio/gofre/router/path"
+
 	"github.com/ixtendio/gofre/response"
 	"net/http"
 	"reflect"
@@ -27,7 +28,7 @@ func TestErrResponse(t *testing.T) {
 		{
 			name: "ErrAccessDenied => StatusForbidden",
 			args: args{
-				handler: func(ctx context.Context, r request.HttpRequest) (response.HttpResponse, error) {
+				handler: func(ctx context.Context, r path.MatchingContext) (response.HttpResponse, error) {
 					return nil, errors.ErrAccessDenied
 				},
 			},
@@ -36,7 +37,7 @@ func TestErrResponse(t *testing.T) {
 		{
 			name: "ErrWrongCredentials => StatusForbidden",
 			args: args{
-				handler: func(ctx context.Context, r request.HttpRequest) (response.HttpResponse, error) {
+				handler: func(ctx context.Context, r path.MatchingContext) (response.HttpResponse, error) {
 					return nil, errors.ErrWrongCredentials
 				},
 			},
@@ -45,7 +46,7 @@ func TestErrResponse(t *testing.T) {
 		{
 			name: "ErrUnauthorizedRequest => StatusUnauthorized",
 			args: args{
-				handler: func(ctx context.Context, r request.HttpRequest) (response.HttpResponse, error) {
+				handler: func(ctx context.Context, r path.MatchingContext) (response.HttpResponse, error) {
 					return nil, errors.ErrUnauthorizedRequest
 				},
 			},
@@ -54,7 +55,7 @@ func TestErrResponse(t *testing.T) {
 		{
 			name: "ErrObjectNotFound => StatusNotFound",
 			args: args{
-				handler: func(ctx context.Context, r request.HttpRequest) (response.HttpResponse, error) {
+				handler: func(ctx context.Context, r path.MatchingContext) (response.HttpResponse, error) {
 					return nil, errors.NewObjectNotFoundWithMessage("object not found")
 				},
 			},
@@ -63,7 +64,7 @@ func TestErrResponse(t *testing.T) {
 		{
 			name: "ErrBadRequest => StatusBadRequest",
 			args: args{
-				handler: func(ctx context.Context, r request.HttpRequest) (response.HttpResponse, error) {
+				handler: func(ctx context.Context, r path.MatchingContext) (response.HttpResponse, error) {
 					return nil, errors.NewBadRequestWithMessage("invalid request")
 				},
 			},
@@ -72,7 +73,7 @@ func TestErrResponse(t *testing.T) {
 		{
 			name: "custom error => StatusInternalServerError",
 			args: args{
-				handler: func(ctx context.Context, r request.HttpRequest) (response.HttpResponse, error) {
+				handler: func(ctx context.Context, r path.MatchingContext) (response.HttpResponse, error) {
 					return nil, goerrors.New("custom error")
 				},
 			},
@@ -81,7 +82,7 @@ func TestErrResponse(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			resp, err := ErrResponse(responseSupplier)(tt.args.handler)(context.Background(), request.HttpRequest{})
+			resp, err := ErrResponse(responseSupplier)(tt.args.handler)(context.Background(), path.MatchingContext{})
 			if err != nil {
 				t.Fatalf("ErrResponse() returned error: %v", err)
 			}
@@ -106,9 +107,9 @@ func TestErrJsonResponse(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			resp, err := ErrJsonResponse()(func(ctx context.Context, r request.HttpRequest) (response.HttpResponse, error) {
+			resp, err := ErrJsonResponse()(func(ctx context.Context, r path.MatchingContext) (response.HttpResponse, error) {
 				return nil, errors.ErrUnauthorizedRequest
-			})(context.Background(), request.HttpRequest{})
+			})(context.Background(), path.MatchingContext{})
 			if err != nil {
 				t.Fatalf("ErrJsonResponse() returned error: %v", err)
 			}

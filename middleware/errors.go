@@ -4,7 +4,8 @@ import (
 	"context"
 	"github.com/ixtendio/gofre/errors"
 	"github.com/ixtendio/gofre/handler"
-	"github.com/ixtendio/gofre/request"
+	"github.com/ixtendio/gofre/router/path"
+
 	"github.com/ixtendio/gofre/response"
 	"net/http"
 )
@@ -21,7 +22,7 @@ func ErrJsonResponse() Middleware {
 
 func ErrResponse(responseSupplier ResponseSupplier) Middleware {
 	return func(handler handler.Handler) handler.Handler {
-		return func(ctx context.Context, req request.HttpRequest) (response.HttpResponse, error) {
+		return func(ctx context.Context, req path.MatchingContext) (response.HttpResponse, error) {
 			resp, err := handler(ctx, req)
 			if err != nil {
 				statusCode := http.StatusInternalServerError

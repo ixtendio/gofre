@@ -2,7 +2,8 @@ package response
 
 import (
 	"fmt"
-	"github.com/ixtendio/gofre/request"
+	"github.com/ixtendio/gofre/router/path"
+
 	"html/template"
 	"io"
 	"net/http"
@@ -28,11 +29,11 @@ var testTemplate = &mockTemplate{}
 var htmlTemplate = &template.Template{}
 
 func TestHttpTemplateResponse_Write(t *testing.T) {
-	req := request.HttpRequest{R: &http.Request{}}
+	req := path.MatchingContext{R: &http.Request{}}
 	type args struct {
 		httpStatusCode int
-		httpHeaders    http.Header
-		httpCookies    []http.Cookie
+		httpHeaders    HttpHeaders
+		httpCookies    HttpCookies
 		templateName   string
 		templateData   any
 	}
@@ -51,11 +52,11 @@ func TestHttpTemplateResponse_Write(t *testing.T) {
 			name: "valid output",
 			args: args{
 				httpStatusCode: 210,
-				httpHeaders:    http.Header{"Header1": {"val1"}},
-				httpCookies: []http.Cookie{{
+				httpHeaders:    HttpHeaders{"Header1": "val1"},
+				httpCookies: NewHttpCookie(&http.Cookie{
 					Name:  "cookie3",
 					Value: "val3",
-				}},
+				}),
 				templateName: "not_found",
 				templateData: map[string]string{"key1": "val1", "key2": "val2"},
 			},
@@ -79,20 +80,12 @@ func TestHttpTemplateResponse_Write(t *testing.T) {
 			resp := &HttpTemplateResponse{
 				HttpHeadersResponse: HttpHeadersResponse{
 					HttpStatusCode: tt.args.httpStatusCode,
+					HttpHeaders:    tt.args.httpHeaders,
+					HttpCookies:    tt.args.httpCookies,
 				},
 				Template: testTemplate,
 				Name:     tt.args.templateName,
 				Data:     tt.args.templateData,
-			}
-			if tt.args.httpHeaders != nil {
-				for k, v := range tt.args.httpHeaders {
-					for _, e := range v {
-						resp.Headers().Add(k, e)
-					}
-				}
-			}
-			for _, k := range tt.args.httpCookies {
-				resp.Cookies().Add(k)
 			}
 			responseRecorder := httptest.NewRecorder()
 			err := resp.Write(responseRecorder, req)
@@ -135,8 +128,7 @@ func TestTemplateHttpResponseOK(t *testing.T) {
 			want: &HttpTemplateResponse{
 				HttpHeadersResponse: HttpHeadersResponse{
 					HttpStatusCode: 200,
-					HttpHeaders:    http.Header{"Content-Type": {"text/plain; charset=utf-8"}},
-					HttpCookies:    NewHttpCookies(nil),
+					ContentType:    plainTextContentType,
 				},
 				Template: testTemplate,
 				Name:     "index",
@@ -174,8 +166,7 @@ func TestTemplateHttpResponseNotFound(t *testing.T) {
 			want: &HttpTemplateResponse{
 				HttpHeadersResponse: HttpHeadersResponse{
 					HttpStatusCode: 404,
-					HttpHeaders:    http.Header{"Content-Type": {"text/plain; charset=utf-8"}},
-					HttpCookies:    NewHttpCookies(nil),
+					ContentType:    plainTextContentType,
 				},
 				Template: testTemplate,
 				Name:     "index",
@@ -198,7 +189,7 @@ func TestTemplateHttpResponseWithHeaders(t *testing.T) {
 		statusCode   int
 		templateName string
 		templateData any
-		headers      http.Header
+		headers      HttpHeaders
 	}
 	tests := []struct {
 		name string
@@ -212,13 +203,13 @@ func TestTemplateHttpResponseWithHeaders(t *testing.T) {
 				statusCode:   500,
 				templateName: "index",
 				templateData: "data",
-				headers:      http.Header{"x-Header1": {"val1"}, "x-Header2": {"val2"}},
+				headers:      HttpHeaders{"x-Header1": "val1", "x-Header2": "val2"},
 			},
 			want: &HttpTemplateResponse{
 				HttpHeadersResponse: HttpHeadersResponse{
 					HttpStatusCode: 500,
-					HttpHeaders:    http.Header{"Content-Type": {"text/plain; charset=utf-8"}, "x-Header1": {"val1"}, "x-Header2": {"val2"}},
-					HttpCookies:    NewHttpCookies(nil),
+					ContentType:    plainTextContentType,
+					HttpHeaders:    HttpHeaders{"x-Header1": "val1", "x-Header2": "val2"},
 				},
 				Template: testTemplate,
 				Name:     "index",
@@ -236,12 +227,19 @@ func TestTemplateHttpResponseWithHeaders(t *testing.T) {
 }
 
 func TestTemplateHttpResponseWithCookies(t *testing.T) {
+	cookies := NewHttpCookie(&http.Cookie{
+		Name:  "cookie1",
+		Value: "val1",
+	}, &http.Cookie{
+		Name:  "cookie2",
+		Value: "val2",
+	})
 	type args struct {
 		template     ExecutableTemplate
 		statusCode   int
 		templateName string
 		templateData any
-		cookies      []http.Cookie
+		cookies      HttpCookies
 	}
 	tests := []struct {
 		name string
@@ -255,25 +253,13 @@ func TestTemplateHttpResponseWithCookies(t *testing.T) {
 				statusCode:   500,
 				templateName: "index",
 				templateData: "data",
-				cookies: []http.Cookie{{
-					Name:  "cookie1",
-					Value: "val1",
-				}, {
-					Name:  "cookie2",
-					Value: "val2",
-				}},
+				cookies:      cookies,
 			},
 			want: &HttpTemplateResponse{
 				HttpHeadersResponse: HttpHeadersResponse{
 					HttpStatusCode: 500,
-					HttpHeaders:    http.Header{"Content-Type": {"text/plain; charset=utf-8"}},
-					HttpCookies: NewHttpCookies([]http.Cookie{{
-						Name:  "cookie1",
-						Value: "val1",
-					}, {
-						Name:  "cookie2",
-						Value: "val2",
-					}}),
+					ContentType:    plainTextContentType,
+					HttpCookies:    cookies,
 				},
 				Template: testTemplate,
 				Name:     "index",
@@ -291,13 +277,20 @@ func TestTemplateHttpResponseWithCookies(t *testing.T) {
 }
 
 func TestTemplateHttpResponseWithHeadersAndCookies(t *testing.T) {
+	cookies := NewHttpCookie(&http.Cookie{
+		Name:  "cookie1",
+		Value: "val1",
+	}, &http.Cookie{
+		Name:  "cookie2",
+		Value: "val2",
+	})
 	type args struct {
 		template     ExecutableTemplate
 		statusCode   int
 		templateName string
 		templateData any
-		headers      http.Header
-		cookies      []http.Cookie
+		headers      HttpHeaders
+		cookies      HttpCookies
 	}
 	tests := []struct {
 		name string
@@ -311,26 +304,15 @@ func TestTemplateHttpResponseWithHeadersAndCookies(t *testing.T) {
 				statusCode:   500,
 				templateName: "index",
 				templateData: "data",
-				headers:      http.Header{"x-Header1": {"val1"}, "x-Header2": {"val2"}},
-				cookies: []http.Cookie{{
-					Name:  "cookie1",
-					Value: "val1",
-				}, {
-					Name:  "cookie2",
-					Value: "val2",
-				}},
+				headers:      HttpHeaders{"x-Header1": "val1", "x-Header2": "val2"},
+				cookies:      cookies,
 			},
 			want: &HttpTemplateResponse{
 				HttpHeadersResponse: HttpHeadersResponse{
 					HttpStatusCode: 500,
-					HttpHeaders:    http.Header{"Content-Type": {"text/plain; charset=utf-8"}, "x-Header1": {"val1"}, "x-Header2": {"val2"}},
-					HttpCookies: NewHttpCookies([]http.Cookie{{
-						Name:  "cookie1",
-						Value: "val1",
-					}, {
-						Name:  "cookie2",
-						Value: "val2",
-					}}),
+					ContentType:    plainTextContentType,
+					HttpHeaders:    HttpHeaders{"x-Header1": "val1", "x-Header2": "val2"},
+					HttpCookies:    cookies,
 				},
 				Template: testTemplate,
 				Name:     "index",
@@ -344,13 +326,13 @@ func TestTemplateHttpResponseWithHeadersAndCookies(t *testing.T) {
 				statusCode:   500,
 				templateName: "index",
 				templateData: "data",
-				headers:      http.Header{"Content-Type": {"something"}},
+				headers:      HttpHeaders{"Content-Type": "something"},
 			},
 			want: &HttpTemplateResponse{
 				HttpHeadersResponse: HttpHeadersResponse{
 					HttpStatusCode: 500,
-					HttpHeaders:    http.Header{"Content-Type": {"something"}},
-					HttpCookies:    NewHttpCookies(nil),
+					ContentType:    "something",
+					HttpHeaders:    HttpHeaders{"Content-Type": "something"},
 				},
 				Template: testTemplate,
 				Name:     "index",
@@ -368,8 +350,7 @@ func TestTemplateHttpResponseWithHeadersAndCookies(t *testing.T) {
 			want: &HttpTemplateResponse{
 				HttpHeadersResponse: HttpHeadersResponse{
 					HttpStatusCode: 500,
-					HttpHeaders:    http.Header{"Content-Type": {"text/html; charset=utf-8"}},
-					HttpCookies:    NewHttpCookies(nil),
+					ContentType:    htmlContentType,
 				},
 				Template: htmlTemplate,
 				Name:     "index",

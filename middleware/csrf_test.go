@@ -4,7 +4,8 @@ import (
 	"context"
 	"github.com/ixtendio/gofre/cache"
 	"github.com/ixtendio/gofre/errors"
-	"github.com/ixtendio/gofre/request"
+	"github.com/ixtendio/gofre/router/path"
+
 	"github.com/ixtendio/gofre/response"
 	"net/http"
 	"testing"
@@ -72,13 +73,13 @@ func TestCSRFPrevention(t *testing.T) {
 				memoryCache.Add(tt.args.nonceInCache, CSRFExpirationTime)
 			}
 			m := CSRFPrevention(memoryCache)
-			_, err := m(func(ctx context.Context, r request.HttpRequest) (response.HttpResponse, error) {
+			_, err := m(func(ctx context.Context, r path.MatchingContext) (response.HttpResponse, error) {
 				nonce := GetCSRFNonceFromContext(ctx)
 				if nonce == "" {
 					t.Fatalf("CSRFPrevention() nonce is empty")
 				}
 				return response.PlainTextHttpResponseOK("ok"), nil
-			})(context.Background(), request.HttpRequest{R: tt.args.req})
+			})(context.Background(), path.MatchingContext{R: tt.args.req})
 
 			if err != tt.wantError {
 				t.Fatalf("CSRFPrevention() error = %v, want %v", err, tt.wantError)

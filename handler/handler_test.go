@@ -2,7 +2,8 @@ package handler
 
 import (
 	"context"
-	"github.com/ixtendio/gofre/request"
+	"github.com/ixtendio/gofre/router/path"
+
 	response2 "github.com/ixtendio/gofre/response"
 	"net/http"
 	"testing"
@@ -23,7 +24,7 @@ func TestHandler2Handler(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			response, err := Handler2Handler(tt.args.handler)(context.Background(), request.HttpRequest{})
+			response, err := Handler2Handler(tt.args.handler)(context.Background(), path.MatchingContext{})
 			if err != nil {
 				t.Fatalf("Handler2Handler() returned error: %v", err)
 			}
@@ -51,7 +52,7 @@ func TestHandlerFunc2Handler(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			response, err := Handler2Handler(tt.args.handlerFunc)(context.Background(), request.HttpRequest{})
+			response, err := Handler2Handler(tt.args.handlerFunc)(context.Background(), path.MatchingContext{})
 			if err != nil {
 				t.Fatalf("HandlerFunc2Handler() returned error: %v", err)
 			}

@@ -316,22 +316,22 @@ package path
 //			wantErr:     true,
 //		},
 //		{
-//			name:        "path Segment with triple asterix",
+//			name:        "path segment with triple asterix",
 //			pathSegment: "***",
 //			wantErr:     true,
 //		},
 //		{
-//			name:        "path Segment with double asterix and another text at start",
+//			name:        "path segment with double asterix and another text at start",
 //			pathSegment: "**abc",
 //			wantErr:     true,
 //		},
 //		{
-//			name:        "path Segment with double asterix and another text",
+//			name:        "path segment with double asterix and another text",
 //			pathSegment: "abc**def",
 //			wantErr:     true,
 //		},
 //		{
-//			name:        "path Segment with double asterix and another text at the end",
+//			name:        "path segment with double asterix and another text at the end",
 //			pathSegment: "bla**",
 //			wantErr:     true,
 //		},
@@ -351,31 +351,31 @@ package path
 //			wantErr:     false,
 //		},
 //		{
-//			name:        "valid path Segment with regex ?",
+//			name:        "valid path segment with regex ?",
 //			pathSegment: "?asd",
 //			wantErr:     false,
 //		},
 //		{
-//			name:        "valid path Segment with regex * at beginning",
+//			name:        "valid path segment with regex * at beginning",
 //			pathSegment: "*asd",
 //			wantErr:     false,
 //		},
 //		{
-//			name:        "valid path Segment with regex *",
+//			name:        "valid path segment with regex *",
 //			pathSegment: "a*sd",
 //			wantErr:     false,
 //		}, {
-//			name:        "valid path Segment with regex * at the end",
+//			name:        "valid path segment with regex * at the end",
 //			pathSegment: "asd*",
 //			wantErr:     false,
 //		},
 //		{
-//			name:        "valid path Segment with one asterix",
+//			name:        "valid path segment with one asterix",
 //			pathSegment: "*",
 //			wantErr:     false,
 //		},
 //		{
-//			name:        "valid path Segment with double asterix",
+//			name:        "valid path segment with double asterix",
 //			pathSegment: "**",
 //			wantErr:     false,
 //		},
@@ -572,7 +572,7 @@ package path
 //			want: MatchTypeCaptureVar,
 //		},
 //		{
-//			name: "literal matchType: first Segment",
+//			name: "literal matchType: first segment",
 //			patterns: patterns{
 //				pathPattern:    "/a/c/b",
 //				urlPathSegment: "a",
@@ -581,7 +581,7 @@ package path
 //			want: MatchTypeLiteral,
 //		},
 //		{
-//			name: "literal matchType: last Segment",
+//			name: "literal matchType: last segment",
 //			patterns: patterns{
 //				pathPattern:    "/a/c/b",
 //				urlPathSegment: "b",
@@ -609,7 +609,7 @@ package path
 //			want: MatchTypeUnknown,
 //		},
 //		{
-//			name: "constraint capture var matchType: first Segment",
+//			name: "constraint capture var matchType: first segment",
 //			patterns: patterns{
 //				pathPattern:    "/{a:\\d+}/c/b",
 //				urlPathSegment: "123",
@@ -618,7 +618,7 @@ package path
 //			want: MatchTypeConstraintCaptureVar,
 //		},
 //		{
-//			name: "constraint capture var matchType: last Segment",
+//			name: "constraint capture var matchType: last segment",
 //			patterns: patterns{
 //				pathPattern:    "/a/c/{b:\\d+}",
 //				urlPathSegment: "012",
@@ -664,7 +664,7 @@ package path
 //			want: MatchTypeMultipleSegments,
 //		},
 //		{
-//			name: "greedy matchType: when next Segment matches the current one",
+//			name: "greedy matchType: when next segment matches the current one",
 //			patterns: patterns{
 //				pathPattern:    "/a/**/g",
 //				urlPathSegment: "g",
@@ -682,7 +682,7 @@ package path
 //			want: MatchTypeRegex,
 //		},
 //		{
-//			name: "regex matchType: last Segment",
+//			name: "regex matchType: last segment",
 //			patterns: patterns{
 //				pathPattern:    "/a/a*d",
 //				urlPathSegment: "abcd",

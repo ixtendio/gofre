@@ -1,7 +1,7 @@
 package response
 
 import (
-	"github.com/ixtendio/gofre/request"
+	"github.com/ixtendio/gofre/router/path"
 	"net/http"
 	"net/http/httptest"
 	"reflect"
@@ -9,7 +9,7 @@ import (
 )
 
 func TestHttpRedirectResponse_Write(t *testing.T) {
-	req := request.HttpRequest{R: &http.Request{}}
+	req := path.MatchingContext{R: &http.Request{}}
 	type args struct {
 		url            string
 		httpStatusCode int

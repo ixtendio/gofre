@@ -2,7 +2,8 @@ package response
 
 import (
 	"bytes"
-	"github.com/ixtendio/gofre/request"
+	"github.com/ixtendio/gofre/router/path"
+
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -31,8 +32,7 @@ func TestStreamHttpResponse(t *testing.T) {
 			want: &HttpStreamResponse{
 				HttpHeadersResponse: HttpHeadersResponse{
 					HttpStatusCode: 200,
-					HttpHeaders:    http.Header{"Content-Type": {"bytes"}},
-					HttpCookies:    nil,
+					ContentType:    "bytes",
 				},
 				Reader: testStreamReader,
 			},
@@ -52,7 +52,7 @@ func TestStreamHttpResponseWithHeaders(t *testing.T) {
 		statusCode  int
 		reader      io.Reader
 		contentType string
-		headers     http.Header
+		headers     HttpHeaders
 	}
 	tests := []struct {
 		name string
@@ -65,12 +65,13 @@ func TestStreamHttpResponseWithHeaders(t *testing.T) {
 				statusCode:  201,
 				reader:      testStreamReader,
 				contentType: "bytes",
-				headers:     http.Header{"h1": {"v1"}},
+				headers:     HttpHeaders{"h1": "v1"},
 			},
 			want: &HttpStreamResponse{
 				HttpHeadersResponse: HttpHeadersResponse{
 					HttpStatusCode: 201,
-					HttpHeaders:    http.Header{"Content-Type": {"bytes"}, "h1": {"v1"}},
+					ContentType:    "bytes",
+					HttpHeaders:    HttpHeaders{"h1": "v1"},
 					HttpCookies:    nil,
 				},
 				Reader: testStreamReader,
@@ -87,11 +88,15 @@ func TestStreamHttpResponseWithHeaders(t *testing.T) {
 }
 
 func TestStreamHttpResponseWithCookies(t *testing.T) {
+	cookies := NewHttpCookie(&http.Cookie{
+		Name:  "cookie3",
+		Value: "val3",
+	})
 	type args struct {
 		statusCode  int
 		reader      io.Reader
 		contentType string
-		cookies     []http.Cookie
+		cookies     HttpCookies
 	}
 	tests := []struct {
 		name string
@@ -104,19 +109,13 @@ func TestStreamHttpResponseWithCookies(t *testing.T) {
 				statusCode:  201,
 				reader:      testStreamReader,
 				contentType: "bytes",
-				cookies: []http.Cookie{{
-					Name:  "cookie3",
-					Value: "val3",
-				}},
+				cookies:     cookies,
 			},
 			want: &HttpStreamResponse{
 				HttpHeadersResponse: HttpHeadersResponse{
 					HttpStatusCode: 201,
-					HttpHeaders:    http.Header{"Content-Type": {"bytes"}},
-					HttpCookies: NewHttpCookies([]http.Cookie{{
-						Name:  "cookie3",
-						Value: "val3",
-					}}),
+					ContentType:    "bytes",
+					HttpCookies:    cookies,
 				},
 				Reader: testStreamReader,
 			},
@@ -132,12 +131,16 @@ func TestStreamHttpResponseWithCookies(t *testing.T) {
 }
 
 func TestStreamHttpResponseWithHeadersAndCookies(t *testing.T) {
+	cookies := NewHttpCookie(&http.Cookie{
+		Name:  "cookie4",
+		Value: "val4",
+	})
 	type args struct {
 		statusCode  int
 		reader      io.Reader
 		contentType string
-		headers     http.Header
-		cookies     []http.Cookie
+		headers     HttpHeaders
+		cookies     HttpCookies
 	}
 	tests := []struct {
 		name string
@@ -150,20 +153,15 @@ func TestStreamHttpResponseWithHeadersAndCookies(t *testing.T) {
 				statusCode:  201,
 				reader:      testStreamReader,
 				contentType: "bytes",
-				headers:     http.Header{"h2": {"v2"}},
-				cookies: []http.Cookie{{
-					Name:  "cookie4",
-					Value: "val4",
-				}},
+				headers:     HttpHeaders{"h2": "v2"},
+				cookies:     cookies,
 			},
 			want: &HttpStreamResponse{
 				HttpHeadersResponse: HttpHeadersResponse{
 					HttpStatusCode: 201,
-					HttpHeaders:    http.Header{"Content-Type": {"bytes"}, "h2": {"v2"}},
-					HttpCookies: NewHttpCookies([]http.Cookie{{
-						Name:  "cookie4",
-						Value: "val4",
-					}}),
+					ContentType:    "bytes",
+					HttpHeaders:    HttpHeaders{"h2": "v2"},
+					HttpCookies:    cookies,
 				},
 				Reader: testStreamReader,
 			},
@@ -179,11 +177,18 @@ func TestStreamHttpResponseWithHeadersAndCookies(t *testing.T) {
 }
 
 func TestHttpStreamResponse_Write(t *testing.T) {
-	req := request.HttpRequest{R: &http.Request{}}
+	cookies := NewHttpCookie(&http.Cookie{
+		Name:  "cookie1",
+		Value: "val1",
+	}, &http.Cookie{
+		Name:  "cookie2",
+		Value: "val2",
+	})
+	req := path.MatchingContext{R: &http.Request{}}
 	type args struct {
 		httpStatusCode int
-		httpHeaders    http.Header
-		httpCookies    []http.Cookie
+		httpHeaders    HttpHeaders
+		httpCookies    HttpCookies
 		payload        io.Reader
 	}
 	type want struct {
@@ -226,15 +231,9 @@ func TestHttpStreamResponse_Write(t *testing.T) {
 			name: "with body headers and cookies",
 			args: args{
 				httpStatusCode: 201,
-				httpHeaders:    http.Header{"Content-Type": {"bytes"}},
-				httpCookies: []http.Cookie{{
-					Name:  "cookie1",
-					Value: "val1",
-				}, {
-					Name:  "cookie2",
-					Value: "val2",
-				}},
-				payload: bytes.NewBufferString("hello"),
+				httpHeaders:    HttpHeaders{"Content-Type": "bytes"},
+				httpCookies:    cookies,
+				payload:        bytes.NewBufferString("hello"),
 			},
 			want: want{
 				httpCode:    201,
@@ -256,18 +255,10 @@ func TestHttpStreamResponse_Write(t *testing.T) {
 			resp := &HttpStreamResponse{
 				HttpHeadersResponse: HttpHeadersResponse{
 					HttpStatusCode: tt.args.httpStatusCode,
+					HttpCookies:    tt.args.httpCookies,
+					HttpHeaders:    tt.args.httpHeaders,
 				},
 				Reader: tt.args.payload,
-			}
-			if tt.args.httpHeaders != nil {
-				for k, v := range tt.args.httpHeaders {
-					for _, e := range v {
-						resp.Headers().Add(k, e)
-					}
-				}
-			}
-			for _, k := range tt.args.httpCookies {
-				resp.Cookies().Add(k)
 			}
 			responseRecorder := httptest.NewRecorder()
 			err := resp.Write(responseRecorder, req)

@@ -2,7 +2,8 @@ package response
 
 import (
 	"context"
-	"github.com/ixtendio/gofre/request"
+	"github.com/ixtendio/gofre/router/path"
+
 	"net/http"
 	"net/http/httptest"
 	"reflect"
@@ -117,8 +118,7 @@ func TestSSEHttpResponse(t *testing.T) {
 			want: &HttpSSEResponse{
 				HttpHeadersResponse: HttpHeadersResponse{
 					HttpStatusCode: 200,
-					HttpHeaders:    http.Header{"Content-Type": {"text/event-stream"}, "Cache-Control": {"no-cache"}, "Connection": {"keep-alive"}},
-					HttpCookies:    NewHttpCookies(nil),
+					ContentType:    "text/event-stream",
 				},
 				EventGenerator: nilEventGen,
 			},
@@ -140,7 +140,7 @@ func TestSSEHttpResponse(t *testing.T) {
 func TestSSEHttpResponseWithHeaders(t *testing.T) {
 	type args struct {
 		ew      EventGenerator
-		headers http.Header
+		headers HttpHeaders
 	}
 	tests := []struct {
 		name string
@@ -151,13 +151,13 @@ func TestSSEHttpResponseWithHeaders(t *testing.T) {
 			name: "constructor",
 			args: args{
 				ew:      nilEventGen,
-				headers: http.Header{"h1": {"v1"}},
+				headers: HttpHeaders{"h1": "v1"},
 			},
 			want: &HttpSSEResponse{
 				HttpHeadersResponse: HttpHeadersResponse{
 					HttpStatusCode: 200,
-					HttpHeaders:    http.Header{"Content-Type": {"text/event-stream"}, "Cache-Control": {"no-cache"}, "Connection": {"keep-alive"}, "h1": {"v1"}},
-					HttpCookies:    NewHttpCookies(nil),
+					ContentType:    "text/event-stream",
+					HttpHeaders:    HttpHeaders{"h1": "v1"},
 				},
 				EventGenerator: nilEventGen,
 			},
@@ -177,10 +177,14 @@ func TestSSEHttpResponseWithHeaders(t *testing.T) {
 }
 
 func TestSSEHttpResponseWithHeadersAndCookies(t *testing.T) {
+	cookies := NewHttpCookie(&http.Cookie{
+		Name:  "cookie3",
+		Value: "val3",
+	})
 	type args struct {
 		ew      EventGenerator
-		headers http.Header
-		cookies []http.Cookie
+		headers HttpHeaders
+		cookies HttpCookies
 	}
 	tests := []struct {
 		name string
@@ -191,20 +195,15 @@ func TestSSEHttpResponseWithHeadersAndCookies(t *testing.T) {
 			name: "constructor",
 			args: args{
 				ew:      nilEventGen,
-				headers: http.Header{"h1": {"v1"}},
-				cookies: []http.Cookie{{
-					Name:  "cookie3",
-					Value: "val3",
-				}},
+				headers: HttpHeaders{"h1": "v1"},
+				cookies: cookies,
 			},
 			want: &HttpSSEResponse{
 				HttpHeadersResponse: HttpHeadersResponse{
 					HttpStatusCode: 200,
-					HttpHeaders:    http.Header{"Content-Type": {"text/event-stream"}, "Cache-Control": {"no-cache"}, "Connection": {"keep-alive"}, "h1": {"v1"}},
-					HttpCookies: NewHttpCookies([]http.Cookie{{
-						Name:  "cookie3",
-						Value: "val3",
-					}}),
+					ContentType:    "text/event-stream",
+					HttpHeaders:    HttpHeaders{"h1": "v1"},
+					HttpCookies:    cookies,
 				},
 				EventGenerator: nilEventGen,
 			},
@@ -227,8 +226,8 @@ func TestHttpSSEResponse_Write(t *testing.T) {
 	type args struct {
 		request                                *http.Request
 		httpStatusCode                         int
-		httpHeaders                            http.Header
-		httpCookies                            []http.Cookie
+		httpHeaders                            HttpHeaders
+		httpCookies                            HttpCookies
 		eventGeneratorStartIndex               int
 		eventGeneratorCallRequestContextCancel bool
 	}
@@ -258,7 +257,7 @@ func TestHttpSSEResponse_Write(t *testing.T) {
 			},
 			want: want{
 				httpCode:    200,
-				httpHeaders: http.Header{"X-Content-Type-Options": {"nosniff"}},
+				httpHeaders: http.Header{"X-Content-Type-Options": {"nosniff"}, "Cache-Control": {"no-cache"}, "Connection": {"keep-alive"}, "Content-Type": {eventStreamContentType}},
 				body:        "event: message\ndata: msg1\nid: 1\n\nevent: message\ndata: msg2\nid: 2\n\n",
 			},
 		},
@@ -272,7 +271,7 @@ func TestHttpSSEResponse_Write(t *testing.T) {
 			},
 			want: want{
 				httpCode:    200,
-				httpHeaders: http.Header{"X-Content-Type-Options": {"nosniff"}},
+				httpHeaders: http.Header{"X-Content-Type-Options": {"nosniff"}, "Cache-Control": {"no-cache"}, "Connection": {"keep-alive"}, "Content-Type": {eventStreamContentType}},
 				body:        "event: message\ndata: msg1\nid: 1\n\nevent: message\ndata: msg2\nid: 2\n\nevent: message\ndata: msg3\nid: 3\n\n",
 			},
 		},
@@ -286,7 +285,7 @@ func TestHttpSSEResponse_Write(t *testing.T) {
 			},
 			want: want{
 				httpCode:    200,
-				httpHeaders: http.Header{"X-Content-Type-Options": {"nosniff"}},
+				httpHeaders: http.Header{"X-Content-Type-Options": {"nosniff"}, "Cache-Control": {"no-cache"}, "Connection": {"keep-alive"}, "Content-Type": {eventStreamContentType}},
 				body:        "event: message\ndata: msg2\nid: 2\n\nevent: message\ndata: msg3\nid: 3\n\n",
 			},
 		},
@@ -302,21 +301,14 @@ func TestHttpSSEResponse_Write(t *testing.T) {
 			resp := &HttpSSEResponse{
 				HttpHeadersResponse: HttpHeadersResponse{
 					HttpStatusCode: tt.args.httpStatusCode,
+					ContentType:    eventStreamContentType,
+					HttpHeaders:    tt.args.httpHeaders,
+					HttpCookies:    tt.args.httpCookies,
 				},
 				EventGenerator: eventGenerator,
 			}
-			if tt.args.httpHeaders != nil {
-				for k, v := range tt.args.httpHeaders {
-					for _, e := range v {
-						resp.Headers().Add(k, e)
-					}
-				}
-			}
-			for _, k := range tt.args.httpCookies {
-				resp.Cookies().Add(k)
-			}
 			responseRecorder := httptest.NewRecorder()
-			err := resp.Write(responseRecorder, request.HttpRequest{R: tt.args.request.WithContext(ctx)})
+			err := resp.Write(responseRecorder, path.MatchingContext{R: tt.args.request.WithContext(ctx)})
 			if tt.wantErr {
 				if err == nil {
 					t.Errorf("HttpSSEResponse() want error but got nil")

@@ -1,7 +1,7 @@
 package response
 
 import (
-	"github.com/ixtendio/gofre/request"
+	"github.com/ixtendio/gofre/router/path"
 	"net/http"
 )
 
@@ -10,7 +10,7 @@ type HttpRedirectResponse struct {
 	Url string
 }
 
-func (r *HttpRedirectResponse) Write(w http.ResponseWriter, req request.HttpRequest) error {
+func (r *HttpRedirectResponse) Write(w http.ResponseWriter, req path.MatchingContext) error {
 	http.Redirect(w, req.R, r.Url, r.HttpStatusCode)
 	return nil
 }

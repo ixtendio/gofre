@@ -4,7 +4,8 @@ import (
 	"context"
 	"github.com/ixtendio/gofre/errors"
 	"github.com/ixtendio/gofre/handler"
-	"github.com/ixtendio/gofre/request"
+	"github.com/ixtendio/gofre/router/path"
+
 	"github.com/ixtendio/gofre/response"
 	"testing"
 )
@@ -22,7 +23,7 @@ func TestCompressResponse(t *testing.T) {
 		{
 			name: "happy flow",
 			args: args{
-				handler: func(ctx context.Context, r request.HttpRequest) (response.HttpResponse, error) {
+				handler: func(ctx context.Context, r path.MatchingContext) (response.HttpResponse, error) {
 					return response.PlainTextHttpResponseOK("ok"), nil
 				},
 			},
@@ -31,7 +32,7 @@ func TestCompressResponse(t *testing.T) {
 		{
 			name: "the handler error should be returned",
 			args: args{
-				handler: func(ctx context.Context, r request.HttpRequest) (response.HttpResponse, error) {
+				handler: func(ctx context.Context, r path.MatchingContext) (response.HttpResponse, error) {
 					return nil, errors.ErrUnauthorizedRequest
 				},
 			},
@@ -40,7 +41,7 @@ func TestCompressResponse(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			resp, err := CompressResponse(tt.args.compressionLevel)(tt.args.handler)(context.Background(), request.HttpRequest{})
+			resp, err := CompressResponse(tt.args.compressionLevel)(tt.args.handler)(context.Background(), path.MatchingContext{})
 			if (err != nil) != tt.wantErr {
 				t.Errorf("CompressResponse() error = %v, wantErr %v", err, tt.wantErr)
 				return
