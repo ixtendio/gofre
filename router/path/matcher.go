@@ -6,21 +6,6 @@ import (
 	"strings"
 )
 
-/*
-	var nodeStackPool = sync.Pool{
-		New: func() interface{} {
-			arr := make([]stackSegment, MaxPathSegments)
-			return &arr
-		},
-	}
-
-	var urlSegmentMatchTypeStackPool = sync.Pool{
-		New: func() interface{} {
-			arr := make([]UrlSegment, MaxPathSegments)
-			return &arr
-		},
-	}
-*/
 type stackSegment struct {
 	currentNodeChildren uint16
 	urlSegmentIndex     uint8
@@ -159,36 +144,36 @@ func (m *Matcher) AddPattern(pattern *Pattern) error {
 	return nil
 }
 
-func (m *Matcher) CaptureVars(matchingPath string, p *Pattern, mc *MatchingContext) []CaptureVar {
-	if p == nil || p.captureVarsLen == 0 {
-		return nil
-	}
-	captureVars := make([]CaptureVar, p.captureVarsLen)
-	patternSegmentsLen := len(p.segments)
-	var psi int
-	var captureVarsIndex int
-	for i := 0; i < len(mc.PathSegments); i++ {
-		urlSegment := &mc.PathSegments[i]
-		if urlSegment.matchType == MatchTypeCaptureVar ||
-			urlSegment.matchType == MatchTypeConstraintCaptureVar {
-			for ; psi < patternSegmentsLen; psi++ {
-				patternSegment := p.segments[psi]
-				if patternSegment.matchType == MatchTypeCaptureVar ||
-					patternSegment.matchType == MatchTypeConstraintCaptureVar {
-					captureVars[captureVarsIndex] = CaptureVar{
-						Name:  patternSegment.captureVarName,
-						Value: matchingPath[urlSegment.startIndex:urlSegment.endIndex],
-					}
-					captureVarsIndex++
-					psi++
-					break
-				}
-			}
-		}
-	}
-
-	return captureVars
-}
+//func (m *Matcher) CaptureVars(matchingPath string, p *Pattern, mc *MatchingContext) []CaptureVar {
+//	if p == nil || p.captureVarsLen == 0 {
+//		return nil
+//	}
+//	captureVars := make([]CaptureVar, p.captureVarsLen)
+//	patternSegmentsLen := len(p.segments)
+//	var psi int
+//	var captureVarsIndex int
+//	for i := 0; i < len(mc.PathSegments); i++ {
+//		urlSegment := &mc.PathSegments[i]
+//		if urlSegment.matchType == MatchTypeCaptureVar ||
+//			urlSegment.matchType == MatchTypeConstraintCaptureVar {
+//			for ; psi < patternSegmentsLen; psi++ {
+//				patternSegment := p.segments[psi]
+//				if patternSegment.matchType == MatchTypeCaptureVar ||
+//					patternSegment.matchType == MatchTypeConstraintCaptureVar {
+//					captureVars[captureVarsIndex] = CaptureVar{
+//						Name:  patternSegment.captureVarName,
+//						Value: matchingPath[urlSegment.startIndex:urlSegment.endIndex],
+//					}
+//					captureVarsIndex++
+//					psi++
+//					break
+//				}
+//			}
+//		}
+//	}
+//
+//	return captureVars
+//}
 
 func (m *Matcher) Match(urlPath string, mc *MatchingContext) *Pattern {
 	if len(mc.PathSegments) > MaxPathSegments {
@@ -228,6 +213,7 @@ func (m *Matcher) Match(urlPath string, mc *MatchingContext) *Pattern {
 						urlSegment := &mc.PathSegments[i]
 						urlSegment.matchType = MatchTypeMultipleSegments
 					}
+					mc.matchedPattern = childNode.pattern
 					return childNode.pattern
 				}
 				for urlSegmentIndex < urlLen {
@@ -255,6 +241,7 @@ func (m *Matcher) Match(urlPath string, mc *MatchingContext) *Pattern {
 				urlSegment.matchType = urlSegmentMatchType
 				if urlSegmentIndex == urlLen-1 {
 					if childNode.isLeaf() {
+						mc.matchedPattern = childNode.pattern
 						return childNode.pattern
 					}
 					goto END
@@ -274,6 +261,7 @@ func (m *Matcher) Match(urlPath string, mc *MatchingContext) *Pattern {
 	END:
 		if matched {
 			if urlSegmentIndex == urlLen-1 && currentNode.isLeaf() {
+				mc.matchedPattern = currentNode.pattern
 				return currentNode.pattern
 			}
 			urlSegmentIndex++

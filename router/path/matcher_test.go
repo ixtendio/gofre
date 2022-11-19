@@ -2,6 +2,7 @@ package path
 
 import (
 	"log"
+	"net/http"
 	"net/url"
 	"reflect"
 	"strconv"
@@ -296,11 +297,23 @@ func TestMatcher_Match(t *testing.T) {
 				}
 			}
 			var got want
-			mc := &MatchingContext{PathSegments: make([]UrlSegment, MaxPathSegments)}
+			mc := &MatchingContext{R: &http.Request{URL: reqUrl}, PathSegments: make([]UrlSegment, MaxPathSegments)}
 			ParseURLPath(reqUrl, mc)
 			if p := m.Match(reqUrl.Path, mc); p != nil {
 				got.matchedPattern = p.RawValue
-				got.captureVars = m.CaptureVars(reqUrl.Path, p, mc)
+			}
+			if len(tt.want.captureVars) > 0 {
+				var captureVars []CaptureVar
+				for _, cv := range tt.want.captureVars {
+					pvVal := mc.PathVar(cv.Name)
+					if pvVal != "" {
+						captureVars = append(captureVars, CaptureVar{
+							Name:  cv.Name,
+							Value: pvVal,
+						})
+					}
+				}
+				got.captureVars = captureVars
 			}
 			if len(tt.want.matchedPattern) > 0 {
 				var urlSegmentsMatchType int

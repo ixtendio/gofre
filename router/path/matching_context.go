@@ -27,11 +27,64 @@ func (s *UrlSegment) Reset() {
 }
 
 type MatchingContext struct {
-	R            *http.Request
-	PathSegments []UrlSegment
+	R              *http.Request
+	matchedPattern *Pattern
+	PathSegments   []UrlSegment
 }
 
-func (c *MatchingContext) PathVar(name string) string {
+func (mc *MatchingContext) Clone() MatchingContext {
+	segmentsLen := len(mc.PathSegments)
+	segments := make([]UrlSegment, segmentsLen)
+	for i := 0; i < segmentsLen; i++ {
+		s := &mc.PathSegments[i]
+		segments[i] = UrlSegment{
+			startIndex: s.startIndex,
+			endIndex:   s.endIndex,
+			matchType:  s.matchType,
+		}
+	}
+	return MatchingContext{
+		R:              mc.R,
+		matchedPattern: mc.matchedPattern,
+		PathSegments:   segments,
+	}
+}
+
+func (mc *MatchingContext) PathVar(name string) string {
+	p := mc.matchedPattern
+	if p == nil || p.captureVarsLen == 0 {
+		return ""
+	}
+
+	var captureVarsIndex int
+	var patternSegment *segment
+	patternSegmentsLen := len(p.segments)
+	for psi := 0; psi < patternSegmentsLen; psi++ {
+		ps := p.segments[psi]
+		if ps.matchType == MatchTypeCaptureVar || ps.matchType == MatchTypeConstraintCaptureVar {
+			if ps.captureVarName == name {
+				patternSegment = ps
+				break
+			}
+			captureVarsIndex++
+		}
+	}
+
+	if patternSegment == nil {
+		return ""
+	}
+
+	matchingPath := mc.R.URL.Path
+	for i := 0; i < len(mc.PathSegments); i++ {
+		urlSegment := &mc.PathSegments[i]
+		if urlSegment.matchType == MatchTypeCaptureVar ||
+			urlSegment.matchType == MatchTypeConstraintCaptureVar {
+			captureVarsIndex--
+			if captureVarsIndex == -1 {
+				return matchingPath[urlSegment.startIndex:urlSegment.endIndex]
+			}
+		}
+	}
 	return ""
 }
 
