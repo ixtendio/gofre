@@ -21,8 +21,8 @@ type segment struct {
 func (s *segment) matchUrlPathSegment(urlPath string, urlSegment *UrlSegment, caseInsensitive bool) MatchType {
 	matchType := s.matchType
 	if matchType == MatchTypeLiteral {
-		urlSegmentVal := urlPath[urlSegment.startIndex:urlSegment.endIndex]
-		if len(urlSegmentVal) == len(s.val) {
+		if int(urlSegment.endIndex-urlSegment.startIndex) == len(s.val) {
+			urlSegmentVal := urlPath[urlSegment.startIndex:urlSegment.endIndex]
 			if caseInsensitive {
 				if strings.EqualFold(urlSegmentVal, s.val) {
 					return MatchTypeLiteral

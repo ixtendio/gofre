@@ -117,6 +117,104 @@ func TestMatcher_AddPattern(t *testing.T) {
 	}
 }
 
+func TestMatcher_AddPattern_TrieStructure(t *testing.T) {
+	type want struct {
+		nodeLevel     int
+		nodeValue     string
+		childrenCount int
+		isLeaf        bool
+	}
+	tests := []struct {
+		name     string
+		patterns []string
+		want     []want
+		wantErr  bool
+	}{
+		{
+			name: "use-case 1",
+			patterns: []string{
+				"/repos/{owner}/{repo}/notifications",
+				"/repos/{owner}/{repo}/stargazers",
+				"/repos/{owner}/{repo}/git/tags/{sha}",
+				"/repos/{owner}/{repo}/git/tags"},
+			want: []want{
+				{nodeLevel: 1, nodeValue: "repos", childrenCount: 1},
+				{nodeLevel: 2, nodeValue: "{}", childrenCount: 1},
+				{nodeLevel: 3, nodeValue: "{}", childrenCount: 3},
+				{nodeLevel: 4, nodeValue: "notifications", childrenCount: 0, isLeaf: true},
+				{nodeLevel: 4, nodeValue: "stargazers", childrenCount: 0, isLeaf: true},
+				{nodeLevel: 5, nodeValue: "tags", childrenCount: 1, isLeaf: true},
+				{nodeLevel: 6, nodeValue: "{}", childrenCount: 0, isLeaf: true},
+			},
+		},
+		{
+			name: "use-case 2",
+			patterns: []string{
+				"/user/issues",
+				"/user",
+				"/issues"},
+			want: []want{
+				{nodeLevel: 1, nodeValue: "issues", childrenCount: 0, isLeaf: true},
+				{nodeLevel: 1, nodeValue: "user", childrenCount: 1, isLeaf: true},
+				{nodeLevel: 2, nodeValue: "issues", childrenCount: 0, isLeaf: true},
+			},
+		},
+		{
+			name: "use-case 3",
+			patterns: []string{
+				"/repos/{owner1}/{repo1}/notifications",
+				"/repos/{owner2}/{repo2}/stargazers",
+				"/repos/{owner3}/{repo3}/git/tags/{sha}",
+				"/repos/{owner4}/{repo4}/git/tags"},
+			want: []want{
+				{nodeLevel: 1, nodeValue: "repos", childrenCount: 1},
+				{nodeLevel: 2, nodeValue: "{}", childrenCount: 1},
+				{nodeLevel: 3, nodeValue: "{}", childrenCount: 3},
+				{nodeLevel: 4, nodeValue: "notifications", childrenCount: 0, isLeaf: true},
+				{nodeLevel: 4, nodeValue: "stargazers", childrenCount: 0, isLeaf: true},
+				{nodeLevel: 5, nodeValue: "tags", childrenCount: 1, isLeaf: true},
+				{nodeLevel: 6, nodeValue: "{}", childrenCount: 0, isLeaf: true},
+			},
+		},
+	}
+	for _, tt := range tests {
+		mc := NewMatcher(false)
+		t.Run(tt.name, func(t *testing.T) {
+			var err error
+			for _, ps := range tt.patterns {
+				p := mustParsePattern(ps)
+				if err = mc.AddPattern(p); err != nil {
+					break
+				}
+			}
+			if tt.wantErr {
+				if err == nil {
+					t.Errorf("Matcher.AddPattern() got no error but want error")
+				}
+			} else {
+				if err != nil {
+					t.Errorf("Matcher.AddPattern() got error: %v", err)
+					return
+				}
+
+				for _, w := range tt.want {
+					node := findTrieNode(mc.trieRoot, 0, w.nodeLevel, w.nodeValue)
+					if node == nil {
+						t.Errorf("Matcher.AddPattern() node not found: %v", w)
+					} else {
+						if w.childrenCount != len(node.children) {
+							t.Errorf("Matcher.AddPattern().childrenCount got: %v want: %v", len(node.children), w.childrenCount)
+						}
+						if w.isLeaf != node.isLeaf() {
+							t.Errorf("Matcher.AddPattern().isLeaf got: %v want: %v", node.isLeaf(), w.isLeaf)
+						}
+					}
+				}
+			}
+		})
+	}
+}
+
 func TestMatcher_Match(t *testing.T) {
 	type want struct {
 		matchedPattern       string
@@ -346,7 +444,7 @@ func trieToString(mc *Matcher, children []*node, sb *strings.Builder) {
 		if i > 0 {
 			sb.WriteString(" ")
 		}
-		sb.WriteString(child.val)
+		sb.WriteString(child.String())
 		sb.WriteString(":")
 		sb.WriteString(strconv.Itoa(int(child.maxMatchableSegments)))
 		if child.isLeaf() {
@@ -363,4 +461,30 @@ func mustParsePattern(pattern string) *Pattern {
 		log.Fatalf("Matcher.AddPattern() parse pattern error, err: %v", err)
 	}
 	return p
+}
+
+func findTrieNode(root *node, level int, searchNodeLevel int, searchNodeVal string) *node {
+	if root == nil || level > searchNodeLevel {
+		return nil
+	}
+	nodeVal := root.String()
+	if root.segment != nil &&
+		(root.segment.matchType == MatchTypeCaptureVar || root.segment.matchType == MatchTypeConstraintCaptureVar) {
+		nodeVal = "{}"
+	}
+	if level == searchNodeLevel && nodeVal == searchNodeVal {
+		return root
+	}
+	for _, child := range root.children {
+		if level+1 <= searchNodeLevel {
+			node := findTrieNode(child, level+1, searchNodeLevel, searchNodeVal)
+			if node != nil {
+				return node
+			}
+		} else {
+			return nil
+		}
+	}
+
+	return nil
 }

@@ -12,7 +12,6 @@ type stackSegment struct {
 }
 
 type node struct {
-	val                  string
 	maxMatchableSegments uint8
 	priority             uint64
 	segment              *segment
@@ -30,7 +29,10 @@ func (n *node) isLeaf() bool {
 }
 
 func (n *node) String() string {
-	return n.val
+	if n.segment == nil {
+		return "/"
+	}
+	return n.segment.val
 }
 
 type Matcher struct {
@@ -42,7 +44,7 @@ type Matcher struct {
 func NewMatcher(caseInsensitive bool) *Matcher {
 	return &Matcher{
 		caseInsensitive: caseInsensitive,
-		trieRoot:        &node{val: "/"},
+		trieRoot:        &node{},
 	}
 }
 
@@ -104,7 +106,6 @@ func (m *Matcher) AddPattern(pattern *Pattern) error {
 
 		if !found {
 			newNode := &node{
-				val:      segment.val,
 				priority: pattern.priority,
 				segment:  segment,
 				parent:   currentNode,
@@ -143,37 +144,6 @@ func (m *Matcher) AddPattern(pattern *Pattern) error {
 	}
 	return nil
 }
-
-//func (m *Matcher) CaptureVars(matchingPath string, p *Pattern, mc *MatchingContext) []CaptureVar {
-//	if p == nil || p.captureVarsLen == 0 {
-//		return nil
-//	}
-//	captureVars := make([]CaptureVar, p.captureVarsLen)
-//	patternSegmentsLen := len(p.segments)
-//	var psi int
-//	var captureVarsIndex int
-//	for i := 0; i < len(mc.PathSegments); i++ {
-//		urlSegment := &mc.PathSegments[i]
-//		if urlSegment.matchType == MatchTypeCaptureVar ||
-//			urlSegment.matchType == MatchTypeConstraintCaptureVar {
-//			for ; psi < patternSegmentsLen; psi++ {
-//				patternSegment := p.segments[psi]
-//				if patternSegment.matchType == MatchTypeCaptureVar ||
-//					patternSegment.matchType == MatchTypeConstraintCaptureVar {
-//					captureVars[captureVarsIndex] = CaptureVar{
-//						Name:  patternSegment.captureVarName,
-//						Value: matchingPath[urlSegment.startIndex:urlSegment.endIndex],
-//					}
-//					captureVarsIndex++
-//					psi++
-//					break
-//				}
-//			}
-//		}
-//	}
-//
-//	return captureVars
-//}
 
 func (m *Matcher) Match(urlPath string, mc *MatchingContext) *Pattern {
 	if len(mc.PathSegments) > MaxPathSegments {
