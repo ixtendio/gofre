@@ -28,7 +28,7 @@ func main() {
 	gofreMux.CommonMiddlewares(middleware.PanicRecover(), middleware.ErrJsonResponse())
 
 	// template example
-	gofreMux.HandleGet("/", func(ctx context.Context, r path.MatchingContext) (response.HttpResponse, error) {
+	gofreMux.HandleGet("/", func(ctx context.Context, mc path.MatchingContext) (response.HttpResponse, error) {
 		templateData := struct{}{}
 		return response.TemplateHttpResponseOK(gofreMux.ExecutableTemplate(), "index.html", templateData), nil
 	})
@@ -51,7 +51,7 @@ func main() {
 			Cache:             cache.NewInMemory(),
 			KeyExpirationTime: 1 * time.Minute,
 		},
-	}, func(ctx context.Context, r path.MatchingContext) (response.HttpResponse, error) {
+	}, func(ctx context.Context, mc path.MatchingContext) (response.HttpResponse, error) {
 		accessToken := oauth.GetAccessTokenFromContext(ctx)
 		securityPrincipal := auth.GetSecurityPrincipalFromContext(ctx)
 		return response.JsonHttpResponseOK(map[string]interface{}{
@@ -62,31 +62,31 @@ func main() {
 
 	// TEXT plain response
 	textRouter := gofreMux.RouteUsingPathPrefix("/text")
-	textRouter.HandleGet("/{plain}", func(ctx context.Context, r path.MatchingContext) (response.HttpResponse, error) {
+	textRouter.HandleGet("/{plain}", func(ctx context.Context, mc path.MatchingContext) (response.HttpResponse, error) {
 		return response.PlainTextHttpResponseOK("Text plain response"), nil
 	})
-	textRouter.HandleGet("/*", func(ctx context.Context, r path.MatchingContext) (response.HttpResponse, error) {
+	textRouter.HandleGet("/*", func(ctx context.Context, mc path.MatchingContext) (response.HttpResponse, error) {
 		return response.PlainTextHttpResponseOK("Text plain response"), nil
 	})
 	// TEXT plain response
-	textRouter.HandleGet("/plain", func(ctx context.Context, r path.MatchingContext) (response.HttpResponse, error) {
+	textRouter.HandleGet("/plain", func(ctx context.Context, mc path.MatchingContext) (response.HttpResponse, error) {
 		return response.PlainTextHttpResponseOK("Text plain response"), nil
 	})
 	// HTML response
-	textRouter.HandleGet("/html", func(ctx context.Context, r path.MatchingContext) (response.HttpResponse, error) {
+	textRouter.HandleGet("/html", func(ctx context.Context, mc path.MatchingContext) (response.HttpResponse, error) {
 		return response.HtmlHttpResponseOK("<!DOCTYPE html><html><body><h1>HTML example</h1></body></html>"), nil
 	})
 
 	// JSON with vars path
-	gofreMux.HandleGet("/json/{user}/{id}", func(ctx context.Context, r path.MatchingContext) (response.HttpResponse, error) {
+	gofreMux.HandleGet("/json/{user}/{id}", func(ctx context.Context, mc path.MatchingContext) (response.HttpResponse, error) {
 		return response.JsonHttpResponseOK(map[string]string{
-			"user": r.PathVar("user"),
-			"id":   r.PathVar("id"),
+			"user": mc.PathVar("user"),
+			"id":   mc.PathVar("id"),
 		}), nil
 	})
 
 	// document download example
-	gofreMux.HandleGet("/download", func(ctx context.Context, r path.MatchingContext) (response.HttpResponse, error) {
+	gofreMux.HandleGet("/download", func(ctx context.Context, mc path.MatchingContext) (response.HttpResponse, error) {
 		f, err := os.Open("./resources/assets/image.png")
 		if err != nil {
 			return nil, err
@@ -95,14 +95,14 @@ func main() {
 	})
 
 	// template example
-	gofreMux.HandleGet("/tmpl/{tmplName}", func(ctx context.Context, r path.MatchingContext) (response.HttpResponse, error) {
-		templateName := r.PathVar("tmplName") + ".html"
+	gofreMux.HandleGet("/tmpl/{tmplName}", func(ctx context.Context, mc path.MatchingContext) (response.HttpResponse, error) {
+		templateName := mc.PathVar("tmplName") + ".html"
 		return response.TemplateHttpResponseOK(gofreMux.ExecutableTemplate(), templateName, nil), nil
 	})
 
 	// SSE example
 	evtGen := NewEventGenerator(ctx, 10)
-	gofreMux.HandleGet("/sse", func(ctx context.Context, r path.MatchingContext) (response.HttpResponse, error) {
+	gofreMux.HandleGet("/sse", func(ctx context.Context, mc path.MatchingContext) (response.HttpResponse, error) {
 		return response.SSEHttpResponse(func(ctx context.Context, lastEventId string) <-chan response.ServerSentEvent {
 			if id, err := strconv.Atoi(lastEventId); err == nil {
 				evtGen.Rewind(id)
@@ -130,10 +130,10 @@ func main() {
 	})
 
 	// Authorization example
-	gofreMux.HandleGet("/security/authorize/{permission}", func(ctx context.Context, r path.MatchingContext) (response.HttpResponse, error) {
+	gofreMux.HandleGet("/security/authorize/{permission}", func(ctx context.Context, mc path.MatchingContext) (response.HttpResponse, error) {
 		return response.JsonHttpResponseOK(map[string]string{"authorized": "true"}), nil
-	}, middleware.SecurityPrincipalSupplier(func(ctx context.Context, r path.MatchingContext) (auth.SecurityPrincipal, error) {
-		permission, err := auth.ParsePermission("domain/subdomain/resource:" + r.PathVar("permission"))
+	}, middleware.SecurityPrincipalSupplier(func(ctx context.Context, mc path.MatchingContext) (auth.SecurityPrincipal, error) {
+		permission, err := auth.ParsePermission("domain/subdomain/resource:" + mc.PathVar("permission"))
 		if err != nil {
 			return nil, err
 		}

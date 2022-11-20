@@ -132,7 +132,7 @@ func TestSecurityHeaders(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			m := SecurityHeaders(tt.args.config)
-			resp, err := m(func(ctx context.Context, r path.MatchingContext) (response.HttpResponse, error) {
+			resp, err := m(func(ctx context.Context, mc path.MatchingContext) (response.HttpResponse, error) {
 				return response.PlainTextHttpResponseOK("ok"), nil
 			})(context.Background(), path.MatchingContext{R: tt.args.req})
 

@@ -23,7 +23,7 @@ func TestCompressResponse(t *testing.T) {
 		{
 			name: "happy flow",
 			args: args{
-				handler: func(ctx context.Context, r path.MatchingContext) (response.HttpResponse, error) {
+				handler: func(ctx context.Context, mc path.MatchingContext) (response.HttpResponse, error) {
 					return response.PlainTextHttpResponseOK("ok"), nil
 				},
 			},
@@ -32,7 +32,7 @@ func TestCompressResponse(t *testing.T) {
 		{
 			name: "the handler error should be returned",
 			args: args{
-				handler: func(ctx context.Context, r path.MatchingContext) (response.HttpResponse, error) {
+				handler: func(ctx context.Context, mc path.MatchingContext) (response.HttpResponse, error) {
 					return nil, errors.ErrUnauthorizedRequest
 				},
 			},

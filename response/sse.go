@@ -65,14 +65,14 @@ type HttpSSEResponse struct {
 	EventGenerator EventGenerator
 }
 
-func (r *HttpSSEResponse) Write(w http.ResponseWriter, req path.MatchingContext) error {
-	if req.R.ProtoMajor != 2 {
+func (r *HttpSSEResponse) Write(w http.ResponseWriter, mc path.MatchingContext) error {
+	if mc.R.ProtoMajor != 2 {
 		w.WriteHeader(http.StatusInternalServerError)
 		return ErrNotHttp2Request
 	}
 
 	// write the headers
-	if err := r.HttpHeadersResponse.Write(w, req); err != nil {
+	if err := r.HttpHeadersResponse.Write(w, mc); err != nil {
 		return err
 	}
 
@@ -82,8 +82,8 @@ func (r *HttpSSEResponse) Write(w http.ResponseWriter, req path.MatchingContext)
 
 	defer r.flushResponse(w)
 	// get the last event id that was sent
-	lastEventId := req.R.Header.Get(headerLastEventId)
-	reqCtx := req.R.Context()
+	lastEventId := mc.R.Header.Get(headerLastEventId)
+	reqCtx := mc.R.Context()
 
 	// read and write the events
 	for evt := range r.EventGenerator(reqCtx, lastEventId) {

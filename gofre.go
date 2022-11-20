@@ -201,12 +201,12 @@ func (m *MuxHandler) HandleOAUTH2WithCustomPaths(initiatePath string,
 	cache := oauthConfig.CacheConfig.Cache
 	// initiate OAUTH flow handler
 	authorizationFlowBasePath := authorizeBasePath
-	m.HandleGet(initiatePath, func(ctx context.Context, r path.MatchingContext) (response.HttpResponse, error) {
+	m.HandleGet(initiatePath, func(ctx context.Context, mc path.MatchingContext) (response.HttpResponse, error) {
 		var provider oauth.Provider
 		if len(oauthConfig.Providers) == 1 {
 			provider = oauthConfig.Providers[0]
 		} else {
-			providerName := r.R.FormValue("provider")
+			providerName := mc.R.FormValue("provider")
 			if providerName == "" {
 				return nil, errors.NewBadRequestWithMessage("oauth provider not specified")
 			}
@@ -227,25 +227,25 @@ func (m *MuxHandler) HandleOAUTH2WithCustomPaths(initiatePath string,
 	}, initiateMiddlewares...)
 
 	// authorize OAUTH flow handler
-	m.HandleGet(authorizationFlowBasePath+"/{providerName}", func(ctx context.Context, r path.MatchingContext) (response.HttpResponse, error) {
-		providerName := r.PathVar("providerName")
+	m.HandleGet(authorizationFlowBasePath+"/{providerName}", func(ctx context.Context, mc path.MatchingContext) (response.HttpResponse, error) {
+		providerName := mc.PathVar("providerName")
 		provider := oauthConfig.GetProviderByName(providerName)
 		if provider == nil {
 			return nil, errors.NewBadRequestWithMessage("oauth provider not supported")
 		}
 
 		redirectUrl := oauthConfig.WebsiteUrl + m.resolvePath(authorizationFlowBasePath) + "/" + provider.Name()
-		errCode := r.R.FormValue("error")
+		errCode := mc.R.FormValue("error")
 		if errCode != "" {
 			return nil, errors.ErrUnauthorizedRequest
 		}
 
-		state := r.R.FormValue("state")
+		state := mc.R.FormValue("state")
 		if cache != nil && !cache.Contains(state) {
 			return nil, errors.ErrUnauthorizedRequest
 
 		}
-		code := r.R.FormValue("code")
+		code := mc.R.FormValue("code")
 		accessToken, err := provider.FetchAccessToken(ctx, redirectUrl, code)
 		if err != nil {
 			return nil, err
@@ -260,7 +260,7 @@ func (m *MuxHandler) HandleOAUTH2WithCustomPaths(initiatePath string,
 			ctx = context.WithValue(ctx, auth.SecurityPrincipalCtxKey, &user)
 		}
 
-		return handler(ctx, r)
+		return handler(ctx, mc)
 	}, authorizeMiddlewares...)
 }
 

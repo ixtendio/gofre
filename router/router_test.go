@@ -53,12 +53,12 @@ func TestRouter_ServeHTTP(t *testing.T) {
 		responseHeaders http.Header
 	}
 	var gotRequest path.MatchingContext
-	okHandler := func(ctx context.Context, req path.MatchingContext) (response.HttpResponse, error) {
-		gotRequest = req.Clone()
+	okHandler := func(ctx context.Context, mc path.MatchingContext) (response.HttpResponse, error) {
+		gotRequest = mc.Clone()
 		return response.PlainTextHttpResponseOK("ok"), nil
 	}
-	errorHandler := func(ctx context.Context, req path.MatchingContext) (response.HttpResponse, error) {
-		gotRequest = req.Clone()
+	errorHandler := func(ctx context.Context, mc path.MatchingContext) (response.HttpResponse, error) {
+		gotRequest = mc.Clone()
 		return nil, fmt.Errorf("a simple error")
 	}
 	tests := []struct {

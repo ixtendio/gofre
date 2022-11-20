@@ -11,8 +11,8 @@ import (
 // CompressResponse enables the HTTP response compressing as long as the client support it via `Accept-Encoding` request header
 func CompressResponse(compressionLevel int) Middleware {
 	return func(handler handler.Handler) handler.Handler {
-		return func(ctx context.Context, req path.MatchingContext) (resp response.HttpResponse, err error) {
-			resp, err = handler(ctx, req)
+		return func(ctx context.Context, mc path.MatchingContext) (resp response.HttpResponse, err error) {
+			resp, err = handler(ctx, mc)
 			if err != nil {
 				return nil, err
 			}

@@ -10,8 +10,8 @@ type HttpRedirectResponse struct {
 	Url string
 }
 
-func (r *HttpRedirectResponse) Write(w http.ResponseWriter, req path.MatchingContext) error {
-	http.Redirect(w, req.R, r.Url, r.HttpStatusCode)
+func (r *HttpRedirectResponse) Write(w http.ResponseWriter, mc path.MatchingContext) error {
+	http.Redirect(w, mc.R, r.Url, r.HttpStatusCode)
 	return nil
 }
 

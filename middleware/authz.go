@@ -15,7 +15,7 @@ import (
 // by the current auth.SecurityPrincipal
 func AuthorizeAll(permissions ...auth.Permission) Middleware {
 	return func(handler handler.Handler) handler.Handler {
-		return func(ctx context.Context, req path.MatchingContext) (resp response.HttpResponse, err error) {
+		return func(ctx context.Context, mc path.MatchingContext) (resp response.HttpResponse, err error) {
 			securityPrincipal := auth.GetSecurityPrincipalFromContext(ctx)
 			if securityPrincipal == nil {
 				return nil, errors.ErrUnauthorizedRequest
@@ -25,7 +25,7 @@ func AuthorizeAll(permissions ...auth.Permission) Middleware {
 					return nil, errors.ErrUnauthorizedRequest
 				}
 			}
-			return handler(ctx, req)
+			return handler(ctx, mc)
 		}
 	}
 }
@@ -35,14 +35,14 @@ func AuthorizeAll(permissions ...auth.Permission) Middleware {
 // by the current auth.SecurityPrincipal
 func AuthorizeAny(permissions ...auth.Permission) Middleware {
 	return func(handler handler.Handler) handler.Handler {
-		return func(ctx context.Context, req path.MatchingContext) (resp response.HttpResponse, err error) {
+		return func(ctx context.Context, mc path.MatchingContext) (resp response.HttpResponse, err error) {
 			securityPrincipal := auth.GetSecurityPrincipalFromContext(ctx)
 			if securityPrincipal == nil {
 				return nil, errors.ErrUnauthorizedRequest
 			}
 			for _, permission := range permissions {
 				if securityPrincipal.HasPermission(permission) {
-					return handler(ctx, req)
+					return handler(ctx, mc)
 				}
 			}
 			return nil, errors.ErrUnauthorizedRequest

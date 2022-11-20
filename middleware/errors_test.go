@@ -28,7 +28,7 @@ func TestErrResponse(t *testing.T) {
 		{
 			name: "ErrAccessDenied => StatusForbidden",
 			args: args{
-				handler: func(ctx context.Context, r path.MatchingContext) (response.HttpResponse, error) {
+				handler: func(ctx context.Context, mc path.MatchingContext) (response.HttpResponse, error) {
 					return nil, errors.ErrAccessDenied
 				},
 			},
@@ -37,7 +37,7 @@ func TestErrResponse(t *testing.T) {
 		{
 			name: "ErrWrongCredentials => StatusForbidden",
 			args: args{
-				handler: func(ctx context.Context, r path.MatchingContext) (response.HttpResponse, error) {
+				handler: func(ctx context.Context, mc path.MatchingContext) (response.HttpResponse, error) {
 					return nil, errors.ErrWrongCredentials
 				},
 			},
@@ -46,7 +46,7 @@ func TestErrResponse(t *testing.T) {
 		{
 			name: "ErrUnauthorizedRequest => StatusUnauthorized",
 			args: args{
-				handler: func(ctx context.Context, r path.MatchingContext) (response.HttpResponse, error) {
+				handler: func(ctx context.Context, mc path.MatchingContext) (response.HttpResponse, error) {
 					return nil, errors.ErrUnauthorizedRequest
 				},
 			},
@@ -55,7 +55,7 @@ func TestErrResponse(t *testing.T) {
 		{
 			name: "ErrObjectNotFound => StatusNotFound",
 			args: args{
-				handler: func(ctx context.Context, r path.MatchingContext) (response.HttpResponse, error) {
+				handler: func(ctx context.Context, mc path.MatchingContext) (response.HttpResponse, error) {
 					return nil, errors.NewObjectNotFoundWithMessage("object not found")
 				},
 			},
@@ -64,7 +64,7 @@ func TestErrResponse(t *testing.T) {
 		{
 			name: "ErrBadRequest => StatusBadRequest",
 			args: args{
-				handler: func(ctx context.Context, r path.MatchingContext) (response.HttpResponse, error) {
+				handler: func(ctx context.Context, mc path.MatchingContext) (response.HttpResponse, error) {
 					return nil, errors.NewBadRequestWithMessage("invalid request")
 				},
 			},
@@ -73,7 +73,7 @@ func TestErrResponse(t *testing.T) {
 		{
 			name: "custom error => StatusInternalServerError",
 			args: args{
-				handler: func(ctx context.Context, r path.MatchingContext) (response.HttpResponse, error) {
+				handler: func(ctx context.Context, mc path.MatchingContext) (response.HttpResponse, error) {
 					return nil, goerrors.New("custom error")
 				},
 			},
@@ -107,7 +107,7 @@ func TestErrJsonResponse(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			resp, err := ErrJsonResponse()(func(ctx context.Context, r path.MatchingContext) (response.HttpResponse, error) {
+			resp, err := ErrJsonResponse()(func(ctx context.Context, mc path.MatchingContext) (response.HttpResponse, error) {
 				return nil, errors.ErrUnauthorizedRequest
 			})(context.Background(), path.MatchingContext{})
 			if err != nil {

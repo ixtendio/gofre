@@ -34,7 +34,7 @@ func (r *HttpHeadersResponse) Cookies() HttpCookies {
 	return r.HttpCookies
 }
 
-func (r *HttpHeadersResponse) Write(w http.ResponseWriter, req path.MatchingContext) error {
+func (r *HttpHeadersResponse) Write(w http.ResponseWriter, mc path.MatchingContext) error {
 	defer func() {
 		if r.HttpHeaders != nil {
 			r.HttpHeaders.Release()

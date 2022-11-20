@@ -29,7 +29,7 @@ func (r *HttpHandlerAdaptorResponse) Cookies() HttpCookies {
 	return r.cookies
 }
 
-func (r *HttpHandlerAdaptorResponse) Write(w http.ResponseWriter, req path.MatchingContext) error {
+func (r *HttpHandlerAdaptorResponse) Write(w http.ResponseWriter, mc path.MatchingContext) error {
 	// Write custom cookies
 	if r.cookies != nil {
 		for _, cookie := range r.cookies {
@@ -45,7 +45,7 @@ func (r *HttpHandlerAdaptorResponse) Write(w http.ResponseWriter, req path.Match
 		}
 	}
 
-	r.handler.ServeHTTP(w, req.R)
+	r.handler.ServeHTTP(w, mc.R)
 	return nil
 }
 

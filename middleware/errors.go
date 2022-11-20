@@ -22,8 +22,8 @@ func ErrJsonResponse() Middleware {
 
 func ErrResponse(responseSupplier ResponseSupplier) Middleware {
 	return func(handler handler.Handler) handler.Handler {
-		return func(ctx context.Context, req path.MatchingContext) (response.HttpResponse, error) {
-			resp, err := handler(ctx, req)
+		return func(ctx context.Context, mc path.MatchingContext) (response.HttpResponse, error) {
+			resp, err := handler(ctx, mc)
 			if err != nil {
 				statusCode := http.StatusInternalServerError
 				if _, ok := err.(errors.ErrBadRequest); ok {

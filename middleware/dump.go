@@ -16,23 +16,23 @@ import (
 // It is especially useful in debugging problems.
 func RequestDumper(logger func(val string)) Middleware {
 	return func(handler handler.Handler) handler.Handler {
-		return func(ctx context.Context, req path.MatchingContext) (resp response.HttpResponse, err error) {
+		return func(ctx context.Context, mc path.MatchingContext) (resp response.HttpResponse, err error) {
 			startTime := time.Now().UnixMilli()
 			// request logging
 			requestMap := map[string]any{}
-			requestMap["method"] = req.R.Method
-			requestMap["protocolVersion"] = req.R.Proto
-			requestMap["requestURI"] = req.R.RequestURI
-			requestMap["url"] = req.R.URL.String()
-			requestMap["remoteAddress"] = req.R.RemoteAddr
-			requestMap["transferEncoding"] = req.R.TransferEncoding
-			requestMap["contentLength"] = req.R.ContentLength
-			requestMap["host"] = req.R.Host
-			requestMap["isSecure"] = req.R.TLS != nil
-			requestMap["header"] = req.R.Header
-			requestMap["formFields"] = req.R.Form
+			requestMap["method"] = mc.R.Method
+			requestMap["protocolVersion"] = mc.R.Proto
+			requestMap["requestURI"] = mc.R.RequestURI
+			requestMap["url"] = mc.R.URL.String()
+			requestMap["remoteAddress"] = mc.R.RemoteAddr
+			requestMap["transferEncoding"] = mc.R.TransferEncoding
+			requestMap["contentLength"] = mc.R.ContentLength
+			requestMap["host"] = mc.R.Host
+			requestMap["isSecure"] = mc.R.TLS != nil
+			requestMap["header"] = mc.R.Header
+			requestMap["formFields"] = mc.R.Form
 			var cookies []string
-			for _, c := range req.R.Cookies() {
+			for _, c := range mc.R.Cookies() {
 				if c != nil {
 					cookies = append(cookies, c.String())
 				}
@@ -41,7 +41,7 @@ func RequestDumper(logger func(val string)) Middleware {
 				requestMap["cookies"] = cookies
 			}
 
-			resp, err = handler(ctx, req)
+			resp, err = handler(ctx, mc)
 			if err != nil {
 				return nil, err
 			}

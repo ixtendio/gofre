@@ -35,9 +35,9 @@ type HttpTemplateResponse struct {
 	Data     any
 }
 
-func (r *HttpTemplateResponse) Write(w http.ResponseWriter, req path.MatchingContext) error {
+func (r *HttpTemplateResponse) Write(w http.ResponseWriter, mc path.MatchingContext) error {
 	// write the headers
-	if err := r.HttpHeadersResponse.Write(w, req); err != nil {
+	if err := r.HttpHeadersResponse.Write(w, mc); err != nil {
 		return err
 	}
 

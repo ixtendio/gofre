@@ -81,14 +81,14 @@ type SecurityHeadersConfig struct {
 // SecurityHeaders provides some security HTTP headers to the response
 func SecurityHeaders(config SecurityHeadersConfig) Middleware {
 	return func(handler handler.Handler) handler.Handler {
-		return func(ctx context.Context, req path.MatchingContext) (response.HttpResponse, error) {
-			httpResponse, err := handler(ctx, req)
+		return func(ctx context.Context, mc path.MatchingContext) (response.HttpResponse, error) {
+			httpResponse, err := handler(ctx, mc)
 			if err != nil {
 				return nil, err
 			}
 
 			// HSTS
-			isRequestSecure := req.R.TLS != nil || strings.ToLower(req.R.URL.Scheme) == "https"
+			isRequestSecure := mc.R.TLS != nil || strings.ToLower(mc.R.URL.Scheme) == "https"
 			if config.STS.Enabled && isRequestSecure {
 				httpResponse.Headers().Set(stsHeaderName, config.STS.getHeaderValue())
 			}

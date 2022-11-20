@@ -39,15 +39,15 @@ func CSRFPrevention(nonceCache cache.Cache) Middleware {
 // CSRFPreventionWithCustomParamAndHeaderName provides basic CSRF protection for a web application using a custom form param name and header name
 func CSRFPreventionWithCustomParamAndHeaderName(nonceCache cache.Cache, csrfNonceRequestParamName string, csrfRestNonceHeaderName string) Middleware {
 	return func(handler handler.Handler) handler.Handler {
-		return func(ctx context.Context, req path.MatchingContext) (response.HttpResponse, error) {
-			skipNonceCheck := req.R.Method == http.MethodGet ||
-				req.R.Method == http.MethodHead ||
-				req.R.Method == http.MethodTrace ||
-				req.R.Method == http.MethodOptions
+		return func(ctx context.Context, mc path.MatchingContext) (response.HttpResponse, error) {
+			skipNonceCheck := mc.R.Method == http.MethodGet ||
+				mc.R.Method == http.MethodHead ||
+				mc.R.Method == http.MethodTrace ||
+				mc.R.Method == http.MethodOptions
 			if !skipNonceCheck {
-				previousNonce := req.R.Header.Get(csrfRestNonceHeaderName)
+				previousNonce := mc.R.Header.Get(csrfRestNonceHeaderName)
 				if previousNonce == "" {
-					previousNonce = req.R.Form.Get(csrfNonceRequestParamName)
+					previousNonce = mc.R.Form.Get(csrfNonceRequestParamName)
 				}
 				if previousNonce == "" || !nonceCache.Contains(previousNonce) {
 					return nil, errors.ErrAccessDenied
@@ -63,7 +63,7 @@ func CSRFPreventionWithCustomParamAndHeaderName(nonceCache cache.Cache, csrfNonc
 				return nil, err
 			}
 			ctx = context.WithValue(ctx, CSRFNonceCtxKey, newNonce)
-			return handler(ctx, req)
+			return handler(ctx, mc)
 		}
 	}
 }

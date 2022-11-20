@@ -73,7 +73,7 @@ func TestCSRFPrevention(t *testing.T) {
 				memoryCache.Add(tt.args.nonceInCache, CSRFExpirationTime)
 			}
 			m := CSRFPrevention(memoryCache)
-			_, err := m(func(ctx context.Context, r path.MatchingContext) (response.HttpResponse, error) {
+			_, err := m(func(ctx context.Context, mc path.MatchingContext) (response.HttpResponse, error) {
 				nonce := GetCSRFNonceFromContext(ctx)
 				if nonce == "" {
 					t.Fatalf("CSRFPrevention() nonce is empty")

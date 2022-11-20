@@ -79,7 +79,7 @@ func TestAuthorizeAll(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, err := AuthorizeAll(tt.args.permissions...)(func(ctx context.Context, r path.MatchingContext) (response.HttpResponse, error) {
+			_, err := AuthorizeAll(tt.args.permissions...)(func(ctx context.Context, mc path.MatchingContext) (response.HttpResponse, error) {
 				return response.PlainTextHttpResponseOK("ok"), nil
 			})(tt.args.ctx, path.MatchingContext{})
 			if err != tt.want {
@@ -158,7 +158,7 @@ func TestAuthorizeAny(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, err := AuthorizeAny(tt.args.permissions...)(func(ctx context.Context, r path.MatchingContext) (response.HttpResponse, error) {
+			_, err := AuthorizeAny(tt.args.permissions...)(func(ctx context.Context, mc path.MatchingContext) (response.HttpResponse, error) {
 				return response.PlainTextHttpResponseOK("ok"), nil
 			})(tt.args.ctx, path.MatchingContext{})
 			if err != tt.want {

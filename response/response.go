@@ -96,7 +96,7 @@ type HttpResponse interface {
 	// Cookies returns the response cookies
 	Cookies() HttpCookies
 	// Write the response to the client
-	Write(w http.ResponseWriter, req path.MatchingContext) error
+	Write(w http.ResponseWriter, mc path.MatchingContext) error
 }
 
 func writeTextResponse(w http.ResponseWriter, payload string) error {

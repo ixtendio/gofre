@@ -88,24 +88,24 @@ const (
 // This function is a transcription of Java code org.apache.catalina.filters.CorsFilter
 func Cors(config CorsConfig) Middleware {
 	return func(handler handler.Handler) handler.Handler {
-		return func(ctx context.Context, req path.MatchingContext) (response.HttpResponse, error) {
-			httpResponse, err := handler(ctx, req)
+		return func(ctx context.Context, mc path.MatchingContext) (response.HttpResponse, error) {
+			httpResponse, err := handler(ctx, mc)
 			if err != nil {
 				return nil, err
 			}
-			switch getRequestType(req.R) {
+			switch getRequestType(mc.R) {
 			case simpleCorsRequestType, actualCorsRequestType:
-				if err := addSimpleCorsHeaders(req.R, httpResponse.Headers(), config); err != nil {
+				if err := addSimpleCorsHeaders(mc.R, httpResponse.Headers(), config); err != nil {
 					return nil, err
 				}
 				return httpResponse, nil
 			case preFlightCorsRequestType:
-				if err := addPreFlightCorsHeaders(req.R, httpResponse.Headers(), config); err != nil {
+				if err := addPreFlightCorsHeaders(mc.R, httpResponse.Headers(), config); err != nil {
 					return nil, err
 				}
 				return httpResponse, nil
 			case notCorsRequestType:
-				addStandardCorsHeaders(req.R, httpResponse.Headers(), config)
+				addStandardCorsHeaders(mc.R, httpResponse.Headers(), config)
 				return httpResponse, nil
 			default:
 				return nil, errors.ErrAccessDenied

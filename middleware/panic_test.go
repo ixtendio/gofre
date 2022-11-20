@@ -24,7 +24,7 @@ func TestPanicMiddleware(t *testing.T) {
 	}{
 		{
 			name: "error are returns",
-			handler: func(ctx context.Context, r path.MatchingContext) (response.HttpResponse, error) {
+			handler: func(ctx context.Context, mc path.MatchingContext) (response.HttpResponse, error) {
 				return nil, errors.ErrWrongCredentials
 			},
 			want: want{
@@ -34,7 +34,7 @@ func TestPanicMiddleware(t *testing.T) {
 		},
 		{
 			name: "panic is handled and error returned",
-			handler: func(ctx context.Context, r path.MatchingContext) (response.HttpResponse, error) {
+			handler: func(ctx context.Context, mc path.MatchingContext) (response.HttpResponse, error) {
 				panic("a panic message")
 			},
 			want: want{
@@ -44,7 +44,7 @@ func TestPanicMiddleware(t *testing.T) {
 		},
 		{
 			name: "error is nil",
-			handler: func(ctx context.Context, r path.MatchingContext) (response.HttpResponse, error) {
+			handler: func(ctx context.Context, mc path.MatchingContext) (response.HttpResponse, error) {
 				return response.HtmlHttpResponseOK("ok"), nil
 			},
 			want: want{

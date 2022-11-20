@@ -650,7 +650,7 @@ func TestCors(t *testing.T) {
 					Header: http.Header{requestHeaderOrigin: {"https://domain.com"}},
 				},
 			},
-			handler: func(ctx context.Context, r path.MatchingContext) (response.HttpResponse, error) {
+			handler: func(ctx context.Context, mc path.MatchingContext) (response.HttpResponse, error) {
 				return response.PlainTextHttpResponseOK("ok"), nil
 			},
 			wantError: nil,
@@ -671,7 +671,7 @@ func TestCors(t *testing.T) {
 					Header: http.Header{requestHeaderOrigin: {"https://domain.com"}},
 				},
 			},
-			handler: func(ctx context.Context, r path.MatchingContext) (response.HttpResponse, error) {
+			handler: func(ctx context.Context, mc path.MatchingContext) (response.HttpResponse, error) {
 				return response.PlainTextHttpResponseOK("ok"), nil
 			},
 			wantError: nil,
@@ -693,7 +693,7 @@ func TestCors(t *testing.T) {
 					Header: http.Header{requestHeaderOrigin: {"https://domain.com"}, requestHeaderAccessControlRequestMethod: {"get"}},
 				},
 			},
-			handler: func(ctx context.Context, r path.MatchingContext) (response.HttpResponse, error) {
+			handler: func(ctx context.Context, mc path.MatchingContext) (response.HttpResponse, error) {
 				return response.PlainTextHttpResponseOK("ok"), nil
 			},
 			wantError: nil,
@@ -715,7 +715,7 @@ func TestCors(t *testing.T) {
 					Header: http.Header{requestHeaderOrigin: {"https://domain.com"}},
 				},
 			},
-			handler: func(ctx context.Context, r path.MatchingContext) (response.HttpResponse, error) {
+			handler: func(ctx context.Context, mc path.MatchingContext) (response.HttpResponse, error) {
 				return response.PlainTextHttpResponseOK("ok"), nil
 			},
 			wantError: nil,
@@ -736,7 +736,7 @@ func TestCors(t *testing.T) {
 					Header: http.Header{requestHeaderOrigin: {"https://domain.com"}, requestHeaderContentType: {""}},
 				},
 			},
-			handler: func(ctx context.Context, r path.MatchingContext) (response.HttpResponse, error) {
+			handler: func(ctx context.Context, mc path.MatchingContext) (response.HttpResponse, error) {
 				return response.PlainTextHttpResponseOK("ok"), nil
 			},
 			wantError:           errors.ErrAccessDenied,

@@ -42,9 +42,9 @@ func (r *HttpCompressResponse) Cookies() HttpCookies {
 	return r.httpResponse.Cookies()
 }
 
-func (r *HttpCompressResponse) Write(w http.ResponseWriter, req path.MatchingContext) error {
+func (r *HttpCompressResponse) Write(w http.ResponseWriter, mc path.MatchingContext) error {
 	// detect what compression algorithm to use
-	compressAlg := getCompressionAlgorithmFromHeaderValue(req.R.Header.Get(acceptEncodingHeaderName))
+	compressAlg := getCompressionAlgorithmFromHeaderValue(mc.R.Header.Get(acceptEncodingHeaderName))
 
 	if compressAlg == "gzip" {
 		cw, err := gzip.NewWriterLevel(w, r.compressionLevel)
@@ -69,7 +69,7 @@ func (r *HttpCompressResponse) Write(w http.ResponseWriter, req path.MatchingCon
 			defer cw.Close()
 		}
 	}
-	return r.httpResponse.Write(w, req)
+	return r.httpResponse.Write(w, mc)
 }
 
 func getCompressionAlgorithmFromHeaderValue(acceptEncodingHeaderNameVal string) string {
