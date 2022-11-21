@@ -524,12 +524,19 @@ and these are the results:
 
 ```text
 goos: darwin
-goarch: amd64
 cpu: Intel(R) Core(TM) i7-4980HQ CPU @ 2.80GHz
 Benchmark_GofreStatic-8                  	 3324294	       353.6 ns/op	      64 B/op	       1 allocs/op
 Benchmark_GofreVarCapture-8              	 2742657	       438.4 ns/op	      64 B/op	       1 allocs/op
 Benchmark_GofreVarCapture_Concurrent-8   	 5540001	       207.5 ns/op	      70 B/op	       1 allocs/op
 ```
+
+## Performance comparison with other frameworks
+
+![Performance - Path Capture Variables (multi-thread)](docs/img/performance-path-capture-variables-multi-thread.png)
+![Performance - Path Capture Variables (single-thread)](docs/img/performance-path-capture-variables-single-thread.png)
+![Performance - Static Resources (single-thread)](docs/img/performance-static-resources-single-thread.png)
+
+The [benchmark](https://github.com/ixtendio/go-web-frameworks-benchmark) was executed on `MacOS Intel(R) Core(TM) i7-4980HQ CPU @ 2.80GHz`
 
 # Run the Examples
 
