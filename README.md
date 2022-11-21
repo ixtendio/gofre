@@ -513,6 +513,24 @@ automatic reconnection.
 >
 > SSE works only over TLS
 
+# Performance
+
+The framework was tested using the following use-cases:
+1. serving static resources
+2. serving URL's with path variables
+3. serving concurrent requests
+
+and these are the results:
+
+```text
+goos: darwin
+goarch: amd64
+cpu: Intel(R) Core(TM) i7-4980HQ CPU @ 2.80GHz
+Benchmark_GofreStatic-8                  	 3324294	       353.6 ns/op	      64 B/op	       1 allocs/op
+Benchmark_GofreVarCapture-8              	 2742657	       438.4 ns/op	      64 B/op	       1 allocs/op
+Benchmark_GofreVarCapture_Concurrent-8   	 5540001	       207.5 ns/op	      70 B/op	       1 allocs/op
+```
+
 # Run the Examples
 
 A list with all examples can be found in the **examples** folder. To start the local server, execute:
