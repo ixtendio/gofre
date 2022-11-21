@@ -4,7 +4,7 @@
 <img alt="GOFre" src="docs/img/logo.png" />
 </p>
 
-_GOFree[^1]_ is a fast web framework for Go, without third-party dependencies, that makes the development of web
+_GOFree[^1]_ is a fast and low memory consumption web framework for Go, without third-party dependencies, that makes the development of web
 applications a joy.  _GOFre_ integrates with `http.Server` and supports the standard Go HTTP handlers: `http.Handler`
 and `http.HandlerFunc`.
 
