@@ -27,6 +27,8 @@ var defaultTemplateFunc = func(templatesPathPattern string) (*template.Template,
 	}).ParseGlob(templatesPathPattern)
 }
 
+// ResourcesConfig contains the settings for static resources and templating.
+// If no custom values are provided for the struct fields then, the default one are used
 type ResourcesConfig struct {
 	//the dir path pattern that matches the Go templates. Default: "resources/templates/*.html"
 	TemplatesPathPattern string
@@ -87,6 +89,7 @@ func (c *Config) setDefaults() error {
 	return nil
 }
 
+// MuxHandler implements http.Handler that serves the HTTP requests
 type MuxHandler struct {
 	pathPrefix        string
 	router            *router.Router
@@ -94,17 +97,17 @@ type MuxHandler struct {
 	webConfig         *Config
 }
 
-// NewMuxHandlerWithDefaultConfig returns a new MuxHandler using default configuration
+// NewMuxHandlerWithDefaultConfig returns a new MuxHandler using a default configuration without templating support
 func NewMuxHandlerWithDefaultConfig() (*MuxHandler, error) {
 	return NewMuxHandler(&Config{})
 }
 
-// NewMuxHandlerWithDefaultConfigAndTemplateSupport returns a new MuxHandler using default configuration, static resources and HTML templating support
+// NewMuxHandlerWithDefaultConfigAndTemplateSupport returns a new MuxHandler using a default configuration with static resources and HTML templating support
 func NewMuxHandlerWithDefaultConfigAndTemplateSupport() (*MuxHandler, error) {
 	return NewMuxHandler(&Config{ResourcesConfig: NewDefaultResourcesConfig()})
 }
 
-// NewDefaultResourcesConfig returns a new ResourcesConfig with default configs
+// NewDefaultResourcesConfig returns a new ResourcesConfig with default values
 func NewDefaultResourcesConfig() *ResourcesConfig {
 	rc := &ResourcesConfig{}
 	if err := rc.setDefaults(); err != nil {

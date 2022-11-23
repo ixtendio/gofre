@@ -8,6 +8,7 @@ import (
 	"net/http"
 )
 
+// HttpStreamResponse implements response.HttpResponse and writes a sequence of bytes as a response
 type HttpStreamResponse struct {
 	HttpHeadersResponse
 	Reader io.Reader

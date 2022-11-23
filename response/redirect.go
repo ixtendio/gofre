@@ -5,6 +5,7 @@ import (
 	"net/http"
 )
 
+// HttpRedirectResponse implements response.HttpResponse for writing a redirect URL
 type HttpRedirectResponse struct {
 	HttpHeadersResponse
 	Url string

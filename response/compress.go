@@ -13,6 +13,7 @@ import (
 const acceptEncodingHeaderName = "Accept-Encoding"
 const contentEncodingHeaderName = "Content-Encoding"
 
+// HttpCompressResponse implements response.HttpResponse and provides gzip HTTP compression
 type HttpCompressResponse struct {
 	compressionLevel int
 	httpResponse     HttpResponse

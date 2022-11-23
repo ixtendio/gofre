@@ -9,6 +9,7 @@ import (
 	"net/http"
 )
 
+// HttpHijackConnectionResponse implements response.HttpResponse and provides hijacking capability for the current TCP connection
 type HttpHijackConnectionResponse struct {
 	hjCallbackFunc func(net.Conn, *bufio.ReadWriter, error)
 }

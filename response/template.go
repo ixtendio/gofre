@@ -28,6 +28,7 @@ func (t NilTemplate) ExecuteTemplate(wr io.Writer, name string, data any) error 
 	return nil
 }
 
+// HttpTemplateResponse implements response.HttpResponse and renders a template as a response
 type HttpTemplateResponse struct {
 	HttpHeadersResponse
 	Template ExecutableTemplate

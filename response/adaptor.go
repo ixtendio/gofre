@@ -5,6 +5,7 @@ import (
 	"net/http"
 )
 
+// HttpHandlerAdaptorResponse adapts the http.HandlerFunc and http.Handler to a response.HttpResponse
 type HttpHandlerAdaptorResponse struct {
 	headers HttpHeaders
 	cookies HttpCookies

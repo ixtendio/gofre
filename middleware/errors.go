@@ -12,6 +12,7 @@ import (
 
 type ResponseSupplier func(statusCode int, err error) response.HttpResponse
 
+// ErrJsonResponse translate an error to a JSON error response
 func ErrJsonResponse() Middleware {
 	return ErrResponse(func(statusCode int, err error) response.HttpResponse {
 		return response.JsonHttpResponse(statusCode, map[string]string{
@@ -20,6 +21,7 @@ func ErrJsonResponse() Middleware {
 	})
 }
 
+// ErrResponse translate an error to an response.HttpResponse
 func ErrResponse(responseSupplier ResponseSupplier) Middleware {
 	return func(handler handler.Handler) handler.Handler {
 		return func(ctx context.Context, mc path.MatchingContext) (response.HttpResponse, error) {

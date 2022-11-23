@@ -58,8 +58,10 @@ func (evt ServerSentEvent) String() string {
 	return sb.String()
 }
 
+// The EventGenerator is a function that received a cancellation context.Context and the last event id received by the client and returns a channel of ServerSentEvent objects
 type EventGenerator func(ctx context.Context, lastEventId string) <-chan ServerSentEvent
 
+// HttpSSEResponse implements response.HttpResponse and provides support for SSE
 type HttpSSEResponse struct {
 	HttpHeadersResponse
 	EventGenerator EventGenerator

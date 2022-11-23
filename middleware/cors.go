@@ -30,6 +30,7 @@ const (
 	varyHeader                                  = "Vary"
 )
 
+// CorsConfig encapsulates the cors middleware settings
 type CorsConfig struct {
 	// determines if any origin is allowed to make request
 	AnyOriginAllowed bool

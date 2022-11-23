@@ -6,6 +6,7 @@ import (
 	"net/http"
 )
 
+// HttpHeadersResponse implements response.HttpResponse and provides HTTP headers write
 type HttpHeadersResponse struct {
 	HttpStatusCode int
 	ContentType    string
@@ -77,6 +78,7 @@ func (r *HttpHeadersResponse) Write(w http.ResponseWriter, mc path.MatchingConte
 	return nil
 }
 
+// InternalServerErrorHttpResponse writes the http.StatusInternalServerError HTTP status code to the client
 func InternalServerErrorHttpResponse() *HttpHeadersResponse {
 	return &HttpHeadersResponse{
 		HttpStatusCode: http.StatusInternalServerError,

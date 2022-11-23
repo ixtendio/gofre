@@ -5,6 +5,7 @@ import (
 	"net/http"
 )
 
+// HttpTextResponse implements response.HttpResponse and writes a string as a response
 type HttpTextResponse struct {
 	HttpHeadersResponse
 	Payload string

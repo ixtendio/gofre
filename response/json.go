@@ -13,6 +13,7 @@ const jsonContentType = "application/json"
 
 var emptyJson = []byte("{}")
 
+// HttpJsonResponse implements response.HttpResponse and provides automatic conversion of an object to JSON
 type HttpJsonResponse struct {
 	HttpHeadersResponse
 	Payload any

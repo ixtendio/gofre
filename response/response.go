@@ -21,12 +21,14 @@ var httpHeadersPool = sync.Pool{
 	},
 }
 
+// HttpHeaders is a map with custom headers
 type HttpHeaders map[string]string
 
 func (h HttpHeaders) Set(key string, val string) {
 	h[key] = val
 }
 
+// Clear all the data from the map
 func (h HttpHeaders) Clear() {
 	for k := range h {
 		delete(h, k)
@@ -50,6 +52,7 @@ var httpCookiesPool = sync.Pool{
 	},
 }
 
+// HttpCookies is a map with custom cookies
 type HttpCookies map[string]*http.Cookie
 
 func (c HttpCookies) Add(cookies ...*http.Cookie) {
@@ -62,7 +65,7 @@ func (c HttpCookies) Add(cookies ...*http.Cookie) {
 	}
 }
 
-// Clear all cookies from the map
+// Clear all the data from the map
 func (c HttpCookies) Clear() {
 	for k := range c {
 		delete(c, k)

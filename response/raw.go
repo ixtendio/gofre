@@ -10,6 +10,7 @@ import (
 
 type RawWriterFunc func(w io.Writer) error
 
+// HttpRawResponse implements response.HttpResponse and exposes the http.ResponseWriter for custom write
 type HttpRawResponse struct {
 	HttpHeadersResponse
 	WriteFunc RawWriterFunc
