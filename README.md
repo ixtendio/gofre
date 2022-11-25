@@ -32,23 +32,23 @@ go get github.com/ixtendio/gofre
 ```go
 gofreMux, err := gofre.NewMuxHandlerWithDefaultConfig()
 if err != nil {
-log.Fatalf("Failed to create GOFre mux handler, err: %v", err)
+    log.Fatalf("Failed to create GOFre mux handler, err: %v", err)
 }
 
 // JSON with vars path
-gofreMux.HandleGet("/hello/{firstName}/{lastName}", func (ctx context.Context, mc path.MatchingContext) (response.HttpResponse, error) {
-return response.JsonHttpResponseOK(map[string]string{
-"firstName": mc.PathVar("firstName"),
-"lastName": mc.PathVar("lastName"),
-}), nil
+gofreMux.HandleGet("/hello/{firstName}/{lastName}", func(ctx context.Context, mc path.MatchingContext) (response.HttpResponse, error) {
+    return response.JsonHttpResponseOK(map[string]string{
+        "firstName": mc.PathVar("firstName"),
+        "lastName":   mc.PathVar("lastName"),
+    }), nil
 })
 
 httpServer := http.Server{
-Addr:              ":8080",
-Handler:           gofreMux,
+    Addr:              ":8080",
+    Handler:           gofreMux,
 }
 if err := httpServer.ListenAndServe(); err != nil {
-log.Fatalf("Failed starting the HTTP server, err: %v", err)
+    log.Fatalf("Failed starting the HTTP server, err: %v", err)
 }
 ```
 
@@ -246,14 +246,14 @@ gofreMux.HandleGet("/security/authorize/{permission}", func (ctx context.Context
             if err != nil {
                 return nil, err
             }
-            ctx = context.WithValue(ctx, auth.KeyValues, auth.User{
+            ctx = context.WithValue(ctx, auth.SecurityPrincipalCtxKey, auth.User{
                 Groups: []auth.Group{{
                     Roles: []auth.Role{{
                         AllowedPermissions: []auth.Permission{permission},
                     }},
                 }},
             })
-            return handler(ctx, req)
+            return handler(ctx, mc)
         }
     }, middleware.AuthorizeAll(auth.Permission{Scope: "domain/subdomain/resource", Access: auth.AccessDelete}))
 ```
