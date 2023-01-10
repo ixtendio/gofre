@@ -178,10 +178,16 @@ func (g Group) HasPermission(permission Permission) bool {
 
 // A User implements SecurityPrincipal and represents an authenticated person
 type User struct {
-	Id               string
-	Name             string
+	// the user internal id
+	Id string
+	// the name of user
+	Name string
+	// the id/name of the platform were the user was authenticated (for example Google, Linkedin, Internal, etc)
 	IdentityPlatform string
-	Groups           []Group
+	// the security groups where this user belongs
+	Groups []Group
+	// a field where any additional data to this user can be attached
+	Attachment any
 }
 
 func (u User) Identity() string {

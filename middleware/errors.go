@@ -12,7 +12,22 @@ import (
 
 type ResponseSupplier func(statusCode int, err error) response.HttpResponse
 
-// ErrJsonResponse translate an error to a JSON error response
+// Error2HttpStatusCode translates an error to an HTTP status code
+var Error2HttpStatusCode = func(err error) int {
+	if _, ok := err.(errors.ErrBadRequest); ok {
+		return http.StatusBadRequest
+	} else if _, ok := err.(errors.ErrObjectNotFound); ok {
+		return http.StatusNotFound
+	} else if err == errors.ErrUnauthorizedRequest {
+		return http.StatusUnauthorized
+	} else if err == errors.ErrWrongCredentials ||
+		err == errors.ErrAccessDenied {
+		return http.StatusForbidden
+	}
+	return http.StatusInternalServerError
+}
+
+// ErrJsonResponse translates an error to a JSON response
 func ErrJsonResponse() Middleware {
 	return ErrResponse(func(statusCode int, err error) response.HttpResponse {
 		return response.JsonHttpResponse(statusCode, map[string]string{
@@ -21,23 +36,13 @@ func ErrJsonResponse() Middleware {
 	})
 }
 
-// ErrResponse translate an error to an response.HttpResponse
+// ErrResponse translates an error to an response.HttpResponse
 func ErrResponse(responseSupplier ResponseSupplier) Middleware {
 	return func(handler handler.Handler) handler.Handler {
 		return func(ctx context.Context, mc path.MatchingContext) (response.HttpResponse, error) {
 			resp, err := handler(ctx, mc)
 			if err != nil {
-				statusCode := http.StatusInternalServerError
-				if _, ok := err.(errors.ErrBadRequest); ok {
-					statusCode = http.StatusBadRequest
-				} else if _, ok := err.(errors.ErrObjectNotFound); ok {
-					statusCode = http.StatusNotFound
-				} else if err == errors.ErrUnauthorizedRequest {
-					statusCode = http.StatusUnauthorized
-				} else if err == errors.ErrWrongCredentials ||
-					err == errors.ErrAccessDenied {
-					statusCode = http.StatusForbidden
-				}
+				statusCode := Error2HttpStatusCode(err)
 				return responseSupplier(statusCode, err), nil
 			}
 			return resp, err
